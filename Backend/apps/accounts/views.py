@@ -6,7 +6,6 @@ from .serializers import (
     VerifyOTPSerializer,
     UserSerializer,
     ResetPasswordSerializer,
-    VerifyForgotOtpSerializer,
     ForgotPasswordSerializer,
 )
 from rest_framework import generics, status, views
@@ -262,30 +261,6 @@ class ForgotPasswordView(APIView):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
-class VerifyForgotPasswordOTPView(APIView):
-    permission_classes = [AllowAny]
-
-    def post(self, request):
-        serializer = VerifyForgotOtpSerializer(data=request.data)
-        if serializer.is_valid():
-            email = serializer.validated_data["email"]
-            otp = serializer.validated_data["otp"]
-
-            try:
-                user = CustomUser.objects.get(email=email)
-                if user.otp == otp:
-                    return Response(
-                        {"message": "OTP Verified."}, status=status.HTTP_200_OK
-                    )
-                else:
-                    return Response(
-                        {"error": "Invalid OTP."}, status=status.HTTP_400_BAD_REQUEST
-                    )
-            except CustomUser.DoesNotExist:
-                return Response(
-                    {"error": "User not found."}, status=status.HTTP_404_NOT_FOUND
-                )
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
 class ResetPasswordView(APIView):
@@ -300,15 +275,24 @@ class ResetPasswordView(APIView):
 
             try:
                 user = CustomUser.objects.get(email=email)
-                if user.otp == otp: 
+                
+                if user.otp == otp and user.otp is not None:
                     user.set_password(password)
-                    user.otp = None #somthin
+                    user.otp = None  
                     user.save()
-                    return Response({"message": "Password reset successfully."}, status=status.HTTP_200_OK)
+                    return Response(
+                        {"message": "Password reset successfully."},
+                        status=status.HTTP_200_OK,
+                    )
                 else:
-                    return Response({"error": "Invalid or expired OTP."}, status=status.HTTP_400_BAD_REQUEST)
+                    return Response(
+                        {"error": "Invalid or expired OTP."}, 
+                        status=status.HTTP_400_BAD_REQUEST
+                    )
+                    
             except CustomUser.DoesNotExist:
                 return Response(
-                    {"error": "User not found."}, status=status.HTTP_404_NOT_FOUND
+                    {"error": "User not found."}, 
+                    status=status.HTTP_404_NOT_FOUND
                 )
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
