@@ -3,6 +3,10 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import api, { setAccessToken } from './lib/axios';
 import Login from './pages/auth/login';
 import Register from './pages/auth/register';
+import VerfiyOtp from './pages/auth/VerfiyOtp';
+import Dashboard from './pages/user/dashboard';
+import Home from './pages/user/home';
+
 
 function App() {
     const [loading, setLoading] = useState(true);
@@ -28,7 +32,9 @@ function App() {
             <Routes>
                 <Route path="/login" element={<Login />} />
                 <Route path="/register" element={<Register />} />
-                <Route path="/" element={<h1 className="text-center mt-10 text-3xl">NutriLens Dashboard</h1>} />
+                <Route path="/otp-verfiy" element={<VerfiyOtp />} />
+                <Route path="/" element={<Home/>} />
+                <Route path="/dashboard" element={<Dashboard/>} />
                 <Route path="*" element={<Navigate to="/login" />} />
             </Routes>
         </Router>
