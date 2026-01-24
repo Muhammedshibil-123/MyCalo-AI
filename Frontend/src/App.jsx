@@ -10,7 +10,7 @@ function App() {
     useEffect(() => {
         const refreshAuth = async () => {
             try {
-                const response = await api.post('/api/accounts/token/refresh/');
+                const response = await api.post('/api/users/token/refresh/');
                 setAccessToken(response.data.access);
             } catch (err) {
                 console.log("No valid session found.");

@@ -10,7 +10,7 @@ const Login = () => {
     const handleSubmit = async (e) => {
         e.preventDefault();
         try {
-            const response = await api.post('/api/accounts/login/', formData);
+            const response = await api.post('/api/users/login/', formData);
             
             setAccessToken(response.data.access);
             

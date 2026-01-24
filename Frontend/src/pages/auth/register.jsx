@@ -16,8 +16,7 @@ const Register = () => {
     const handleSubmit = async (e) => {
         e.preventDefault();
         try {
-            await api.post('/api/accounts/register/', formData);
-            // Redirect to OTP verification after registration
+            await api.post('/api/users/register/', formData);
             navigate('/verify-otp', { state: { email: formData.email } });
         } catch (err) {
             setErrors(err.response?.data || { message: "Registration failed" });
