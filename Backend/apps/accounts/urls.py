@@ -7,14 +7,15 @@ from .views import (
     UserDetailView,
     ForgotPasswordView,
     ResetPasswordView,
-    CustomTokenjwtView
+    CustomTokenjwtView,
+    CustomTokenRefreshView
 )
-from rest_framework_simplejwt.views import TokenRefreshView
+
 
 urlpatterns = [
     path("register/", RegisterView.as_view(), name="auth_register"),
     path("login/",CustomTokenjwtView.as_view(),name="auth_login"),
-    path('token/refresh/',TokenRefreshView.as_view(),name="token_refresh"),
+    path('token/refresh/',CustomTokenRefreshView.as_view(),name="token_refresh"),
     path("verify-otp/", VerifyOTPView.as_view(), name="verify-otp"),
     path("google-login/", GoogleLoginView.as_view(), name="google-login"),
     path("forgot-password/", ForgotPasswordView.as_view(), name="forgot-password"),
