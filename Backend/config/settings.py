@@ -80,7 +80,7 @@ WSGI_APPLICATION = 'config.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'zencal_ai_db',
+        'NAME': 'mycalo_ai_db',
         'USER': 'postgres',           
         'PASSWORD': os.getenv('DATABASE_PASSWORD'),  
         'HOST': 'localhost',
@@ -135,9 +135,17 @@ REST_FRAMEWORK = {
 from datetime import timedelta
 
 SIMPLE_JWT = {
-    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=1600000), 
-    'REFRESH_TOKEN_LIFETIME': timedelta(days=84),    
-    'AUTH_HEADER_TYPES': ('Bearer',),
+    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=15),
+    "REFRESH_TOKEN_LIFETIME": timedelta(days=7),
+    "ROTATE_REFRESH_TOKENS": True,
+    "BLACKLIST_AFTER_ROTATION": True,
+    
+    "AUTH_COOKIE": "refresh_token",  
+    "AUTH_COOKIE_DOMAIN": None,      
+    "AUTH_COOKIE_SECURE": False,     
+    "AUTH_COOKIE_HTTP_ONLY": True,   
+    "AUTH_COOKIE_PATH": "/",
+    "AUTH_COOKIE_SAMESITE": "Lax",   
 }
 
 AUTH_USER_MODEL='accounts.CustomUser'

@@ -23,11 +23,34 @@ import secrets
 import string
 import requests
 from rest_framework import permissions
-
+from rest_framework_simplejwt.views import TokenRefreshView
 
 # Create your views here.
 class CustomTokenjwtView(TokenObtainPairView):
-    serializer_class = CustomTokenJwtSerializer
+    def post(self, request, *args, **kwargs):
+        response = super().post(request, *args, **kwargs)
+        if response.status_code == 200:
+            refresh_token = response.data.get("refresh")
+        
+            response.set_cookie(
+                key=settings.SIMPLE_JWT['AUTH_COOKIE'],
+                value=refresh_token,
+                expires=settings.SIMPLE_JWT['REFRESH_TOKEN_LIFETIME'],
+                secure=settings.SIMPLE_JWT['AUTH_COOKIE_SECURE'],
+                httponly=settings.SIMPLE_JWT['AUTH_COOKIE_HTTP_ONLY'],
+                samesite=settings.SIMPLE_JWT['AUTH_COOKIE_SAMESITE'],
+            )
+            
+            del response.data["refresh"]
+            
+        return response
+    
+class CustomTokenRefreshView(TokenRefreshView):
+    def post(self, request, *args, **kwargs):
+        refresh_token = request.COOKIES.get(settings.SIMPLE_JWT['AUTH_COOKIE'])
+        if refresh_token:
+            request.data['refresh'] = refresh_token
+        return super().post(request, *args, **kwargs)
 
 
 class RegisterView(generics.GenericAPIView):
