@@ -4,7 +4,7 @@ import api, { setAccessToken } from './lib/axios';
 import Login from './pages/auth/login';
 import Register from './pages/auth/register';
 import VerfiyOtp from './pages/auth/VerfiyOtp';
-import Dashboard from './pages/user/dashboard';
+import Profile from './pages/user/profile';
 import Home from './pages/user/home';
 
 
@@ -34,7 +34,7 @@ function App() {
                 <Route path="/register" element={<Register />} />
                 <Route path="/otp-verfiy" element={<VerfiyOtp />} />
                 <Route path="/" element={<Home/>} />
-                <Route path="/dashboard" element={<Dashboard/>} />
+                <Route path="/profile" element={<Profile/>} />
                 <Route path="*" element={<Navigate to="/login" />} />
             </Routes>
         </Router>

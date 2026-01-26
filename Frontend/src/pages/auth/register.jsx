@@ -1,6 +1,7 @@
 import { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import registerIllustration from "../../assets/images/register_illustration.webp";
+import api from "../../lib/axios";
 
 import { FaEye } from "react-icons/fa";
 import { FaEyeSlash } from "react-icons/fa6";
@@ -10,20 +11,64 @@ const Register = () => {
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
     const [confirmPassword, setConfirmPassword] = useState("");
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState("");
 
     const [showPassword, setShowPassword] = useState(false);
     const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
-    const handleSubmit = (e) => {
+    const navigate = useNavigate();
+
+    const handleSubmit = async (e) => {
         e.preventDefault();
-        console.log({ username, email, password, confirmPassword });
+        setError("");
+
+        if (password !== confirmPassword) {
+            setError("Passwords do not match");
+            return;
+        }
+
+        setLoading(true);
+
+        try {
+            const response = await api.post("/api/users/register/", {
+                username,
+                email,
+                password,
+                confirm_password: confirmPassword
+            });
+
+            if (response.status === 200 || response.status === 201) {
+                navigate("/otp-verfiy", { state: { email } });
+            }
+        } catch (err) {
+            if (err.response?.data) {
+                const data = err.response.data;
+                let errorMessage = "Registration failed";
+
+                if (typeof data === "string") {
+                    errorMessage = data;
+                } else if (typeof data === "object") {
+                    const firstValue = Object.values(data)[0];
+
+                    if (Array.isArray(firstValue)) {
+                        errorMessage = firstValue[0];
+                    } else {
+                        errorMessage = firstValue;
+                    }
+                }
+                setError(errorMessage);
+            } else {
+                setError("Something went wrong. Please try again.");
+            }
+        } finally {
+            setLoading(false);
+        }
     };
 
     return (
         <div className="h-screen w-full overflow-y-auto md:overflow-hidden no-scrollbar bg-white relative">
 
-
-            {/* ================= TOP RIGHT CORPORATE USER ================= */}
             <div className="absolute top-4 right-4 z-20">
                 <Link
                     to="/corporate/register"
@@ -33,7 +78,6 @@ const Register = () => {
                 </Link>
             </div>
 
-            {/* ================= MOBILE IMAGE ================= */}
             <div className="md:hidden h-[40vh] w-full">
                 <img
                     src={registerIllustration}
@@ -42,14 +86,12 @@ const Register = () => {
                 />
             </div>
 
-            {/* ================= MOBILE FORM ================= */}
             <div className="md:hidden h-[60vh] px-6 py-6">
                 <h2 className="text-2xl font-bold text-gray-900 mb-6 text-center">
                     Sign Up
                 </h2>
 
                 <form onSubmit={handleSubmit} className="space-y-4">
-
                     <input
                         type="text"
                         placeholder="Username"
@@ -68,7 +110,6 @@ const Register = () => {
                         required
                     />
 
-                    {/* Password */}
                     <div className="relative">
                         <input
                             type={showPassword ? "text" : "password"}
@@ -87,7 +128,6 @@ const Register = () => {
                         </button>
                     </div>
 
-                    {/* Confirm Password */}
                     <div className="relative">
                         <input
                             type={showConfirmPassword ? "text" : "password"}
@@ -99,14 +139,21 @@ const Register = () => {
                         />
                         <button
                             type="button"
-                            onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                            onClick={() =>
+                                setShowConfirmPassword(!showConfirmPassword)
+                            }
                             className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500"
                         >
                             {showConfirmPassword ? <FaEyeSlash /> : <FaEye />}
                         </button>
                     </div>
 
-                    {/* TERMS TEXT */}
+                    {error && (
+                        <p className="text-sm text-red-500 font-medium">
+                            {error}
+                        </p>
+                    )}
+
                     <p className="text-xs text-gray-500 leading-relaxed">
                         By signing up, I agree to the{" "}
                         <Link to="" className="underline">
@@ -121,10 +168,11 @@ const Register = () => {
 
                     <button
                         type="submit"
-                        className="w-full py-3 rounded-xl text-white font-semibold shadow-lg"
+                        disabled={loading}
+                        className="w-full py-3 rounded-xl text-white font-semibold shadow-lg disabled:opacity-50"
                         style={{ backgroundColor: "#6C3AC9" }}
                     >
-                        Register
+                        {loading ? "Registering..." : "Register"}
                     </button>
                 </form>
 
@@ -136,7 +184,6 @@ const Register = () => {
                 </p>
             </div>
 
-            {/* ================= DESKTOP ================= */}
             <div className="hidden md:fixed md:inset-0 md:block relative">
                 <img
                     src={registerIllustration}
@@ -153,7 +200,6 @@ const Register = () => {
                         </h2>
 
                         <form onSubmit={handleSubmit} className="space-y-4">
-
                             <input
                                 type="text"
                                 placeholder="Username"
@@ -192,21 +238,37 @@ const Register = () => {
 
                             <div className="relative">
                                 <input
-                                    type={showConfirmPassword ? "text" : "password"}
+                                    type={
+                                        showConfirmPassword ? "text" : "password"
+                                    }
                                     placeholder="Confirm password"
                                     value={confirmPassword}
-                                    onChange={(e) => setConfirmPassword(e.target.value)}
+                                    onChange={(e) =>
+                                        setConfirmPassword(e.target.value)
+                                    }
                                     className="w-full px-4 py-3 pr-12 rounded-xl bg-gray-50 border focus:ring-1 focus:ring-[#6C3AC9]"
                                     required
                                 />
                                 <button
                                     type="button"
-                                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                                    onClick={() =>
+                                        setShowConfirmPassword(!showConfirmPassword)
+                                    }
                                     className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500"
                                 >
-                                    {showConfirmPassword ? <FaEyeSlash /> : <FaEye />}
+                                    {showConfirmPassword ? (
+                                        <FaEyeSlash />
+                                    ) : (
+                                        <FaEye />
+                                    )}
                                 </button>
                             </div>
+
+                            {error && (
+                                <p className="text-sm text-red-500 font-medium">
+                                    {error}
+                                </p>
+                            )}
 
                             <p className="text-xs text-gray-500 leading-relaxed">
                                 By signing up, I agree to the{" "}
@@ -222,14 +284,19 @@ const Register = () => {
 
                             <button
                                 type="submit"
-                                className="w-full py-3 rounded-xl text-white font-semibold shadow-lg"
+                                disabled={loading}
+                                className="w-full py-3 rounded-xl text-white font-semibold shadow-lg disabled:opacity-50"
                                 style={{ backgroundColor: "#6C3AC9" }}
                             >
-                                Register
+                                {loading ? "Registering..." : "Register"}
                             </button>
+
                             <p className="text-center text-sm text-gray-600 mt-6">
                                 Already have an account?{" "}
-                                <Link to="/login" className="text-[#6C3AC9] font-semibold">
+                                <Link
+                                    to="/login"
+                                    className="text-[#6C3AC9] font-semibold"
+                                >
                                     Login
                                 </Link>
                             </p>
@@ -237,7 +304,6 @@ const Register = () => {
                     </div>
                 </div>
             </div>
-
         </div>
     );
 };
