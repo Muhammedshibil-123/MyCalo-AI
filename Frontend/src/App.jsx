@@ -11,6 +11,7 @@ import Profile from './pages/user/profile';
 import Home from './pages/user/home';
 import Dashboard from './pages/user/dashboard';
 import UserNavbar from './layout/UserNavbar';
+import CorporateVerifyOtp from './pages/auth/CorporateVerifyOtp';
 
 
 const ProtectedRoute = () => {
@@ -56,6 +57,7 @@ function App() {
                     <Route path="/register" element={<Register />} />
                     <Route path="/otp-verfiy" element={<VerfiyOtp />} />
                     <Route path="/corporate/register" element={<CorporateRegister />} />
+                    <Route path="/corporate/verify-otp" element={<CorporateVerifyOtp />} />
                 </Route>
 
                 <Route element={<ProtectedRoute />}>

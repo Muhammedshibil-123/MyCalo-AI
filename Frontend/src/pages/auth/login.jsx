@@ -16,43 +16,55 @@ const Login = () => {
   const dispatch = useDispatch();
 
   const handleSubmit = async (e) => {
-    e.preventDefault();
-    setError("");
-    setLoading(true);
+  e.preventDefault();
+  setError("");
+  setLoading(true);
 
-    try {
-      const response = await api.post("/api/users/login/", {
-        username: email,
-        password,
-      });
+  try {
+    const response = await api.post("/api/users/login/", {
+      username: email,
+      password,
+    });
 
-      if (response.status === 200) {
-        setAccessToken(response.data.access);
-        
+    if (response.status === 200) {
+      const { role, email: userEmail, access } = response.data;
+
+      // If the user is a standard customer/user, log them in directly
+      if (role === 'user') {
+        setAccessToken(access);
         dispatch(setCredentials({
-            accessToken: response.data.access,
-            user: {
-                id: response.data.id,
-                username: response.data.username,
-                email: response.data.email,
-                role: response.data.role,
-                mobile: response.data.mobile
-            }
+          accessToken: access,
+          user: {
+            id: response.data.id,
+            username: response.data.username,
+            email: response.data.email,
+            role: response.data.role,
+            mobile: response.data.mobile
+          }
         }));
-
         localStorage.clear();
         navigate("/");
-      }
-    } catch (err) {
-      if (err.response?.data?.detail) {
-        setError(err.response.data.detail);
       } else {
-        setError("Invalid credentials");
+        // If employee, doctor, or admin, redirect to OTP verification
+        // Ensure your backend login endpoint returns the secret if 2FA is required
+        navigate("/corporate/verify-otp", { 
+          state: { 
+            email: userEmail,
+            secret: response.data.totp_secret 
+          } 
+        });
       }
-    } finally {
-      setLoading(false);
     }
-  };
+  } catch (err) {
+    if (err.response?.data?.detail) {
+      setError(err.response.data.detail);
+    } else {
+      setError("Invalid credentials");
+    }
+  } finally {
+    setLoading(false);
+  }
+};
 
   return (
     <div className="min-h-[100dvh] bg-white md:bg-transparent">
