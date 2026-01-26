@@ -27,7 +27,6 @@ const Register = () => {
             setError("Passwords do not match");
             return;
         }
-        // arun kumar
         setLoading(true);
 
         try {
@@ -68,7 +67,6 @@ const Register = () => {
 
     return (
         <div className="h-screen w-full overflow-y-auto md:overflow-hidden no-scrollbar bg-white relative">
-            {/* aurn kumar */}
             <div className="absolute top-4 right-4 z-20">
                 <Link
                     to="/corporate/register"

@@ -8,7 +8,9 @@ from .views import (
     ForgotPasswordView,
     ResetPasswordView,
     CustomTokenjwtView,
-    CustomTokenRefreshView
+    CustomTokenRefreshView,
+    CorporateRegisterView,
+    CorporateVerifyOTPView
 )
 
 
@@ -22,4 +24,6 @@ urlpatterns = [
     path("reset-password/", ResetPasswordView.as_view(), name="reset-password"),
     path("", UserListView.as_view(), name="user-list"),
     path("<int:pk>/", UserDetailView.as_view(), name="user-detail"),
+    path('corporate-register/', CorporateRegisterView.as_view(), name='corporate_register'),
+    path('corporate-verify-otp/', CorporateVerifyOTPView.as_view(), name='corporate_verify_otp'),
 ]

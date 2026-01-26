@@ -6,19 +6,21 @@ import { setCredentials, logout, finishInitialLoad } from './redux/authslice';
 import Login from './pages/auth/login';
 import Register from './pages/auth/register';
 import VerfiyOtp from './pages/auth/VerfiyOtp';
+import CorporateRegister from './pages/auth/CorporateRegister';
 import Profile from './pages/user/profile';
 import Home from './pages/user/home';
 import Dashboard from './pages/user/dashboard';
 import UserNavbar from './layout/UserNavbar';
 
+
 const ProtectedRoute = () => {
-  const { isAuthenticated } = useSelector((state) => state.auth);
-  return isAuthenticated ? <Outlet /> : <Navigate to="/login" replace />;
+    const { isAuthenticated } = useSelector((state) => state.auth);
+    return isAuthenticated ? <Outlet /> : <Navigate to="/login" replace />;
 };
 
 const PublicRoute = () => {
-  const { isAuthenticated } = useSelector((state) => state.auth);
-  return isAuthenticated ? <Navigate to="/" replace /> : <Outlet />;
+    const { isAuthenticated } = useSelector((state) => state.auth);
+    return isAuthenticated ? <Navigate to="/" replace /> : <Outlet />;
 };
 
 function App() {
@@ -40,8 +42,9 @@ function App() {
                 dispatch(finishInitialLoad());
             }
         };
+
         checkAuth();
-    }, [dispatch]);
+    }, [dispatch])
 
     if (loading) return <div>Loading...</div>;
 
@@ -52,13 +55,14 @@ function App() {
                     <Route path="/login" element={<Login />} />
                     <Route path="/register" element={<Register />} />
                     <Route path="/otp-verfiy" element={<VerfiyOtp />} />
+                    <Route path="/corporate/register" element={<CorporateRegister />} />
                 </Route>
 
                 <Route element={<ProtectedRoute />}>
                     <Route element={<UserNavbar />}>
-                        <Route path="/" element={<Home/>} />
+                        <Route path="/" element={<Home />} />
                         <Route path="/profile" element={<Profile />} />
-                        <Route path="/analytics" element={<Dashboard/>} />
+                        <Route path="/analytics" element={<Dashboard />} />
                     </Route>
                 </Route>
 

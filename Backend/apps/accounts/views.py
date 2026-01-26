@@ -7,6 +7,8 @@ from .serializers import (
     UserSerializer,
     ResetPasswordSerializer,
     ForgotPasswordSerializer,
+    CorporateRegisterSerializer,
+    CorporateVerifyOTPSerializer
 )
 from rest_framework import generics, status, views
 from rest_framework.permissions import AllowAny, IsAdminUser, IsAuthenticated
@@ -24,6 +26,7 @@ import string
 import requests
 from rest_framework import permissions
 from rest_framework_simplejwt.views import TokenRefreshView
+import pyotp
 
 # Create your views here.
 class CustomTokenjwtView(TokenObtainPairView):
@@ -319,4 +322,119 @@ class ResetPasswordView(APIView):
                     {"error": "User not found."}, 
                     status=status.HTTP_404_NOT_FOUND
                 )
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    
+
+class CorporateRegisterView(generics.GenericAPIView):
+    permission_classes = [AllowAny]
+    serializer_class = CorporateRegisterSerializer
+
+    def post(self, request, *args, **kwargs):
+        email = request.data.get("email")
+        password = request.data.get("password")
+        employee_id = request.data.get("employee_id")
+
+        existing_user = CustomUser.objects.filter(email=email).first()
+
+        if existing_user:
+            if not existing_user.check_password(password):
+                return Response({"error": "Invalid credentials."}, status=status.HTTP_400_BAD_REQUEST)
+            
+            role_map = {
+                "doc1234": "doctor",
+                "employee1234": "employee"
+            }
+            
+            expected_role = role_map.get(employee_id)
+            if not expected_role:
+                 return Response({"employee_id": "Invalid Employee ID."}, status=status.HTTP_400_BAD_REQUEST)
+            
+            if existing_user.role != expected_role:
+                 return Response({"error": "Employee ID does not match registered role."}, status=status.HTTP_400_BAD_REQUEST)
+
+            if not existing_user.totp_secret:
+                existing_user.totp_secret = pyotp.random_base32()
+                existing_user.save()
+            
+            totp = pyotp.TOTP(existing_user.totp_secret)
+            provisioning_uri = totp.provisioning_uri(name=existing_user.email, issuer_name="MyCalo AI")
+            
+            return Response({
+                "message": "User verified. Set up Google Authenticator.",
+                "email": existing_user.email,
+                "role": existing_user.role,
+                "secret": existing_user.totp_secret,
+                "otpauth_url": provisioning_uri
+            }, status=status.HTTP_200_OK)
+
+        serializer = self.get_serializer(data=request.data)
+        if serializer.is_valid():
+            user = serializer.save()
+
+            totp_secret = pyotp.random_base32()
+            user.totp_secret = totp_secret
+            user.save()
+
+            totp = pyotp.TOTP(totp_secret)
+            provisioning_uri = totp.provisioning_uri(name=user.email, issuer_name="MyCalo AI")
+
+            return Response({
+                "message": "Account created. Set up Google Authenticator.",
+                "email": user.email,
+                "role": user.role,
+                "secret": totp_secret,
+                "otpauth_url": provisioning_uri
+            }, status=status.HTTP_201_CREATED)
+
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+class CorporateVerifyOTPView(views.APIView):
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        serializer = CorporateVerifyOTPSerializer(data=request.data)
+        if serializer.is_valid():
+            email = serializer.validated_data["email"]
+            otp = serializer.validated_data["otp"]
+
+            try:
+                user = CustomUser.objects.get(email=email)
+                
+                if not user.totp_secret:
+                    return Response(
+                        {"error": "TOTP not set up for this user."}, 
+                        status=status.HTTP_400_BAD_REQUEST
+                    )
+
+                totp = pyotp.TOTP(user.totp_secret)
+                if totp.verify(otp):
+                    user.is_active = True
+                    user.save()
+
+                    refresh = RefreshToken.for_user(user)
+
+                    return Response(
+                        {
+                            "message": "Account verified successfully!",
+                            "refresh": str(refresh),
+                            "access": str(refresh.access_token),
+                            "id": user.id,
+                            "username": user.username,
+                            "email": user.email,
+                            "role": user.role,
+                            "mobile": user.mobile,
+                        },
+                        status=status.HTTP_200_OK,
+                    )
+                else:
+                    return Response(
+                        {"error": "Invalid Authenticator Code"}, 
+                        status=status.HTTP_400_BAD_REQUEST
+                    )
+
+            except CustomUser.DoesNotExist:
+                return Response(
+                    {"error": "User not found"}, status=status.HTTP_404_NOT_FOUND
+                )
+
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)

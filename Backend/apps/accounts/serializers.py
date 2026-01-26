@@ -77,3 +77,46 @@ class ResetPasswordSerializer(serializers.Serializer):
             raise serializers.ValidationError("Passwords do not match.")
         return data
     
+
+class CorporateRegisterSerializer(serializers.ModelSerializer):
+    password = serializers.CharField(write_only=True)
+    confirm_password = serializers.CharField(write_only=True)
+    employee_id = serializers.CharField(write_only=True)
+
+    class Meta:
+        model = CustomUser
+        fields = ('username', 'email', 'mobile', 'password', 'confirm_password', 'employee_id')
+
+    def validate(self, data):
+        if data['password'] != data['confirm_password']:
+            raise serializers.ValidationError("Passwords do not match.")
+        
+        emp_id = data.get('employee_id')
+        if emp_id != "doc1234" and emp_id != "employee1234":
+             raise serializers.ValidationError({"employee_id": "Invalid Employee ID."})
+            
+        return data
+
+    def create(self, validated_data):
+        validated_data.pop('confirm_password')
+        emp_id = validated_data.pop('employee_id')
+        password = validated_data.pop('password')
+        
+        role = 'user'
+        if emp_id == "doc1234":
+            role = 'doctor'
+        elif emp_id == "employee1234":
+            role = 'employee'
+
+        user = CustomUser(**validated_data)
+        user.set_password(password)
+        user.role = role
+        user.is_active = False
+        user.save()
+        
+        return user
+
+class CorporateVerifyOTPSerializer(serializers.Serializer):
+    email = serializers.EmailField()
+    otp = serializers.CharField(max_length=6)
+    
