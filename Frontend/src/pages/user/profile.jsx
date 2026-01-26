@@ -1,5 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useDispatch, useSelector } from "react-redux";
+import { logout } from "../../redux/authslice";
 import {
   FaRegUser,
   FaBell,
@@ -10,21 +12,16 @@ import {
 import { IoChevronForward } from "react-icons/io5";
 import { setAccessToken } from "../../lib/axios";
 
-const Profile = ({ setIsAuth }) => {
+const Profile = () => {
   const navigate = useNavigate();
+  const dispatch = useDispatch();
+  const { user } = useSelector((state) => state.auth);
   const [notifications, setNotifications] = useState(true);
 
   const handleLogout = () => {
-    // Clear localStorage
-    localStorage.clear();
-    
-    // Clear access token from memory
     setAccessToken(null);
-    
-    // Update auth state
-    setIsAuth(false);
-    
-    // Navigate to login (without page reload)
+    dispatch(logout());
+    localStorage.clear();
     navigate("/login", { replace: true });
   };
 
@@ -33,14 +30,14 @@ const Profile = ({ setIsAuth }) => {
       <div className="bg-white px-5 pt-6 pb-5">
         <div className="flex items-center gap-4">
           <div className="w-14 h-14 rounded-full bg-purple-600 text-white flex items-center justify-center text-2xl font-semibold">
-            M
+            {user?.username?.[0]?.toUpperCase() || "U"}
           </div>
           <div className="flex-1">
             <h2 className="text-[22px] font-semibold text-gray-900 leading-tight">
-              Muhammed Shibil
+              {user?.username || "User"}
             </h2>
             <p className="text-[13px] text-gray-500 mt-0.5">
-              8606569408 | sanuvkd104@gmail.com
+              {user?.mobile || ""} | {user?.email || ""}
             </p>
           </div>
         </div>

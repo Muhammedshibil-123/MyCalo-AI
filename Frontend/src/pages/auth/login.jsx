@@ -1,16 +1,19 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import { useDispatch } from "react-redux";
+import { setCredentials } from "../../redux/authslice";
 import loginIllustration from "../../assets/images/login_illustration.webp";
 import { FcGoogle } from "react-icons/fc";
 import api, { setAccessToken } from "../../lib/axios";
 
-const Login = ({ setIsAuth }) => {
+const Login = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
   const navigate = useNavigate();
+  const dispatch = useDispatch();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -25,13 +28,19 @@ const Login = ({ setIsAuth }) => {
 
       if (response.status === 200) {
         setAccessToken(response.data.access);
-        localStorage.setItem("id", response.data.id);
-        localStorage.setItem("username", response.data.username);
-        localStorage.setItem("email", response.data.email);
-        localStorage.setItem("role", response.data.role);
-        localStorage.setItem("mobile", response.data.mobile);
         
-        setIsAuth(true);
+        dispatch(setCredentials({
+            accessToken: response.data.access,
+            user: {
+                id: response.data.id,
+                username: response.data.username,
+                email: response.data.email,
+                role: response.data.role,
+                mobile: response.data.mobile
+            }
+        }));
+
+        localStorage.clear();
         navigate("/");
       }
     } catch (err) {
@@ -47,7 +56,6 @@ const Login = ({ setIsAuth }) => {
 
   return (
     <div className="min-h-[100dvh] bg-white md:bg-transparent">
-      {/* Mobile View */}
       <div className="md:hidden flex flex-col">
         <div className="w-full aspect-[4/3]">
           <img
@@ -120,7 +128,6 @@ const Login = ({ setIsAuth }) => {
         </div>
       </div>
 
-      {/* Desktop View */}
       <div className="hidden md:fixed md:inset-0 md:flex items-center justify-center">
         <img
           src={loginIllustration}

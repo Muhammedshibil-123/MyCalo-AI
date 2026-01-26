@@ -1,6 +1,8 @@
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate, Outlet } from 'react-router-dom';
+import { useDispatch, useSelector } from 'react-redux';
 import api, { setAccessToken } from './lib/axios';
+import { setCredentials, logout, finishInitialLoad } from './redux/authslice';
 import Login from './pages/auth/login';
 import Register from './pages/auth/register';
 import VerfiyOtp from './pages/auth/VerfiyOtp';
@@ -9,54 +11,58 @@ import Home from './pages/user/home';
 import Dashboard from './pages/user/dashboard';
 import UserNavbar from './layout/UserNavbar';
 
-const ProtectedRoute = ({ isAuth }) => {
-  return isAuth ? <Outlet /> : <Navigate to="/login" replace />;
+const ProtectedRoute = () => {
+  const { isAuthenticated } = useSelector((state) => state.auth);
+  return isAuthenticated ? <Outlet /> : <Navigate to="/login" replace />;
 };
 
-const PublicRoute = ({ isAuth }) => {
-  return isAuth ? <Navigate to="/" replace /> : <Outlet />;
+const PublicRoute = () => {
+  const { isAuthenticated } = useSelector((state) => state.auth);
+  return isAuthenticated ? <Navigate to="/" replace /> : <Outlet />;
 };
 
 function App() {
-    const [loading, setLoading] = useState(true);
-    const [isAuth, setIsAuth] = useState(false);
+    const dispatch = useDispatch();
+    const { loading } = useSelector((state) => state.auth);
 
     useEffect(() => {
         const checkAuth = async () => {
             try {
                 const response = await api.post('/api/users/token/refresh/');
                 setAccessToken(response.data.access);
-                setIsAuth(true);
+                dispatch(setCredentials({
+                    user: response.data.user || { username: 'User' },
+                    accessToken: response.data.access
+                }));
             } catch (err) {
-                setIsAuth(false);
-                setAccessToken(null);
+                dispatch(logout());
             } finally {
-                setLoading(false);
+                dispatch(finishInitialLoad());
             }
         };
         checkAuth();
-    }, []);
+    }, [dispatch]);
 
     if (loading) return <div>Loading...</div>;
 
     return (
         <Router>
             <Routes>
-                <Route element={<PublicRoute isAuth={isAuth} />}>
-                    <Route path="/login" element={<Login setIsAuth={setIsAuth} />} />
+                <Route element={<PublicRoute />}>
+                    <Route path="/login" element={<Login />} />
                     <Route path="/register" element={<Register />} />
-                    <Route path="/otp-verfiy" element={<VerfiyOtp setIsAuth={setIsAuth} />} />
+                    <Route path="/otp-verfiy" element={<VerfiyOtp />} />
                 </Route>
 
-                <Route element={<ProtectedRoute isAuth={isAuth} />}>
+                <Route element={<ProtectedRoute />}>
                     <Route element={<UserNavbar />}>
                         <Route path="/" element={<Home/>} />
-                        <Route path="/profile" element={<Profile setIsAuth={setIsAuth} />} />
+                        <Route path="/profile" element={<Profile />} />
                         <Route path="/analytics" element={<Dashboard/>} />
                     </Route>
                 </Route>
 
-                <Route path="*" element={<Navigate to={isAuth ? "/" : "/login"} />} />
+                <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
         </Router>
     );

@@ -1,10 +1,12 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
+import { useDispatch } from "react-redux";
+import { setCredentials } from "../../redux/authslice";
 import { IoMdArrowRoundBack } from "react-icons/io";
 import registerIllustration from "../../assets/images/register_illustration.webp";
 import api, { setAccessToken } from "../../lib/axios";
 
-const VerifyEmailOtp = ({ setIsAuth }) => {
+const VerifyEmailOtp = () => {
   const [otp, setOtp] = useState(["", "", "", "", "", ""]);
   const [timer, setTimer] = useState(30);
   const [loading, setLoading] = useState(false);
@@ -12,6 +14,7 @@ const VerifyEmailOtp = ({ setIsAuth }) => {
   const inputsRef = useRef([]);
   const navigate = useNavigate();
   const location = useLocation();
+  const dispatch = useDispatch();
 
   const email = location.state?.email;
 
@@ -97,7 +100,18 @@ const VerifyEmailOtp = ({ setIsAuth }) => {
       if (response.status === 200) {
         const { access } = response.data;
         setAccessToken(access);
-        setIsAuth(true);
+        
+        dispatch(setCredentials({
+            accessToken: access,
+            user: {
+                id: response.data.id,
+                username: response.data.username,
+                email: response.data.email,
+                role: response.data.role,
+                mobile: response.data.mobile
+            }
+        }));
+
         navigate("/");
       }
     } catch (err) {
