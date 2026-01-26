@@ -27,6 +27,7 @@ import requests
 from rest_framework import permissions
 from rest_framework_simplejwt.views import TokenRefreshView
 import pyotp
+from rest_framework_simplejwt.exceptions import TokenError, InvalidToken
 
 # Create your views here.
 class CustomTokenjwtView(TokenObtainPairView):
@@ -52,9 +53,16 @@ class CustomTokenjwtView(TokenObtainPairView):
 class CustomTokenRefreshView(TokenRefreshView):
     def post(self, request, *args, **kwargs):
         refresh_token = request.COOKIES.get(settings.SIMPLE_JWT['AUTH_COOKIE'])
+        
         if refresh_token:
             request.data['refresh'] = refresh_token
-        return super().post(request, *args, **kwargs)
+            
+        try:
+            return super().post(request, *args, **kwargs)
+        except (InvalidToken, TokenError, CustomUser.DoesNotExist) as e:
+            response = Response({"error": "Invalid token"}, status=status.HTTP_401_UNAUTHORIZED)
+            response.delete_cookie(settings.SIMPLE_JWT['AUTH_COOKIE'])
+            return response
 
 
 class RegisterView(generics.GenericAPIView):

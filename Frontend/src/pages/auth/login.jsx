@@ -28,8 +28,6 @@ const Login = () => {
 
     if (response.status === 200) {
       const { role, email: userEmail, access } = response.data;
-
-      // If the user is a standard customer/user, log them in directly
       if (role === 'user') {
         setAccessToken(access);
         dispatch(setCredentials({
@@ -56,15 +54,21 @@ const Login = () => {
       }
     }
   } catch (err) {
-    if (err.response?.data?.detail) {
-      setError(err.response.data.detail);
-    } else {
-      setError("Invalid credentials");
+      if (err.response?.data?.detail === "Your account is blocked or inactive.") {
+        setError("Account not verified. Redirecting...");
+        setTimeout(() => {
+             navigate("/verify-otp", { state: { email: email } }); 
+        }, 1500);
+      } 
+      else if (err.response?.data?.detail) {
+        setError(err.response.data.detail);
+      } else {
+        setError("Invalid credentials");
+      }
+    } finally {
+      setLoading(false);
     }
-  } finally {
-    setLoading(false);
-  }
-};
+  };
 
   return (
     <div className="min-h-[100dvh] bg-white md:bg-transparent">
