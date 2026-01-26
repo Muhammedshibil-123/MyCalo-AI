@@ -95,7 +95,7 @@ const VerifyEmailOtp = () => {
         email,
         otp: otp.join(""),
       });
-
+    
       if (response.status === 200) {
         const { access } = response.data;
         setAccessToken(access);
@@ -146,7 +146,7 @@ const VerifyEmailOtp = () => {
             />
           ))}
         </div>
-
+          
         {error && (
           <p className="text-sm text-red-500 font-medium mb-3">{error}</p>
         )}

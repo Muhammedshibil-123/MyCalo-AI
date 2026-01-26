@@ -1,14 +1,9 @@
-import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { RiCameraAiFill } from "react-icons/ri";
-import { IoMdHome, IoMdSearch } from "react-icons/io";
-import { IoAnalyticsSharp } from "react-icons/io5";
-import { FaRegUser } from "react-icons/fa6";
-import { SiHelpscout } from "react-icons/si";
+import { IoMdSearch } from "react-icons/io";
 
 const Home = () => {
   const navigate = useNavigate();
-  const [active, setActive] = useState("home");
   const kcalLeft = 1500;
   const percent = 100;
   const eaten = 0;
@@ -150,44 +145,6 @@ const Home = () => {
               </button>
             </div>
           ))}
-        </div>
-      </div>
-
-      <div className="fixed left-0 right-0 bottom-6 px-4">
-        <div className="mx-auto max-w-lg">
-          <div className="bg-white/95 rounded-3xl shadow-lg py-4 px-6 flex items-center justify-between">
-            <button
-              onClick={() => { setActive("home"); navigate("/"); }}
-              className={`flex flex-col items-center gap-1 px-3 text-sm ${active === "home" ? "text-[#6C3AC9]" : "text-gray-500"}`}
-            >
-              <IoMdHome className="text-2xl" />
-              <span className="mt-1 text-xs">Home</span>
-            </button>
-
-            <button
-              onClick={() => { setActive("analytics"); navigate("/analytics"); }}
-              className={`flex flex-col items-center gap-1 px-3 text-sm ${active === "analytics" ? "text-[#6C3AC9]" : "text-gray-500"}`}
-            >
-              <IoAnalyticsSharp className="text-2xl" />
-              <span className="mt-1 text-xs">Analytics</span>
-            </button>
-
-            <button
-              onClick={() => { setActive("consult"); navigate("/consult"); }}
-              className={`flex flex-col items-center gap-1 px-3 text-sm ${active === "consult" ? "text-[#6C3AC9]" : "text-gray-500"}`}
-            >
-              <SiHelpscout className="text-2xl" />
-              <span className="mt-1 text-xs">Consult</span>
-            </button>
-
-            <button
-              onClick={() => { setActive("profile"); navigate("/profile"); }}
-              className={`flex flex-col items-center gap-1 px-3 text-sm ${active === "profile" ? "text-[#6C3AC9]" : "text-gray-500"}`}
-            >
-              <FaRegUser className="text-2xl" />
-              <span className="mt-1 text-xs">Profile</span>
-            </button>
-          </div>
         </div>
       </div>
     </div>

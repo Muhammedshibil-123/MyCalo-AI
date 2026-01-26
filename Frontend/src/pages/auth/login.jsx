@@ -45,7 +45,7 @@ const Login = () => {
 
   return (
     <div className="min-h-[100dvh] bg-white md:bg-transparent">
-      {/* MOBILE */}
+      {}
       <div className="md:hidden flex flex-col">
         <div className="w-full aspect-[4/3]">
           <img
@@ -118,7 +118,7 @@ const Login = () => {
         </div>
       </div>
 
-      {/* DESKTOP */}
+      
       <div className="hidden md:fixed md:inset-0 md:flex items-center justify-center">
         <img
           src={loginIllustration}

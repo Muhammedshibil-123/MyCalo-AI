@@ -13,9 +13,13 @@ const Profile = () => {
   const navigate = useNavigate();
   const [notifications, setNotifications] = useState(true);
 
+  const handleLogout = () => {
+    localStorage.clear();
+    window.location.href = "/login";
+  };
+
   return (
     <div className="min-h-screen bg-[#f6f7f9] pb-24">
-      {/* Header */}
       <div className="bg-white px-5 pt-6 pb-5">
         <div className="flex items-center gap-4">
           <div className="w-14 h-14 rounded-full bg-purple-600 text-white flex items-center justify-center text-2xl font-semibold">
@@ -32,7 +36,6 @@ const Profile = () => {
         </div>
       </div>
 
-      {/* Section 1 */}
       <div className="mt-3 bg-white divide-y">
         <button
           onClick={() => navigate("/profile/edit")}
@@ -90,10 +93,8 @@ const Profile = () => {
         </button>
       </div>
 
-      {/* Divider spacing exactly like image */}
       <div className="h-3" />
 
-      {/* Section 2 */}
       <div className="bg-white divide-y">
         <button
           onClick={() => navigate("/support")}
@@ -128,7 +129,7 @@ const Profile = () => {
         </button>
 
         <button
-          onClick={() => navigate("/logout")}
+          onClick={handleLogout}
           className="w-full flex items-center px-5 py-4"
         >
           <FaSignOutAlt className="text-xl text-gray-700 mr-4" />
