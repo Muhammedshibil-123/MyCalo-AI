@@ -22,53 +22,50 @@ const Login = () => {
 
   try {
     const response = await api.post("/api/users/login/", {
-      username: email,
+      email,
       password,
     });
 
-    if (response.status === 200) {
-      const { role, email: userEmail, access } = response.data;
-      if (role === 'user') {
-        setAccessToken(access);
-        dispatch(setCredentials({
-          accessToken: access,
-          user: {
-            id: response.data.id,
-            username: response.data.username,
-            email: response.data.email,
-            role: response.data.role,
-            mobile: response.data.mobile
-          }
-        }));
-        localStorage.clear();
-        navigate("/");
-      } else {
-        // If employee, doctor, or admin, redirect to OTP verification
-        // Ensure your backend login endpoint returns the secret if 2FA is required
-        navigate("/corporate/verify-otp", { 
-          state: { 
-            email: userEmail,
-            secret: response.data.totp_secret 
-          } 
-        });
-      }
+    const data = response.data;
+
+    if (data.requires_otp) {
+      localStorage.setItem("otp_email", data.email);
+      navigate("/corporate/verify-otp", {
+        state: {
+          email: data.email,
+          role: data.role,
+        },
+      });
+      return;
     }
+
+    setAccessToken(data.access);
+
+    dispatch(
+      setCredentials({
+        accessToken: data.access,
+        user: {
+          id: data.id,
+          username: data.username,
+          email: data.email,
+          role: data.role,
+          mobile: data.mobile,
+        },
+      })
+    );
+
+    localStorage.clear();
+    navigate("/");
   } catch (err) {
-      if (err.response?.data?.detail === "Your account is blocked or inactive.") {
-        setError("Account not verified. Redirecting...");
-        setTimeout(() => {
-             navigate("/verify-otp", { state: { email: email } }); 
-        }, 1500);
-      } 
-      else if (err.response?.data?.detail) {
-        setError(err.response.data.detail);
-      } else {
-        setError("Invalid credentials");
-      }
-    } finally {
-      setLoading(false);
+    if (err.response?.data?.detail) {
+      setError(err.response.data.detail);
+    } else {
+      setError("Invalid credentials");
     }
-  };
+  } finally {
+    setLoading(false);
+  }
+};
 
   return (
     <div className="min-h-[100dvh] bg-white md:bg-transparent">

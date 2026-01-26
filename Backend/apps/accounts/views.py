@@ -32,9 +32,14 @@ from rest_framework_simplejwt.exceptions import TokenError, InvalidToken
 # Create your views here.
 class CustomTokenjwtView(TokenObtainPairView):
     serializer_class = CustomTokenJwtSerializer
+    
     def post(self, request, *args, **kwargs):
         response = super().post(request, *args, **kwargs)
+        
         if response.status_code == 200:
+            if response.data.get('requires_otp'):
+                return response
+
             refresh_token = response.data.get("refresh")
         
             response.set_cookie(

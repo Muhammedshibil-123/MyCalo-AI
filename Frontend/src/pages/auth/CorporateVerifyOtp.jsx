@@ -3,7 +3,7 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { useDispatch } from "react-redux";
 import { setCredentials } from "../../redux/authslice";
 import { IoMdArrowRoundBack } from "react-icons/io";
-import corporateIllustration from "../../assets/images/corporate_illustration.webp"; 
+import corporateIllustration from "../../assets/images/corporate_illustration.webp";
 import api, { setAccessToken } from "../../lib/axios";
 
 const CorporateVerifyOtp = () => {
@@ -15,14 +15,12 @@ const CorporateVerifyOtp = () => {
   const location = useLocation();
   const dispatch = useDispatch();
 
-  const email = location.state?.email;
-  const secret = location.state?.secret;
+  const email =
+    location.state?.email || localStorage.getItem("otp_email");
 
   useEffect(() => {
-    if (!email) navigate("/corporate/register");
+    if (!email) navigate("/login");
   }, [email, navigate]);
-
-  const isOtpComplete = otp.every((d) => d !== "");
 
   const handleChange = (e, index) => {
     const val = e.target.value;
@@ -66,36 +64,48 @@ const CorporateVerifyOtp = () => {
         otp: finalOtp,
       });
 
-      if (response.status === 200) {
-        const { access, role } = response.data;
-        setAccessToken(access);
-        
-        dispatch(setCredentials({
-            accessToken: access,
-            user: {
-                id: response.data.id,
-                username: response.data.username,
-                email: response.data.email,
-                role: response.data.role,
-                mobile: response.data.mobile
-            }
-        }));
+      const data = response.data;
 
-        if (role === 'admin') navigate("/admin/dashboard");
-        else if (role === 'doctor') navigate("/doctor/dashboard");
-        else if (role === 'employee') navigate("/employee/dashboard");
-        else navigate("/");
-      }
+      setAccessToken(data.access);
+
+      dispatch(
+        setCredentials({
+          accessToken: data.access,
+          user: {
+            id: data.id,
+            username: data.username,
+            email: data.email,
+            role: data.role,
+            mobile: data.mobile,
+          },
+        })
+      );
+
+      localStorage.removeItem("otp_email");
+
+      const roleRedirect = {
+        admin: "/admin/dashboard",
+        doctor: "/doctor/dashboard",
+        employee: "/employee/dashboard",
+      };
+
+      navigate(roleRedirect[data.role] || "/");
     } catch (err) {
-      const data = err.response?.data;
-      setError(data ? (Array.isArray(Object.values(data)[0]) ? Object.values(data)[0][0] : Object.values(data)[0]) : "Verification failed");
+      const msg = err.response?.data;
+      setError(
+        msg
+          ? Array.isArray(Object.values(msg)[0])
+            ? Object.values(msg)[0][0]
+            : Object.values(msg)[0]
+          : "Verification failed"
+      );
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    if (isOtpComplete && !loading) {
+    if (otp.every((d) => d !== "") && !loading) {
       verifyOtp();
     }
   }, [otp]);
@@ -103,27 +113,33 @@ const CorporateVerifyOtp = () => {
   return (
     <div className="min-h-screen w-full bg-white flex items-center justify-center p-4 relative">
       <div className="absolute inset-0 hidden md:block">
-        <img src={corporateIllustration} alt="" className="w-full h-full object-cover blur-sm opacity-40" />
+        <img
+          src={corporateIllustration}
+          className="w-full h-full object-cover blur-sm opacity-40"
+        />
       </div>
 
       <div className="relative z-10 w-full max-w-md bg-white md:shadow-2xl md:rounded-3xl p-8">
-        <button onClick={() => navigate(-1)} className="mb-8 p-2 hover:bg-gray-100 rounded-full transition-colors">
+        <button
+          onClick={() => navigate(-1)}
+          className="mb-8 p-2 hover:bg-gray-100 rounded-full"
+        >
           <IoMdArrowRoundBack className="text-2xl text-gray-700" />
         </button>
 
         <div className="text-center mb-10">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Security Check</h1>
-          <p className="text-gray-500">Enter the 6-digit code from your authenticator app</p>
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">
+            Security Check
+          </h1>
+          <p className="text-gray-500">
+            Enter the 6-digit code from your authenticator app
+          </p>
         </div>
 
-        {secret && (
-          <div className="bg-purple-50 border border-purple-100 rounded-2xl p-5 mb-8 text-center">
-            <span className="text-xs font-semibold text-purple-600 uppercase tracking-wider">Setup Key</span>
-            <p className="text-xl font-mono font-bold text-purple-900 mt-1 select-all tracking-widest">{secret}</p>
-          </div>
-        )}
-
-        <div className="flex justify-between gap-2 mb-8" onPaste={handlePaste}>
+        <div
+          className="flex justify-between gap-2 mb-8"
+          onPaste={handlePaste}
+        >
           {otp.map((digit, index) => (
             <input
               key={index}
@@ -134,21 +150,21 @@ const CorporateVerifyOtp = () => {
               value={digit}
               onChange={(e) => handleChange(e, index)}
               onKeyDown={(e) => handleKeyDown(e, index)}
-              className="w-full aspect-square text-center text-2xl font-bold rounded-xl border-2 border-gray-100 bg-gray-50 focus:border-[#6C3AC9] focus:bg-white focus:ring-4 focus:ring-purple-100 outline-none transition-all"
+              className="w-full aspect-square text-center text-2xl font-bold rounded-xl border-2 border-gray-100 bg-gray-50 focus:border-[#6C3AC9] focus:bg-white focus:ring-4 focus:ring-purple-100 outline-none"
             />
           ))}
         </div>
 
         {error && (
-          <div className="bg-red-50 text-red-600 p-4 rounded-xl text-sm font-medium text-center mb-6 animate-shake">
+          <div className="bg-red-50 text-red-600 p-4 rounded-xl text-sm font-medium text-center mb-6">
             {error}
           </div>
         )}
 
         <button
           onClick={() => verifyOtp()}
-          disabled={!isOtpComplete || loading}
-          className="w-full py-4 rounded-2xl text-white font-bold text-lg shadow-lg shadow-purple-200 transition-all active:scale-[0.98] disabled:opacity-50 disabled:shadow-none bg-[#6C3AC9]"
+          disabled={otp.some((d) => d === "") || loading}
+          className="w-full py-4 rounded-2xl text-white font-bold text-lg disabled:opacity-50 bg-[#6C3AC9]"
         >
           {loading ? "Verifying..." : "Confirm Code"}
         </button>

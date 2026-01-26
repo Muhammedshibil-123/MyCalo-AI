@@ -4,25 +4,25 @@ from .models import CustomUser
 from rest_framework.exceptions import AuthenticationFailed
 
 class CustomTokenJwtSerializer(TokenObtainPairSerializer):
-    @classmethod
-    def get_token(cls, user):
-        token = super().get_token(user)
-        token['role'] = user.role
-        token['username'] = user.username
-        return token
-
     def validate(self, attrs):
         data = super().validate(attrs)
-        if self.user.status != 'active':
-            raise AuthenticationFailed('Your account is blocked or inactive.')
+        
+        if self.user.role in ['admin', 'doctor', 'employee']:
+            return {
+                'requires_otp': True,
+                'email': self.user.email,
+                'role': self.user.role,
+                'message': 'OTP Verification Required'
+            }
 
         data.update({
             'id': self.user.id,
             'username': self.user.username,
             'email': self.user.email,
             'role': self.user.role,
-            'mobile': self.user.mobile,
+            'mobile': self.user.mobile
         })
+
         return data
     
 class RegisterSerializer(serializers.ModelSerializer):
