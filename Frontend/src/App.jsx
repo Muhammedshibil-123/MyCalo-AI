@@ -43,15 +43,15 @@ function App() {
         <Router>
             <Routes>
                 <Route element={<PublicRoute isAuth={isAuth} />}>
-                    <Route path="/login" element={<Login />} />
+                    <Route path="/login" element={<Login setIsAuth={setIsAuth} />} />
                     <Route path="/register" element={<Register />} />
-                    <Route path="/otp-verfiy" element={<VerfiyOtp />} />
+                    <Route path="/otp-verfiy" element={<VerfiyOtp setIsAuth={setIsAuth} />} />
                 </Route>
 
                 <Route element={<ProtectedRoute isAuth={isAuth} />}>
                     <Route element={<UserNavbar />}>
                         <Route path="/" element={<Home/>} />
-                        <Route path="/profile" element={<Profile/>} />
+                        <Route path="/profile" element={<Profile setIsAuth={setIsAuth} />} />
                         <Route path="/analytics" element={<Dashboard/>} />
                     </Route>
                 </Route>

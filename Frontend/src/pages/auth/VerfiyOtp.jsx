@@ -4,7 +4,7 @@ import { IoMdArrowRoundBack } from "react-icons/io";
 import registerIllustration from "../../assets/images/register_illustration.webp";
 import api, { setAccessToken } from "../../lib/axios";
 
-const VerifyEmailOtp = () => {
+const VerifyEmailOtp = ({ setIsAuth }) => {
   const [otp, setOtp] = useState(["", "", "", "", "", ""]);
   const [timer, setTimer] = useState(30);
   const [loading, setLoading] = useState(false);
@@ -81,8 +81,6 @@ const VerifyEmailOtp = () => {
     }
   };
 
- 
-
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!isOtpComplete) return;
@@ -95,10 +93,11 @@ const VerifyEmailOtp = () => {
         email,
         otp: otp.join(""),
       });
-    
+
       if (response.status === 200) {
         const { access } = response.data;
         setAccessToken(access);
+        setIsAuth(true);
         navigate("/");
       }
     } catch (err) {
@@ -146,13 +145,13 @@ const VerifyEmailOtp = () => {
             />
           ))}
         </div>
-          
+
         {error && (
           <p className="text-sm text-red-500 font-medium mb-3">{error}</p>
         )}
 
         <p className="text-sm text-gray-500">
-          Didn’t receive it?
+          Didn't receive it?
           {timer > 0 ? (
             <span className="font-medium"> Resend in {timer} sec</span>
           ) : (
@@ -171,9 +170,8 @@ const VerifyEmailOtp = () => {
         <button
           onClick={handleSubmit}
           disabled={!isOtpComplete || loading}
-          className={`w-full py-4 rounded-xl text-lg font-semibold transition-all ${
-            isOtpComplete ? "bg-[#6C3AC9] text-white" : "bg-gray-300 text-gray-500"
-          }`}
+          className={`w-full py-4 rounded-xl text-lg font-semibold transition-all ${isOtpComplete ? "bg-[#6C3AC9] text-white" : "bg-gray-300 text-gray-500"
+            }`}
         >
           {loading ? "Verifying..." : "Sign Up"}
         </button>
@@ -224,7 +222,7 @@ const VerifyEmailOtp = () => {
               )}
 
               <p className="text-sm text-gray-500 text-center mb-6">
-                Didn’t receive it?
+                Didn't receive it?
                 {timer > 0 ? (
                   <span className="font-medium"> Resend in {timer} sec</span>
                 ) : (
@@ -241,9 +239,8 @@ const VerifyEmailOtp = () => {
               <button
                 type="submit"
                 disabled={!isOtpComplete || loading}
-                className={`w-full py-3 rounded-xl font-semibold transition-all ${
-                  isOtpComplete ? "bg-[#6C3AC9] text-white" : "bg-gray-300 text-gray-500"
-                }`}
+                className={`w-full py-3 rounded-xl font-semibold transition-all ${isOtpComplete ? "bg-[#6C3AC9] text-white" : "bg-gray-300 text-gray-500"
+                  }`}
               >
                 {loading ? "Verifying..." : "Sign Up"}
               </button>

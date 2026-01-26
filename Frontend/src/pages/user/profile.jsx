@@ -8,14 +8,24 @@ import {
   FaSignOutAlt
 } from "react-icons/fa";
 import { IoChevronForward } from "react-icons/io5";
+import { setAccessToken } from "../../lib/axios";
 
-const Profile = () => {
+const Profile = ({ setIsAuth }) => {
   const navigate = useNavigate();
   const [notifications, setNotifications] = useState(true);
 
   const handleLogout = () => {
+    // Clear localStorage
     localStorage.clear();
-    window.location.href = "/login";
+    
+    // Clear access token from memory
+    setAccessToken(null);
+    
+    // Update auth state
+    setIsAuth(false);
+    
+    // Navigate to login (without page reload)
+    navigate("/login", { replace: true });
   };
 
   return (
