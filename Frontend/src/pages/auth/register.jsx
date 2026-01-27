@@ -76,7 +76,7 @@ const Register = () => {
                 </Link>
             </div>
 
-            <div className="md:hidden h-[40vh] w-full">
+            <div className="md:hidden h-[35vh] w-full">
                 <img
                     src={registerIllustration}
                     alt="Register"

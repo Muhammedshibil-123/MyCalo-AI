@@ -14,6 +14,7 @@ import Home from './pages/user/home';
 import Dashboard from './pages/user/dashboard';
 import UserNavbar from './layout/UserNavbar';
 import CorporateVerifyOtp from './pages/auth/CorporateVerifyOtp';
+import ChangePassword from './pages/user/ChangePassword';
 
 
 const ProtectedRoute = () => {
@@ -69,6 +70,7 @@ function App() {
                     <Route element={<UserNavbar />}>
                         <Route path="/" element={<Home />} />
                         <Route path="/profile" element={<Profile />} />
+                        <Route path="/profile/change-password" element={<ChangePassword />} />
                         <Route path="/analytics" element={<Dashboard />} />
                     </Route>
                 </Route>

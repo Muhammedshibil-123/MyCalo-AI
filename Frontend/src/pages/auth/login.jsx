@@ -6,6 +6,7 @@ import loginIllustration from "../../assets/images/login_illustration.webp";
 import { FcGoogle } from "react-icons/fc";
 import { FaEye, FaEyeSlash } from "react-icons/fa";
 import api, { setAccessToken } from "../../lib/axios";
+import { useGoogleLogin } from "@react-oauth/google";
 
 const Login = () => {
   const [email, setEmail] = useState("");
@@ -16,6 +17,42 @@ const Login = () => {
 
   const navigate = useNavigate();
   const dispatch = useDispatch();
+
+  const googleLogin = useGoogleLogin({
+    onSuccess: async (tokenResponse) => {
+      try {
+        setLoading(true);
+        const response = await api.post("/api/users/google-login/", {
+          token: tokenResponse.access_token,
+        });
+
+        const data = response.data;
+        setAccessToken(data.access);
+
+        const userDetails = {
+          id: data.id,
+          username: data.username,
+          email: data.email,
+          role: data.role,
+          mobile: data.mobile,
+        };
+
+        dispatch(setCredentials({
+          accessToken: data.access,
+          user: userDetails,
+        }));
+        
+        localStorage.setItem("user_details", JSON.stringify(userDetails));
+        navigate("/");
+
+      } catch (err) {
+        setError(err.response?.data?.error || "Google Login Failed");
+      } finally {
+        setLoading(false);
+      }
+    },
+    onError: () => setError("Google Login Failed"),
+  });
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -88,7 +125,11 @@ const Login = () => {
             Login
           </h2>
 
-          <button className="w-full flex items-center justify-center gap-2 bg-white border border-gray-300 py-3 rounded-xl shadow-sm mb-6">
+          <button 
+            type="button"
+            onClick={() => googleLogin()}
+            className="w-full flex items-center justify-center gap-2 bg-white border border-gray-300 py-3 rounded-xl shadow-sm mb-6"
+          >
             <FcGoogle className="text-xl" />
             Continue with Google
           </button>
@@ -168,7 +209,11 @@ const Login = () => {
             Login
           </h2>
 
-          <button className="w-full flex items-center justify-center gap-2 bg-white border border-gray-300 py-3 rounded-xl shadow-sm mb-6">
+          <button 
+            type="button"
+            onClick={() => googleLogin()}
+            className="w-full flex items-center justify-center gap-2 bg-white border border-gray-300 py-3 rounded-xl shadow-sm mb-6"
+          >
             <FcGoogle className="text-xl" />
             Continue with Google
           </button>

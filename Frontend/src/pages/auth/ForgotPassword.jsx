@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import registerIllustration from "../../assets/images/register_illustration.webp";
+import forgetIllustration from "../../assets/images/forget_illustration.webp";
 import api from "../../lib/axios";
 
 const ForgotPassword = () => {
@@ -16,13 +16,29 @@ const ForgotPassword = () => {
         setLoading(true);
 
         try {
-            // Adjust the endpoint according to your backend
             const response = await api.post("/api/users/forgot-password/", { email });
             if (response.status === 200) {
                 navigate("/reset-password", { state: { email } });
             }
         } catch (err) {
-            setError(err.response?.data?.detail || "User not found or something went wrong");
+            let errorMessage = "User not found or something went wrong";
+            
+            if (err.response && err.response.data) {
+                const data = err.response.data;
+                if (data.error) {
+                    errorMessage = data.error;
+                } else if (data.detail) {
+                    errorMessage = data.detail;
+                } else {
+                    const firstVal = Object.values(data)[0];
+                    if (Array.isArray(firstVal)) {
+                        errorMessage = firstVal[0];
+                    } else if (typeof firstVal === 'string') {
+                        errorMessage = firstVal;
+                    }
+                }
+            }
+            setError(errorMessage);
         } finally {
             setLoading(false);
         }
@@ -30,9 +46,8 @@ const ForgotPassword = () => {
 
     return (
         <div className="h-screen w-full overflow-y-auto md:overflow-hidden no-scrollbar bg-white relative">
-            {/* Mobile View */}
-            <div className="md:hidden h-[40vh] w-full">
-                <img src={registerIllustration} alt="Forgot Password" title="Source: muhammedshibil-123/mycalo-ai/MyCalo-AI-8d6ccfff14c4befc6d4a0914676922f29b5c8b40/Frontend/src/pages/auth/register.jsx" className="h-full w-full object-cover" />
+            <div className="md:hidden h-[30vh] w-full">
+                <img src={forgetIllustration} alt="Forgot Password" className="h-full w-full object-cover" />
             </div>
             <div className="md:hidden h-[60vh] px-6 py-6">
                 <h2 className="text-2xl font-bold text-gray-900 mb-2 text-center">Forgot Password</h2>
@@ -53,9 +68,8 @@ const ForgotPassword = () => {
                 </form>
             </div>
 
-            {/* Desktop View */}
             <div className="hidden md:fixed md:inset-0 md:block relative">
-                <img src={registerIllustration} alt="Forgot Password" title="Source: muhammedshibil-123/mycalo-ai/MyCalo-AI-8d6ccfff14c4befc6d4a0914676922f29b5c8b40/Frontend/src/pages/auth/register.jsx" className="absolute inset-0 w-full h-full object-cover blur-[2px] scale-105" />
+                <img src={forgetIllustration} alt="Forgot Password" className="absolute inset-0 w-full h-full object-cover blur-[2px] scale-105" />
                 <div className="absolute inset-0 bg-black/20"></div>
                 <div className="relative z-10 h-full flex items-center justify-center">
                     <div className="w-full max-w-md bg-white rounded-2xl shadow-2xl px-8 py-10">

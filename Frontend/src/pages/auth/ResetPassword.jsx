@@ -1,16 +1,16 @@
-import { useEffect, useRef, useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import registerIllustration from "../../assets/images/register_illustration.webp";
 import api from "../../lib/axios";
 
 const ResetPassword = () => {
-    // Shared State
     const [otp, setOtp] = useState(["", "", "", "", "", ""]);
     const [isOtpVerified, setIsOtpVerified] = useState(false);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState("");
+    const [message, setMessage] = useState("");
+    const [timer, setTimer] = useState(30);
     
-    // Password State
     const [newPassword, setNewPassword] = useState("");
     const [confirmPassword, setConfirmPassword] = useState("");
 
@@ -19,14 +19,20 @@ const ResetPassword = () => {
     const location = useLocation();
     const email = location.state?.email;
 
-    // Redirect if accessed without email (from forgot-password page)
     useEffect(() => {
         if (!email) navigate("/forgot-password");
     }, [email, navigate]);
 
+    useEffect(() => {
+        if (timer === 0) return;
+        const interval = setInterval(() => {
+            setTimer((prev) => prev - 1);
+        }, 1000);
+        return () => clearInterval(interval);
+    }, [timer]);
+
     const isOtpComplete = otp.every((d) => d !== "");
 
-    // OTP Input Handlers (Same as VerifyEmailOtp.jsx)
     const handleChange = (e, index) => {
         const raw = e.target.value || "";
         const digits = raw.replace(/\D/g, "");
@@ -50,12 +56,10 @@ const ResetPassword = () => {
 
     const handleKeyDown = (e, index) => {
         if (e.key === "Backspace") {
-            e.preventDefault();
             if (otp[index]) {
                 const newOtp = [...otp];
                 newOtp[index] = "";
                 setOtp(newOtp);
-                inputsRef.current[index]?.focus();
             } else if (index > 0) {
                 inputsRef.current[index - 1]?.focus();
                 const newOtp = [...otp];
@@ -65,34 +69,38 @@ const ResetPassword = () => {
         }
     };
 
-    // Step 1: Verify OTP
-    const handleVerifyOtp = async (e) => {
-        e.preventDefault();
-        if (!isOtpComplete) return;
-
-        setLoading(true);
-        setError("");
-
+    const handleResend = async () => {
         try {
-            // Backend should verify the OTP and return 200
-            const response = await api.post("/api/users/verify-reset-otp/", {
-                email,
-                otp: otp.join(""),
-            });
-
-            if (response.status === 200) {
-                setIsOtpVerified(true); // Toggle the view
-            }
+            await api.post("/api/users/forgot-password/", { email });
+            setTimer(30);
+            setMessage("OTP sent successfully");
+            setError("");
         } catch (err) {
-            setError(err.response?.data?.detail || "Invalid OTP code");
-        } finally {
-            setLoading(false);
+            setError("Failed to resend OTP");
         }
     };
 
-    // Step 2: Change Password
+
+    const handleVerifyOtp = (e) => {
+        e.preventDefault();
+        setError("");
+        
+        if (!isOtpComplete) {
+            setError("Please enter the 6-digit OTP");
+            return;
+        }
+        
+        setIsOtpVerified(true);
+    };
+
     const handlePasswordReset = async (e) => {
         e.preventDefault();
+        
+        if (!newPassword || !confirmPassword) {
+            setError("Both password fields are required");
+            return;
+        }
+
         if (newPassword !== confirmPassword) {
             setError("Passwords do not match");
             return;
@@ -102,18 +110,38 @@ const ResetPassword = () => {
         setError("");
 
         try {
-            const response = await api.post("/api/users/reset-password-confirm/", {
+            
+            const response = await api.post("/api/users/reset-password/", {
                 email,
-                otp: otp.join(""), // Re-sending OTP as proof of verification
+                otp: otp.join(""),
                 new_password: newPassword,
-                confirm_password: confirmPassword
+                confirm_password: confirmPassword, 
             });
 
             if (response.status === 200) {
                 navigate("/login");
             }
         } catch (err) {
-            setError(err.response?.data?.detail || "Failed to reset password");
+            let errorMsg = "Failed to reset password";
+            if (err.response && err.response.data) {
+                const data = err.response.data;
+                if (data.error) {
+                    errorMsg = data.error;
+                } else if (data.detail) {
+                    errorMsg = data.detail;
+                } else {
+                    const keys = Object.keys(data);
+                    if (keys.length > 0) {
+                        const firstError = data[keys[0]];
+                        errorMsg = Array.isArray(firstError) ? firstError[0] : firstError;
+                    }
+                }
+            }
+            setError(errorMsg);
+            
+            if (errorMsg.toLowerCase().includes("otp")) {
+                
+            }
         } finally {
             setLoading(false);
         }
@@ -121,7 +149,6 @@ const ResetPassword = () => {
 
     return (
         <div className="h-screen w-full overflow-y-auto md:overflow-hidden no-scrollbar bg-white relative">
-            {/* Background Image for Desktop */}
             <div className="hidden md:fixed md:inset-0 md:block relative">
                 <img
                     src={registerIllustration}
@@ -135,14 +162,14 @@ const ResetPassword = () => {
                 <div className="w-full max-w-md bg-white rounded-2xl shadow-2xl px-8 py-10 mx-4">
                     
                     {!isOtpVerified ? (
-                        /* VIEW: OTP Verification */
+                       
                         <>
                             <h2 className="text-2xl font-bold text-gray-900 mb-2 text-center">Verify OTP</h2>
                             <p className="text-gray-500 text-center mb-8">
                                 Enter the 6-digit code sent to <span className="font-medium">{email}</span>
                             </p>
 
-                            <div className="flex justify-between mb-8">
+                            <div className="flex justify-between mb-6">
                                 {otp.map((digit, index) => (
                                     <input
                                         key={index}
@@ -160,17 +187,33 @@ const ResetPassword = () => {
                             </div>
 
                             {error && <p className="text-sm text-red-500 font-medium text-center mb-4">{error}</p>}
+                            {message && <p className="text-sm text-green-500 font-medium text-center mb-4">{message}</p>}
+
+                            <p className="text-sm text-gray-500 text-center mb-6">
+                                Didn't receive it?
+                                {timer > 0 ? (
+                                    <span className="font-medium"> Resend in {timer} sec</span>
+                                ) : (
+                                    <button
+                                        type="button"
+                                        onClick={handleResend}
+                                        className="text-[#6C3AC9] font-medium ml-1"
+                                    >
+                                        Resend
+                                    </button>
+                                )}
+                            </p>
 
                             <button
                                 onClick={handleVerifyOtp}
-                                disabled={!isOtpComplete || loading}
+                                disabled={!isOtpComplete}
                                 className={`w-full py-3 rounded-xl font-semibold transition-all ${isOtpComplete ? "bg-[#6C3AC9] text-white" : "bg-gray-300 text-gray-500"}`}
                             >
-                                {loading ? "Verifying..." : "Verify Code"}
+                                Verify Code
                             </button>
                         </>
                     ) : (
-                        /* VIEW: New Password Form */
+        
                         <form onSubmit={handlePasswordReset} className="space-y-4">
                             <h2 className="text-2xl font-bold text-gray-900 mb-2 text-center">Set New Password</h2>
                             <p className="text-gray-500 text-center mb-8">Create a strong password for your account</p>
@@ -193,15 +236,25 @@ const ResetPassword = () => {
                                 required
                             />
 
-                            {error && <p className="text-sm text-red-500 font-medium">{error}</p>}
+                            {error && <p className="text-sm text-red-500 font-medium text-center">{error}</p>}
 
-                            <button
-                                type="submit"
-                                disabled={loading}
-                                className="w-full py-3 rounded-xl text-white font-semibold shadow-lg bg-[#6C3AC9] disabled:opacity-50"
-                            >
-                                {loading ? "Updating..." : "Change Password"}
-                            </button>
+                            <div className="flex flex-col gap-3">
+                                <button
+                                    type="submit"
+                                    disabled={loading}
+                                    className="w-full py-3 rounded-xl text-white font-semibold shadow-lg bg-[#6C3AC9] disabled:opacity-50"
+                                >
+                                    {loading ? "Updating..." : "Change Password"}
+                                </button>
+                                
+                                <button
+                                    type="button"
+                                    onClick={() => { setIsOtpVerified(false); setError(""); }}
+                                    className="w-full py-3 rounded-xl text-gray-700 font-semibold bg-gray-100 hover:bg-gray-200"
+                                >
+                                    Back to OTP
+                                </button>
+                            </div>
                         </form>
                     )}
                 </div>
