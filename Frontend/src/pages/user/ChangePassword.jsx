@@ -11,6 +11,7 @@ const ChangePassword = () => {
     confirm_password: "",
   });
   const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
   const [loading, setLoading] = useState(false);
 
   const handleChange = (e) => {
@@ -20,6 +21,7 @@ const ChangePassword = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
+    setSuccess("");
 
     if (formData.new_password !== formData.confirm_password) {
       setError("New passwords do not match");
@@ -28,13 +30,16 @@ const ChangePassword = () => {
 
     setLoading(true);
     try {
-
       await api.post("/api/users/change-password/", {
         old_password: formData.old_password,
         new_password: formData.new_password,
       });
-      alert("Password updated successfully!");
-      navigate("/profile");
+      
+      setSuccess("Password changed successfully!");
+      
+      setTimeout(() => {
+        navigate("/profile");
+      }, 2000);
     } catch (err) {
       setError(err.response?.data?.error || "Failed to change password. Check your old password.");
     } finally {
@@ -51,7 +56,8 @@ const ChangePassword = () => {
       <div className="bg-white rounded-2xl p-6 shadow-sm">
         <h2 className="text-2xl font-bold text-gray-900 mb-6">Change Password</h2>
         
-        {error && <p className="text-red-500 text-sm mb-4">{error}</p>}
+        {error && <p className="text-red-500 text-sm mb-4 font-medium">{error}</p>}
+        {success && <p className="text-green-600 text-sm mb-4 font-medium">{success}</p>}
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
@@ -86,10 +92,10 @@ const ChangePassword = () => {
           </div>
           <button
             type="submit"
-            disabled={loading}
-            className="w-full bg-purple-600 text-white py-4 rounded-xl font-semibold mt-4 hover:bg-purple-700 transition"
+            disabled={loading || success}
+            className="w-full bg-purple-600 text-white py-4 rounded-xl font-semibold mt-4 hover:bg-purple-700 transition disabled:bg-purple-400"
           >
-            {loading ? "Updating..." : "Update Password"}
+            {loading ? "Updating..." : success ? "Redirecting..." : "Update Password"}
           </button>
         </form>
       </div>

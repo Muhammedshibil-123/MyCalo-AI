@@ -9,12 +9,14 @@ import VerfiyOtp from './pages/auth/VerfiyOtp';
 import ResetPassword from './pages/auth/ResetPassword';
 import ForgotPassword from './pages/auth/ForgotPassword';
 import CorporateRegister from './pages/auth/CorporateRegister';
+import Welcome from './pages/auth/welcome';
 import Profile from './pages/user/profile';
 import Home from './pages/user/home';
 import Dashboard from './pages/user/dashboard';
 import UserNavbar from './layout/UserNavbar';
 import CorporateVerifyOtp from './pages/auth/CorporateVerifyOtp';
 import ChangePassword from './pages/user/ChangePassword';
+
 
 
 const ProtectedRoute = () => {
@@ -63,7 +65,7 @@ function App() {
                     <Route path="/corporate/verify-otp" element={<CorporateVerifyOtp />} />
                     <Route path="/forgot-password" element={<ForgotPassword />} />
                     <Route path="/reset-password" element={<ResetPassword />} />
-
+                    <Route path="/welcome" element={<Welcome />} />
                 </Route>
 
                 <Route element={<ProtectedRoute />}>

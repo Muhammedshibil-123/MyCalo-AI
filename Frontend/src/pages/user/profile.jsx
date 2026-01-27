@@ -12,6 +12,7 @@ import {
 import { IoChevronForward } from "react-icons/io5";
 import { setAccessToken } from "../../lib/axios";
 import api from "../../lib/axios";
+import { FaLock } from "react-icons/fa";
 
 const Profile = () => {
   const navigate = useNavigate();
@@ -89,16 +90,14 @@ const Profile = () => {
         </div>
 
         <button
-          onClick={() => navigate("/terms")}
+          onClick={() => navigate("/profile/change-password")}
           className="w-full flex items-center px-5 py-4"
         >
-          <FaFileAlt className="text-xl text-gray-700 mr-4" />
+          <FaLock className="text-xl text-gray-700 mr-4" />
           <div className="flex-1 text-left">
-            <p className="text-[16px] font-medium text-gray-900">
-              Terms & Conditions
-            </p>
+            <p className="text-[16px] font-medium text-gray-900">Change Password</p>
             <p className="text-[13px] text-gray-500 mt-0.5">
-              App usage rules & privacy policy
+              Update your account security
             </p>
           </div>
           <IoChevronForward className="text-gray-400 text-xl" />
@@ -131,10 +130,10 @@ const Profile = () => {
           <FaFileAlt className="text-xl text-gray-700 mr-4" />
           <div className="flex-1 text-left">
             <p className="text-[16px] font-medium text-gray-900">
-              App Policies
+              Terms & Conditions
             </p>
             <p className="text-[13px] text-gray-500 mt-0.5">
-              Legal, cookies and data usage
+              App usage rules & privacy policy
             </p>
           </div>
           <IoChevronForward className="text-gray-400 text-xl" />

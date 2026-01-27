@@ -196,6 +196,13 @@ class GoogleLoginView(APIView):
         try:
             user = CustomUser.objects.get(email=email)
 
+            if user.role in ["admin", "doctor", "employee"]:
+                return Response({
+                    "requires_otp": True,
+                    "email": user.email,
+                    "role": user.role
+                }, status=status.HTTP_200_OK)
+
             if user.status != "active":
                 return Response(
                     {"error": "Your account is blocked or inactive."},
@@ -203,7 +210,6 @@ class GoogleLoginView(APIView):
                 )
 
         except CustomUser.DoesNotExist:
-
             random_suffix = "".join(
                 secrets.choice(string.ascii_lowercase + string.digits) for _ in range(4)
             )
@@ -483,3 +489,19 @@ class LogoutView(APIView):
             return response
         except Exception as e:
             return Response({"error": "Logout failed"}, status=status.HTTP_400_BAD_REQUEST)
+        
+
+class ChangePasswordView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        old_password = request.data.get("old_password")
+        new_password = request.data.get("new_password")
+        user = request.user
+
+        if not user.check_password(old_password):
+            return Response({"error": "Incorrect old password."}, status=status.HTTP_400_BAD_REQUEST)
+
+        user.set_password(new_password)
+        user.save()
+        return Response({"message": "Password updated successfully."}, status=status.HTTP_200_OK)

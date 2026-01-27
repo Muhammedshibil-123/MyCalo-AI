@@ -22,11 +22,24 @@ const Login = () => {
     onSuccess: async (tokenResponse) => {
       try {
         setLoading(true);
+        setError("");
         const response = await api.post("/api/users/google-login/", {
           token: tokenResponse.access_token,
         });
 
         const data = response.data;
+
+        if (data.requires_otp) {
+          localStorage.setItem("otp_email", data.email);
+          navigate("/corporate/verify-otp", {
+            state: {
+              email: data.email,
+              role: data.role,
+            },
+          });
+          return;
+        }
+
         setAccessToken(data.access);
 
         const userDetails = {
@@ -37,14 +50,15 @@ const Login = () => {
           mobile: data.mobile,
         };
 
-        dispatch(setCredentials({
-          accessToken: data.access,
-          user: userDetails,
-        }));
-        
+        dispatch(
+          setCredentials({
+            accessToken: data.access,
+            user: userDetails,
+          })
+        );
+
         localStorage.setItem("user_details", JSON.stringify(userDetails));
         navigate("/");
-
       } catch (err) {
         setError(err.response?.data?.error || "Google Login Failed");
       } finally {

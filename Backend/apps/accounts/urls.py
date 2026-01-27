@@ -12,6 +12,7 @@ from .views import (
     CorporateRegisterView,
     CorporateVerifyOTPView,
     LogoutView,
+    ChangePasswordView
 )
 
 
@@ -28,4 +29,5 @@ urlpatterns = [
     path('corporate-register/', CorporateRegisterView.as_view(), name='corporate_register'),
     path('corporate-verify-otp/', CorporateVerifyOTPView.as_view(), name='corporate_verify_otp'),
     path("logout/", LogoutView.as_view(), name="auth_logout"),
+    path("change-password/", ChangePasswordView.as_view(), name="change-password"),
 ]
