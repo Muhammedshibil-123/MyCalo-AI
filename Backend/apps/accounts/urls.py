@@ -10,7 +10,8 @@ from .views import (
     CustomTokenjwtView,
     CustomTokenRefreshView,
     CorporateRegisterView,
-    CorporateVerifyOTPView
+    CorporateVerifyOTPView,
+    LogoutView,
 )
 
 
@@ -26,4 +27,5 @@ urlpatterns = [
     path("<int:pk>/", UserDetailView.as_view(), name="user-detail"),
     path('corporate-register/', CorporateRegisterView.as_view(), name='corporate_register'),
     path('corporate-verify-otp/', CorporateVerifyOTPView.as_view(), name='corporate_verify_otp'),
+    path("logout/", LogoutView.as_view(), name="auth_logout"),
 ]

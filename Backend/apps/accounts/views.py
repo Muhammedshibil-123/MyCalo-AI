@@ -28,6 +28,7 @@ from rest_framework import permissions
 from rest_framework_simplejwt.views import TokenRefreshView
 import pyotp
 from rest_framework_simplejwt.exceptions import TokenError, InvalidToken
+from rest_framework.views import APIView
 
 # Create your views here.
 class CustomTokenjwtView(TokenObtainPairView):
@@ -224,9 +225,8 @@ class GoogleLoginView(APIView):
         refresh["role"] = user.role
         refresh["username"] = user.username
 
-        return Response(
+        response = Response(
             {
-                "refresh": str(refresh),
                 "access": str(refresh.access_token),
                 "id": user.id,
                 "username": user.username,
@@ -237,6 +237,16 @@ class GoogleLoginView(APIView):
             status=status.HTTP_200_OK,
         )
 
+        response.set_cookie(
+            key=settings.SIMPLE_JWT['AUTH_COOKIE'],
+            value=str(refresh),
+            expires=settings.SIMPLE_JWT['REFRESH_TOKEN_LIFETIME'],
+            secure=settings.SIMPLE_JWT['AUTH_COOKIE_SECURE'],
+            httponly=settings.SIMPLE_JWT['AUTH_COOKIE_HTTP_ONLY'],
+            samesite=settings.SIMPLE_JWT['AUTH_COOKIE_SAMESITE'],
+        )
+
+        return response
 
 class IsAdminRole(permissions.BasePermission):
     def has_permission(self, request, view):
@@ -426,10 +436,9 @@ class CorporateVerifyOTPView(views.APIView):
 
                     refresh = RefreshToken.for_user(user)
 
-                    return Response(
+                    response = Response(
                         {
                             "message": "Account verified successfully!",
-                            "refresh": str(refresh),
                             "access": str(refresh.access_token),
                             "id": user.id,
                             "username": user.username,
@@ -439,6 +448,17 @@ class CorporateVerifyOTPView(views.APIView):
                         },
                         status=status.HTTP_200_OK,
                     )
+
+                    response.set_cookie(
+                        key=settings.SIMPLE_JWT['AUTH_COOKIE'],
+                        value=str(refresh),
+                        expires=settings.SIMPLE_JWT['REFRESH_TOKEN_LIFETIME'],
+                        secure=settings.SIMPLE_JWT['AUTH_COOKIE_SECURE'],
+                        httponly=settings.SIMPLE_JWT['AUTH_COOKIE_HTTP_ONLY'],
+                        samesite=settings.SIMPLE_JWT['AUTH_COOKIE_SAMESITE'],
+                    )
+                    
+                    return response
                 else:
                     return Response(
                         {"error": "Invalid Authenticator Code"}, 
@@ -451,3 +471,15 @@ class CorporateVerifyOTPView(views.APIView):
                 )
 
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    
+class LogoutView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        try:
+            response = Response({"message": "Logout successful"}, status=status.HTTP_200_OK)
+            response.delete_cookie(settings.SIMPLE_JWT['AUTH_COOKIE'])
+            
+            return response
+        except Exception as e:
+            return Response({"error": "Logout failed"}, status=status.HTTP_400_BAD_REQUEST)

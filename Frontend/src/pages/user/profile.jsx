@@ -11,6 +11,7 @@ import {
 } from "react-icons/fa";
 import { IoChevronForward } from "react-icons/io5";
 import { setAccessToken } from "../../lib/axios";
+import api from "../../lib/axios";
 
 const Profile = () => {
   const navigate = useNavigate();
@@ -18,12 +19,18 @@ const Profile = () => {
   const { user } = useSelector((state) => state.auth);
   const [notifications, setNotifications] = useState(true);
 
-  const handleLogout = () => {
-    setAccessToken(null);
-    dispatch(logout());
-    localStorage.clear();
-    navigate("/login", { replace: true });
-  };
+  const handleLogout = async () => {
+    try {
+      await api.post("/api/users/logout/");
+    } catch (error) {
+      console.error("Logout failed", error);
+    } finally {
+      setAccessToken(null);
+      dispatch(logout());
+      localStorage.clear();
+      navigate("/login", { replace: true });
+    }
+  }
 
   return (
     <div className="min-h-screen bg-[#f6f7f9] pb-24">
@@ -71,14 +78,12 @@ const Profile = () => {
 
           <button
             onClick={() => setNotifications(!notifications)}
-            className={`w-11 h-6 rounded-full relative transition ${
-              notifications ? "bg-purple-600" : "bg-gray-300"
-            }`}
+            className={`w-11 h-6 rounded-full relative transition ${notifications ? "bg-purple-600" : "bg-gray-300"
+              }`}
           >
             <span
-              className={`absolute top-0.5 w-5 h-5 bg-white rounded-full transition ${
-                notifications ? "right-0.5" : "left-0.5"
-              }`}
+              className={`absolute top-0.5 w-5 h-5 bg-white rounded-full transition ${notifications ? "right-0.5" : "left-0.5"
+                }`}
             />
           </button>
         </div>

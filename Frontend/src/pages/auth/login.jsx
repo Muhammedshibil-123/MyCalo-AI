@@ -4,11 +4,13 @@ import { useDispatch } from "react-redux";
 import { setCredentials } from "../../redux/authslice";
 import loginIllustration from "../../assets/images/login_illustration.webp";
 import { FcGoogle } from "react-icons/fc";
+import { FaEye, FaEyeSlash } from "react-icons/fa";
 import api, { setAccessToken } from "../../lib/axios";
 
 const Login = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -16,56 +18,59 @@ const Login = () => {
   const dispatch = useDispatch();
 
   const handleSubmit = async (e) => {
-  e.preventDefault();
-  setError("");
-  setLoading(true);
+    e.preventDefault();
+    setError("");
+    setLoading(true);
 
-  try {
-    const response = await api.post("/api/users/login/", {
-      email,
-      password,
-    });
-
-    const data = response.data;
-
-    if (data.requires_otp) {
-      localStorage.setItem("otp_email", data.email);
-      navigate("/corporate/verify-otp", {
-        state: {
-          email: data.email,
-          role: data.role,
-        },
+    try {
+      const response = await api.post("/api/users/login/", {
+        username: email,
+        password,
       });
-      return;
+
+      const data = response.data;
+
+      if (data.requires_otp) {
+        localStorage.setItem("otp_email", data.email);
+        navigate("/corporate/verify-otp", {
+          state: {
+            email: data.email,
+            role: data.role,
+          },
+        });
+        return;
+      }
+
+      setAccessToken(data.access);
+
+      const userDetails = {
+        id: data.id,
+        username: data.username,
+        email: data.email,
+        role: data.role,
+        mobile: data.mobile,
+      };
+
+      dispatch(
+        setCredentials({
+          accessToken: data.access,
+          user: userDetails,
+        })
+      );
+
+      localStorage.setItem("user_details", JSON.stringify(userDetails));
+
+      navigate("/");
+    } catch (err) {
+      if (err.response?.data?.detail) {
+        setError(err.response.data.detail);
+      } else {
+        setError("Invalid credentials");
+      }
+    } finally {
+      setLoading(false);
     }
-
-    setAccessToken(data.access);
-
-    dispatch(
-      setCredentials({
-        accessToken: data.access,
-        user: {
-          id: data.id,
-          username: data.username,
-          email: data.email,
-          role: data.role,
-          mobile: data.mobile,
-        },
-      })
-    );
-
-    localStorage.clear();
-    navigate("/");
-  } catch (err) {
-    if (err.response?.data?.detail) {
-      setError(err.response.data.detail);
-    } else {
-      setError("Invalid credentials");
-    }
-  } finally {
-    setLoading(false);
-  }
-};
+  };
 
   return (
     <div className="min-h-[100dvh] bg-white md:bg-transparent">
@@ -104,14 +109,23 @@ const Login = () => {
               required
             />
 
-            <input
-              type="password"
-              placeholder="Password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="w-full px-4 py-3 rounded-xl bg-gray-50 border focus:ring-1 focus:ring-[#6C3AC9]"
-              required
-            />
+            <div className="relative">
+              <input
+                type={showPassword ? "text" : "password"}
+                placeholder="Password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="w-full px-4 py-3 pr-12 rounded-xl bg-gray-50 border focus:ring-1 focus:ring-[#6C3AC9]"
+                required
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500"
+              >
+                {showPassword ? <FaEyeSlash /> : <FaEye />}
+              </button>
+            </div>
 
             {error && (
               <div className="text-red-500 text-sm font-medium">{error}</div>
@@ -175,14 +189,23 @@ const Login = () => {
               required
             />
 
-            <input
-              type="password"
-              placeholder="Password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="w-full px-4 py-3 rounded-xl bg-gray-50 border focus:ring-1 focus:ring-[#6C3AC9]"
-              required
-            />
+            <div className="relative">
+              <input
+                type={showPassword ? "text" : "password"}
+                placeholder="Password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="w-full px-4 py-3 pr-12 rounded-xl bg-gray-50 border focus:ring-1 focus:ring-[#6C3AC9]"
+                required
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500"
+              >
+                {showPassword ? <FaEyeSlash /> : <FaEye />}
+              </button>
+            </div>
 
             {error && (
               <div className="text-red-500 text-sm font-medium">{error}</div>

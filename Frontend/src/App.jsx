@@ -6,6 +6,8 @@ import { setCredentials, logout, finishInitialLoad } from './redux/authslice';
 import Login from './pages/auth/login';
 import Register from './pages/auth/register';
 import VerfiyOtp from './pages/auth/VerfiyOtp';
+import ResetPassword from './pages/auth/ResetPassword';
+import ForgotPassword from './pages/auth/ForgotPassword';
 import CorporateRegister from './pages/auth/CorporateRegister';
 import Profile from './pages/user/profile';
 import Home from './pages/user/home';
@@ -58,6 +60,9 @@ function App() {
                     <Route path="/otp-verfiy" element={<VerfiyOtp />} />
                     <Route path="/corporate/register" element={<CorporateRegister />} />
                     <Route path="/corporate/verify-otp" element={<CorporateVerifyOtp />} />
+                    <Route path="/forgot-password" element={<ForgotPassword />} />
+                    <Route path="/reset-password" element={<ResetPassword />} />
+
                 </Route>
 
                 <Route element={<ProtectedRoute />}>
