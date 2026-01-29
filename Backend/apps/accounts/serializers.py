@@ -26,7 +26,7 @@ class CustomTokenJwtSerializer(TokenObtainPairSerializer):
         return data
     
 class RegisterSerializer(serializers.ModelSerializer):
-    password = serializers.CharField(write_only=True)
+    password = serializers.CharField(write_only=True, min_length=6)
     confirm_password = serializers.CharField(write_only=True) 
 
     class Meta:
@@ -69,7 +69,7 @@ class ForgotPasswordSerializer(serializers.Serializer):
 class ResetPasswordSerializer(serializers.Serializer):
     email = serializers.EmailField()
     otp = serializers.CharField(max_length=6) 
-    new_password = serializers.CharField(write_only=True)
+    new_password = serializers.CharField(write_only=True, min_length=6)
     confirm_password = serializers.CharField(write_only=True)
 
     def validate(self, data):
@@ -79,7 +79,7 @@ class ResetPasswordSerializer(serializers.Serializer):
     
 
 class CorporateRegisterSerializer(serializers.ModelSerializer):
-    password = serializers.CharField(write_only=True)
+    password = serializers.CharField(write_only=True, min_length=6)
     confirm_password = serializers.CharField(write_only=True)
     employee_id = serializers.CharField(write_only=True)
 

@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect,useState } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate, Outlet } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import api, { setAccessToken } from './lib/axios';
@@ -16,12 +16,34 @@ import Dashboard from './pages/user/dashboard';
 import UserNavbar from './layout/UserNavbar';
 import CorporateVerifyOtp from './pages/auth/CorporateVerifyOtp';
 import ChangePassword from './pages/user/ChangePassword';
+import LoadingScreen from './components/LoadingScreen';
 
 
+const DelayedLoader = ({ isLoading }) => {
+    const [show, setShow] = useState(false);
+
+    useEffect(() => {
+        let timeout;
+        if (isLoading) {
+            timeout = setTimeout(() => setShow(true), 10);
+        } else {
+            setShow(false);
+        }
+        return () => clearTimeout(timeout);
+    }, [isLoading]);
+
+    if (!show) return null;
+
+    return (
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/20 backdrop-blur-sm">
+            <LoadingScreen />
+        </div>
+    );
+};
 
 const ProtectedRoute = () => {
     const { isAuthenticated } = useSelector((state) => state.auth);
-    return isAuthenticated ? <Outlet /> : <Navigate to="/login" replace />;
+    return isAuthenticated ? <Outlet /> : <Navigate to="/welcome" replace />;
 };
 
 const PublicRoute = () => {
@@ -31,7 +53,7 @@ const PublicRoute = () => {
 
 function App() {
     const dispatch = useDispatch();
-    const { loading } = useSelector((state) => state.auth);
+    const { loading, loadingCount } = useSelector((state) => state.auth);
 
     useEffect(() => {
         const checkAuth = async () => {
@@ -52,10 +74,11 @@ function App() {
         checkAuth();
     }, [dispatch])
 
-    if (loading) return <div>Loading...</div>;
+    if (loading) return <LoadingScreen />;
 
     return (
         <Router>
+            <DelayedLoader isLoading={loadingCount > 0} />
             <Routes>
                 <Route element={<PublicRoute />}>
                     <Route path="/login" element={<Login />} />

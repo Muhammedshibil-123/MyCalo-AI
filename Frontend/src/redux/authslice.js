@@ -4,7 +4,8 @@ const initialState = {
   user: null,
   accessToken: null,
   isAuthenticated: false,
-  loading: true,
+  loading: true,       // For initial app-wide auth check
+  loadingCount: 0,     // For background API calls
 };
 
 const authSlice = createSlice({
@@ -26,9 +27,16 @@ const authSlice = createSlice({
     },
     finishInitialLoad: (state) => {
       state.loading = false;
+    },
+    // Increments and decrements the counter
+    startFetching: (state) => {
+      state.loadingCount += 1;
+    },
+    stopFetching: (state) => {
+      state.loadingCount = Math.max(0, state.loadingCount - 1);
     }
   },
 });
 
-export const { setCredentials, logout, finishInitialLoad } = authSlice.actions;
+export const { setCredentials, logout, finishInitialLoad, startFetching, stopFetching } = authSlice.actions;
 export default authSlice.reducer;

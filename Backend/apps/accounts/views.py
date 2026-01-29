@@ -499,6 +499,12 @@ class ChangePasswordView(APIView):
         new_password = request.data.get("new_password")
         user = request.user
 
+        if not new_password or len(new_password) < 6:
+            return Response(
+                {"error": "Password must be at least 6 characters long."}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
         if not user.check_password(old_password):
             return Response({"error": "Incorrect old password."}, status=status.HTTP_400_BAD_REQUEST)
 
