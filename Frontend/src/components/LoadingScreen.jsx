@@ -7,7 +7,7 @@ const LoadingScreen = () => (
             autoPlay 
             loop 
             muted 
-            className="w-48 h-48" 
+            className="w-20 h-20" 
         />
     </div>
 );

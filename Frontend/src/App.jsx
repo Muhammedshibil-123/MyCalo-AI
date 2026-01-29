@@ -24,8 +24,12 @@ const DelayedLoader = ({ isLoading }) => {
 
     useEffect(() => {
         let timeout;
+        console.log("Is Loading State:", isLoading);
         if (isLoading) {
-            timeout = setTimeout(() => setShow(true), 10);
+            timeout = setTimeout(() => {
+                console.log("Showing Loader now!"); 
+                setShow(true);
+            }, 10);
         } else {
             setShow(false);
         }

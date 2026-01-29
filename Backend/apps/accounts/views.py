@@ -1,73 +1,73 @@
-from django.shortcuts import render
-from rest_framework_simplejwt.views import TokenObtainPairView
-from .serializers import (
-    CustomTokenJwtSerializer,
-    RegisterSerializer,
-    VerifyOTPSerializer,
-    UserSerializer,
-    ResetPasswordSerializer,
-    ForgotPasswordSerializer,
-    CorporateRegisterSerializer,
-    CorporateVerifyOTPSerializer
-)
-from rest_framework import generics, status, views
-from rest_framework.permissions import AllowAny, IsAdminUser, IsAuthenticated
-from .models import CustomUser
 import random
-from rest_framework.response import Response
-from django.core.mail import send_mail
-from django.conf import settings
-from rest_framework_simplejwt.tokens import RefreshToken
-from rest_framework.views import APIView
-from google.oauth2 import id_token
-from google.auth.transport import requests as google_requests
 import secrets
 import string
-import requests
-from rest_framework import permissions
-from rest_framework_simplejwt.views import TokenRefreshView
+
 import pyotp
-from rest_framework_simplejwt.exceptions import TokenError, InvalidToken
+import requests
+from django.conf import settings
+from django.core.mail import send_mail
+from rest_framework import generics, permissions, status, views
+from rest_framework.permissions import AllowAny,  IsAuthenticated
+from rest_framework.response import Response
 from rest_framework.views import APIView
+from rest_framework_simplejwt.exceptions import InvalidToken, TokenError
+from rest_framework_simplejwt.tokens import RefreshToken
+from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
+
+from .models import CustomUser
+from .serializers import (
+    CorporateRegisterSerializer,
+    CorporateVerifyOTPSerializer,
+    CustomTokenJwtSerializer,
+    ForgotPasswordSerializer,
+    RegisterSerializer,
+    ResetPasswordSerializer,
+    UserSerializer,
+    VerifyOTPSerializer,
+)
+
 
 # Create your views here.
 class CustomTokenjwtView(TokenObtainPairView):
     serializer_class = CustomTokenJwtSerializer
-    
+
     def post(self, request, *args, **kwargs):
         response = super().post(request, *args, **kwargs)
-        
+
         if response.status_code == 200:
-            if response.data.get('requires_otp'):
+            if response.data.get("requires_otp"):
                 return response
 
             refresh_token = response.data.get("refresh")
-        
+
             response.set_cookie(
-                key=settings.SIMPLE_JWT['AUTH_COOKIE'],
+                key=settings.SIMPLE_JWT["AUTH_COOKIE"],
                 value=refresh_token,
-                expires=settings.SIMPLE_JWT['REFRESH_TOKEN_LIFETIME'],
-                secure=settings.SIMPLE_JWT['AUTH_COOKIE_SECURE'],
-                httponly=settings.SIMPLE_JWT['AUTH_COOKIE_HTTP_ONLY'],
-                samesite=settings.SIMPLE_JWT['AUTH_COOKIE_SAMESITE'],
+                expires=settings.SIMPLE_JWT["REFRESH_TOKEN_LIFETIME"],
+                secure=settings.SIMPLE_JWT["AUTH_COOKIE_SECURE"],
+                httponly=settings.SIMPLE_JWT["AUTH_COOKIE_HTTP_ONLY"],
+                samesite=settings.SIMPLE_JWT["AUTH_COOKIE_SAMESITE"],
             )
-            
+
             del response.data["refresh"]
-            
+
         return response
-    
+
+
 class CustomTokenRefreshView(TokenRefreshView):
     def post(self, request, *args, **kwargs):
-        refresh_token = request.COOKIES.get(settings.SIMPLE_JWT['AUTH_COOKIE'])
-        
+        refresh_token = request.COOKIES.get(settings.SIMPLE_JWT["AUTH_COOKIE"])
+
         if refresh_token:
-            request.data['refresh'] = refresh_token
-            
+            request.data["refresh"] = refresh_token
+
         try:
             return super().post(request, *args, **kwargs)
-        except (InvalidToken, TokenError, CustomUser.DoesNotExist) as e:
-            response = Response({"error": "Invalid token"}, status=status.HTTP_401_UNAUTHORIZED)
-            response.delete_cookie(settings.SIMPLE_JWT['AUTH_COOKIE'])
+        except (InvalidToken, TokenError, CustomUser.DoesNotExist) :
+            response = Response(
+                {"error": "Invalid token"}, status=status.HTTP_401_UNAUTHORIZED
+            )
+            response.delete_cookie(settings.SIMPLE_JWT["AUTH_COOKIE"])
             return response
 
 
@@ -101,7 +101,7 @@ class RegisterView(generics.GenericAPIView):
             else:
                 return Response(
                     {"error": "User with this email already exists."},
-                    status=status.HTTP_400_BAD_REQUEST,
+                    status=status.HTTP_409_CONFLICT,
                 )
 
         serializer = self.get_serializer(data=request.data)
@@ -197,11 +197,10 @@ class GoogleLoginView(APIView):
             user = CustomUser.objects.get(email=email)
 
             if user.role in ["admin", "doctor", "employee"]:
-                return Response({
-                    "requires_otp": True,
-                    "email": user.email,
-                    "role": user.role
-                }, status=status.HTTP_200_OK)
+                return Response(
+                    {"requires_otp": True, "email": user.email, "role": user.role},
+                    status=status.HTTP_200_OK,
+                )
 
             if user.status != "active":
                 return Response(
@@ -244,15 +243,16 @@ class GoogleLoginView(APIView):
         )
 
         response.set_cookie(
-            key=settings.SIMPLE_JWT['AUTH_COOKIE'],
+            key=settings.SIMPLE_JWT["AUTH_COOKIE"],
             value=str(refresh),
-            expires=settings.SIMPLE_JWT['REFRESH_TOKEN_LIFETIME'],
-            secure=settings.SIMPLE_JWT['AUTH_COOKIE_SECURE'],
-            httponly=settings.SIMPLE_JWT['AUTH_COOKIE_HTTP_ONLY'],
-            samesite=settings.SIMPLE_JWT['AUTH_COOKIE_SAMESITE'],
+            expires=settings.SIMPLE_JWT["REFRESH_TOKEN_LIFETIME"],
+            secure=settings.SIMPLE_JWT["AUTH_COOKIE_SECURE"],
+            httponly=settings.SIMPLE_JWT["AUTH_COOKIE_HTTP_ONLY"],
+            samesite=settings.SIMPLE_JWT["AUTH_COOKIE_SAMESITE"],
         )
 
         return response
+
 
 class IsAdminRole(permissions.BasePermission):
     def has_permission(self, request, view):
@@ -317,8 +317,6 @@ class ForgotPasswordView(APIView):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
-
-
 class ResetPasswordView(APIView):
     permission_classes = [AllowAny]
 
@@ -331,10 +329,10 @@ class ResetPasswordView(APIView):
 
             try:
                 user = CustomUser.objects.get(email=email)
-                
+
                 if user.otp == otp and user.otp is not None:
                     user.set_password(password)
-                    user.otp = None  
+                    user.otp = None
                     user.save()
                     return Response(
                         {"message": "Password reset successfully."},
@@ -342,17 +340,16 @@ class ResetPasswordView(APIView):
                     )
                 else:
                     return Response(
-                        {"error": "Invalid or expired OTP."}, 
-                        status=status.HTTP_400_BAD_REQUEST
+                        {"error": "Invalid or expired OTP."},
+                        status=status.HTTP_400_BAD_REQUEST,
                     )
-                    
+
             except CustomUser.DoesNotExist:
                 return Response(
-                    {"error": "User not found."}, 
-                    status=status.HTTP_404_NOT_FOUND
+                    {"error": "User not found."}, status=status.HTTP_404_NOT_FOUND
                 )
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-    
+
 
 class CorporateRegisterView(generics.GenericAPIView):
     permission_classes = [AllowAny]
@@ -367,34 +364,45 @@ class CorporateRegisterView(generics.GenericAPIView):
 
         if existing_user:
             if not existing_user.check_password(password):
-                return Response({"error": "Invalid credentials."}, status=status.HTTP_400_BAD_REQUEST)
-            
-            role_map = {
-                "doc1234": "doctor",
-                "employee1234": "employee"
-            }
-            
+                return Response(
+                    {"error": "Invalid credentials."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+            role_map = {"doc1234": "doctor", "employee1234": "employee"}
+
             expected_role = role_map.get(employee_id)
             if not expected_role:
-                 return Response({"employee_id": "Invalid Employee ID."}, status=status.HTTP_400_BAD_REQUEST)
-            
+                return Response(
+                    {"employee_id": "Invalid Employee ID."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
             if existing_user.role != expected_role:
-                 return Response({"error": "Employee ID does not match registered role."}, status=status.HTTP_400_BAD_REQUEST)
+                return Response(
+                    {"error": "Employee ID does not match registered role."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
 
             if not existing_user.totp_secret:
                 existing_user.totp_secret = pyotp.random_base32()
                 existing_user.save()
-            
+
             totp = pyotp.TOTP(existing_user.totp_secret)
-            provisioning_uri = totp.provisioning_uri(name=existing_user.email, issuer_name="MyCalo AI")
-            
-            return Response({
-                "message": "User verified. Set up Google Authenticator.",
-                "email": existing_user.email,
-                "role": existing_user.role,
-                "secret": existing_user.totp_secret,
-                "otpauth_url": provisioning_uri
-            }, status=status.HTTP_200_OK)
+            provisioning_uri = totp.provisioning_uri(
+                name=existing_user.email, issuer_name="MyCalo AI"
+            )
+
+            return Response(
+                {
+                    "message": "User verified. Set up Google Authenticator.",
+                    "email": existing_user.email,
+                    "role": existing_user.role,
+                    "secret": existing_user.totp_secret,
+                    "otpauth_url": provisioning_uri,
+                },
+                status=status.HTTP_200_OK,
+            )
 
         serializer = self.get_serializer(data=request.data)
         if serializer.is_valid():
@@ -405,17 +413,23 @@ class CorporateRegisterView(generics.GenericAPIView):
             user.save()
 
             totp = pyotp.TOTP(totp_secret)
-            provisioning_uri = totp.provisioning_uri(name=user.email, issuer_name="MyCalo AI")
+            provisioning_uri = totp.provisioning_uri(
+                name=user.email, issuer_name="MyCalo AI"
+            )
 
-            return Response({
-                "message": "Account created. Set up Google Authenticator.",
-                "email": user.email,
-                "role": user.role,
-                "secret": totp_secret,
-                "otpauth_url": provisioning_uri
-            }, status=status.HTTP_201_CREATED)
+            return Response(
+                {
+                    "message": "Account created. Set up Google Authenticator.",
+                    "email": user.email,
+                    "role": user.role,
+                    "secret": totp_secret,
+                    "otpauth_url": provisioning_uri,
+                },
+                status=status.HTTP_201_CREATED,
+            )
 
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
 
 class CorporateVerifyOTPView(views.APIView):
     permission_classes = [AllowAny]
@@ -428,11 +442,11 @@ class CorporateVerifyOTPView(views.APIView):
 
             try:
                 user = CustomUser.objects.get(email=email)
-                
+
                 if not user.totp_secret:
                     return Response(
-                        {"error": "TOTP not set up for this user."}, 
-                        status=status.HTTP_400_BAD_REQUEST
+                        {"error": "TOTP not set up for this user."},
+                        status=status.HTTP_400_BAD_REQUEST,
                     )
 
                 totp = pyotp.TOTP(user.totp_secret)
@@ -456,19 +470,19 @@ class CorporateVerifyOTPView(views.APIView):
                     )
 
                     response.set_cookie(
-                        key=settings.SIMPLE_JWT['AUTH_COOKIE'],
+                        key=settings.SIMPLE_JWT["AUTH_COOKIE"],
                         value=str(refresh),
-                        expires=settings.SIMPLE_JWT['REFRESH_TOKEN_LIFETIME'],
-                        secure=settings.SIMPLE_JWT['AUTH_COOKIE_SECURE'],
-                        httponly=settings.SIMPLE_JWT['AUTH_COOKIE_HTTP_ONLY'],
-                        samesite=settings.SIMPLE_JWT['AUTH_COOKIE_SAMESITE'],
+                        expires=settings.SIMPLE_JWT["REFRESH_TOKEN_LIFETIME"],
+                        secure=settings.SIMPLE_JWT["AUTH_COOKIE_SECURE"],
+                        httponly=settings.SIMPLE_JWT["AUTH_COOKIE_HTTP_ONLY"],
+                        samesite=settings.SIMPLE_JWT["AUTH_COOKIE_SAMESITE"],
                     )
-                    
+
                     return response
                 else:
                     return Response(
-                        {"error": "Invalid Authenticator Code"}, 
-                        status=status.HTTP_400_BAD_REQUEST
+                        {"error": "Invalid Authenticator Code"},
+                        status=status.HTTP_400_BAD_REQUEST,
                     )
 
             except CustomUser.DoesNotExist:
@@ -477,19 +491,24 @@ class CorporateVerifyOTPView(views.APIView):
                 )
 
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-    
+
+
 class LogoutView(APIView):
     permission_classes = [IsAuthenticated]
 
     def post(self, request):
         try:
-            response = Response({"message": "Logout successful"}, status=status.HTTP_200_OK)
-            response.delete_cookie(settings.SIMPLE_JWT['AUTH_COOKIE'])
-            
+            response = Response(
+                {"message": "Logout successful"}, status=status.HTTP_200_OK
+            )
+            response.delete_cookie(settings.SIMPLE_JWT["AUTH_COOKIE"])
+
             return response
-        except Exception as e:
-            return Response({"error": "Logout failed"}, status=status.HTTP_400_BAD_REQUEST)
-        
+        except Exception :
+            return Response(
+                {"error": "Logout failed"}, status=status.HTTP_400_BAD_REQUEST
+            )
+
 
 class ChangePasswordView(APIView):
     permission_classes = [IsAuthenticated]
@@ -501,13 +520,17 @@ class ChangePasswordView(APIView):
 
         if not new_password or len(new_password) < 6:
             return Response(
-                {"error": "Password must be at least 6 characters long."}, 
-                status=status.HTTP_400_BAD_REQUEST
+                {"error": "Password must be at least 6 characters long."},
+                status=status.HTTP_400_BAD_REQUEST,
             )
 
         if not user.check_password(old_password):
-            return Response({"error": "Incorrect old password."}, status=status.HTTP_400_BAD_REQUEST)
+            return Response(
+                {"error": "Incorrect old password."}, status=status.HTTP_400_BAD_REQUEST
+            )
 
         user.set_password(new_password)
         user.save()
-        return Response({"message": "Password updated successfully."}, status=status.HTTP_200_OK)
+        return Response(
+            {"message": "Password updated successfully."}, status=status.HTTP_200_OK
+        )
