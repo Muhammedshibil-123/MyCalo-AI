@@ -31,7 +31,7 @@ SECRET_KEY = "django-insecure-u_9gx+4eh31u4y3c8+)47h(#px#xdx-glqbe=!^&6_#(x$0h__
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ["*"]
 
 
 # Application definition
@@ -44,6 +44,9 @@ INSTALLED_APPS = [
     "django.contrib.messages",
     "django.contrib.staticfiles",
     "corsheaders",
+    'rest_framework',
+    "rest_framework_simplejwt.token_blacklist",
+    'drf_yasg',
     "apps.accounts",
 ]
 
@@ -86,8 +89,8 @@ DATABASES = {
         "ENGINE": "django.db.backends.postgresql",
         "NAME": "mycalo_ai_db",
         "USER": "postgres",
-        "PASSWORD": os.getenv("DATABASE_PASSWORD"),
-        "HOST": "localhost",
+        "PASSWORD": os.getenv("DATABASE_PASSWORD", "postgres"),
+        "HOST": "db",
         "PORT": "5432",
     }
 }

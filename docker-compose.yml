@@ -1,0 +1,31 @@
+
+
+services:
+  # Service 1: Your Django Backend
+  backend:
+    build: ./Backend  # Path to the Dockerfile you just created
+    container_name: mycalo_backend
+    volumes:
+      - ./Backend:/app  # Syncs your code so changes update instantly
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_PASSWORD=postgres
+      - EMAIL_HOST_USER=your_email@gmail.com
+      - EMAIL_HOST_PASSWORD=your_app_password
+    depends_on:
+      - db
+
+  # Service 2: The Database (PostgreSQL)
+  db:
+    image: postgres:15
+    container_name: mycalo_db
+    environment:
+      - POSTGRES_DB=mycalo_ai_db
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+volumes:
+  postgres_data:

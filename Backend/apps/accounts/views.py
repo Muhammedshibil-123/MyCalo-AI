@@ -13,6 +13,10 @@ from rest_framework.views import APIView
 from rest_framework_simplejwt.exceptions import InvalidToken, TokenError
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
+from rest_framework_simplejwt.tokens import RefreshToken
+
+from drf_yasg.utils import swagger_auto_schema
+from drf_yasg import openapi
 
 from .models import CustomUser
 from .serializers import (
@@ -31,6 +35,14 @@ from .serializers import (
 class CustomTokenjwtView(TokenObtainPairView):
     serializer_class = CustomTokenJwtSerializer
 
+    @swagger_auto_schema(
+        operation_description="Obtain Access and Refresh tokens. Checks if OTP is required for specific roles.",
+        tags=["Login"],  
+        responses={
+            200: openapi.Response("Tokens or OTP requirement message", CustomTokenJwtSerializer),
+            401: "Invalid credentials"
+        }
+    )
     def post(self, request, *args, **kwargs):
         response = super().post(request, *args, **kwargs)
 
@@ -55,6 +67,15 @@ class CustomTokenjwtView(TokenObtainPairView):
 
 
 class CustomTokenRefreshView(TokenRefreshView):
+    @swagger_auto_schema(
+        operation_description="Refresh Access Token using HttpOnly cookie.",
+        tags=["Login"], 
+        responses={
+            200: "Access token refreshed",
+            401: "Invalid or expired refresh token"
+        }
+    )
+
     def post(self, request, *args, **kwargs):
         refresh_token = request.COOKIES.get(settings.SIMPLE_JWT["AUTH_COOKIE"])
 
@@ -75,6 +96,18 @@ class RegisterView(generics.GenericAPIView):
     permission_classes = [AllowAny]
     serializer_class = RegisterSerializer
 
+    @swagger_auto_schema(
+        operation_description="Register a new user. Sends an OTP to the email.",
+        tags=["User Register"], 
+        request_body=RegisterSerializer,
+        responses={
+            201: RegisterSerializer,
+            200: "User exists but unverified (OTP resent)",
+            409: "User with this email already exists",
+            400: "Bad Request (Validation errors)"
+        }
+    )
+
     def post(self, request, *args, **kwargs):
         email = request.data.get("email")
 
@@ -87,8 +120,8 @@ class RegisterView(generics.GenericAPIView):
                 existing_user.save()
 
                 send_mail(
-                    "ZenCal AI Verification Code",
-                    f"Your ZenCal AI verification code is {otp_code}. "
+                    "Mycalo AI Verification Code",
+                    f"Your Mycalo AI verification code is {otp_code}. "
                     "Please do not share this code with anyone.",
                     settings.EMAIL_HOST_USER,
                     [existing_user.email],
@@ -113,8 +146,8 @@ class RegisterView(generics.GenericAPIView):
             user.save()
 
             send_mail(
-                "ZenCal AI Verification Code",
-                f"Your ZenCal AI verification code is {otp_code}. "
+                "Mycalo AI Verification Code",
+                f"Your Mycalo AI verification code is {otp_code}. "
                 "Please do not share this code with anyone.",
                 settings.EMAIL_HOST_USER,
                 [user.email],
@@ -128,6 +161,16 @@ class RegisterView(generics.GenericAPIView):
 class VerifyOTPView(views.APIView):
     permission_classes = [AllowAny]
 
+    @swagger_auto_schema(
+        operation_description="Verify User OTP and log them in.",
+        tags=["User Register"],  
+        request_body=VerifyOTPSerializer,
+        responses={
+            200: "Account verified successfully (returns tokens)",
+            400: "Invalid OTP or Bad Request",
+            404: "User not found"
+        }
+    )
     def post(self, request):
         serializer = VerifyOTPSerializer(data=request.data)
         if serializer.is_valid():
@@ -171,6 +214,23 @@ class VerifyOTPView(views.APIView):
 
 class GoogleLoginView(APIView):
     permission_classes = [AllowAny]
+
+    @swagger_auto_schema(
+        operation_description="Login or Register with Google Access Token.",
+        tags=["Login"], 
+        request_body=openapi.Schema(
+            type=openapi.TYPE_OBJECT,
+            properties={
+                'token': openapi.Schema(type=openapi.TYPE_STRING, description='Google Access Token'),
+            },
+            required=['token']
+        ),
+        responses={
+            200: "Login successful (returns tokens)",
+            400: "Invalid Google Token",
+            403: "Account blocked"
+        }
+    )
 
     def post(self, request):
         google_token = request.data.get("token")
@@ -274,6 +334,40 @@ class UserDetailView(generics.RetrieveUpdateDestroyAPIView):
     serializer_class = UserSerializer
     permission_classes = [IsAuthenticated]
 
+    @swagger_auto_schema(
+        operation_description="Retrieve a user by ID.",
+        tags=["User"],
+        responses={200: UserSerializer}
+    )
+    def get(self, request, *args, **kwargs):
+        return super().get(request, *args, **kwargs)
+
+    @swagger_auto_schema(
+        operation_description="Update a user by ID.",
+        tags=["User"],
+        request_body=UserSerializer,
+        responses={200: UserSerializer}
+    )
+    def put(self, request, *args, **kwargs):
+        return super().put(request, *args, **kwargs)
+
+    @swagger_auto_schema(
+        operation_description="Partially update a user by ID.",
+        tags=["User"],
+        request_body=UserSerializer,
+        responses={200: UserSerializer}
+    )
+    def patch(self, request, *args, **kwargs):
+        return super().patch(request, *args, **kwargs)
+
+    @swagger_auto_schema(
+        operation_description="Delete a user by ID.",
+        tags=["User"],
+        responses={204: "No Content"}
+    )
+    def delete(self, request, *args, **kwargs):
+        return super().delete(request, *args, **kwargs)
+
     def perform_update(self, serializer):
         instance = serializer.save()
         if instance.status == "inactive":
@@ -285,6 +379,17 @@ class UserDetailView(generics.RetrieveUpdateDestroyAPIView):
 
 class ForgotPasswordView(APIView):
     permission_classes = [AllowAny]
+
+    @swagger_auto_schema(
+        operation_description="Request password reset OTP via email.",
+        tags=["Forget Password"], 
+        request_body=ForgotPasswordSerializer,
+        responses={
+            200: "OTP sent to your email",
+            404: "User with this email does not exist",
+            400: "Bad Request"
+        }
+    )
 
     def post(self, request):
         serializer = ForgotPasswordSerializer(data=request.data)
@@ -298,7 +403,7 @@ class ForgotPasswordView(APIView):
                 user.save()
 
                 send_mail(
-                    "Reset Your Password - XenFit",
+                    "Reset Your Password - Mycalo AI",
                     f"Your Password Reset OTP is: {otp_code}",
                     settings.EMAIL_HOST_USER,
                     [email],
@@ -319,6 +424,17 @@ class ForgotPasswordView(APIView):
 
 class ResetPasswordView(APIView):
     permission_classes = [AllowAny]
+
+    @swagger_auto_schema(
+        operation_description="Reset password using OTP.",
+        tags=["Forget Password"],  
+        request_body=ResetPasswordSerializer,
+        responses={
+            200: "Password reset successfully",
+            400: "Invalid or expired OTP",
+            404: "User not found"
+        }
+    )
 
     def post(self, request):
         serializer = ResetPasswordSerializer(data=request.data)
@@ -354,6 +470,17 @@ class ResetPasswordView(APIView):
 class CorporateRegisterView(generics.GenericAPIView):
     permission_classes = [AllowAny]
     serializer_class = CorporateRegisterSerializer
+
+    @swagger_auto_schema(
+        operation_description="Register for Corporate/Doctor roles with Employee ID.",
+        tags=["Corporate Register"],  
+        request_body=CorporateRegisterSerializer,
+        responses={
+            201: "Account created. Set up Google Authenticator.",
+            200: "User verified. Set up Google Authenticator.",
+            400: "Invalid credentials or Employee ID mismatch"
+        }
+    )
 
     def post(self, request, *args, **kwargs):
         email = request.data.get("email")
@@ -434,6 +561,17 @@ class CorporateRegisterView(generics.GenericAPIView):
 class CorporateVerifyOTPView(views.APIView):
     permission_classes = [AllowAny]
 
+    @swagger_auto_schema(
+        operation_description="Verify Google Authenticator OTP for Corporate users.",
+        tags=["Corporate Register"],  
+        request_body=CorporateVerifyOTPSerializer,
+        responses={
+            200: "Account verified successfully (returns tokens)",
+            400: "Invalid Authenticator Code or TOTP not setup",
+            404: "User not found"
+        }
+    )
+
     def post(self, request):
         serializer = CorporateVerifyOTPSerializer(data=request.data)
         if serializer.is_valid():
@@ -496,15 +634,30 @@ class CorporateVerifyOTPView(views.APIView):
 class LogoutView(APIView):
     permission_classes = [IsAuthenticated]
 
+    @swagger_auto_schema(
+        operation_description="Logout user and clear auth cookie.",
+        tags=["Login"], 
+        responses={
+            200: "Logout successful",
+            400: "Logout failed"
+        }
+    )
+
     def post(self, request):
         try:
+            refresh_token = request.COOKIES.get(settings.SIMPLE_JWT["AUTH_COOKIE"])
+            
+            if refresh_token:
+                token = RefreshToken(refresh_token)
+                token.blacklist() 
+
             response = Response(
                 {"message": "Logout successful"}, status=status.HTTP_200_OK
             )
+            
             response.delete_cookie(settings.SIMPLE_JWT["AUTH_COOKIE"])
-
             return response
-        except Exception :
+        except Exception as e:
             return Response(
                 {"error": "Logout failed"}, status=status.HTTP_400_BAD_REQUEST
             )
@@ -512,6 +665,23 @@ class LogoutView(APIView):
 
 class ChangePasswordView(APIView):
     permission_classes = [IsAuthenticated]
+
+    @swagger_auto_schema(
+        operation_description="Change authenticated user's password.",
+        tags=["User"],  
+        request_body=openapi.Schema(
+            type=openapi.TYPE_OBJECT,
+            properties={
+                'old_password': openapi.Schema(type=openapi.TYPE_STRING),
+                'new_password': openapi.Schema(type=openapi.TYPE_STRING),
+            },
+            required=['old_password', 'new_password']
+        ),
+        responses={
+            200: "Password updated successfully",
+            400: "Incorrect old password or weak new password"
+        }
+    )
 
     def post(self, request):
         old_password = request.data.get("old_password")
