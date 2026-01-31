@@ -496,7 +496,7 @@ class CorporateRegisterView(generics.GenericAPIView):
                     status=status.HTTP_400_BAD_REQUEST,
                 )
 
-            role_map = {"doc1234": "doctor", "employee1234": "employee"}
+            role_map = {"doc1234": "doctor", "employee1234": "employee","admin1234": "admin"}
 
             expected_role = role_map.get(employee_id)
             if not expected_role:

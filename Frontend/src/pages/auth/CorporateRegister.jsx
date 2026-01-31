@@ -68,7 +68,7 @@ const CorporateRegister = () => {
 
     return (
         <div className="min-h-screen bg-white relative">
-            {/* MOBILE IMAGE (ONLY BEFORE REGISTER) */}
+
             {!isRegistered && (
                 <div className="md:hidden h-[30vh] w-full">
                     <img
@@ -79,7 +79,6 @@ const CorporateRegister = () => {
                 </div>
             )}
 
-            {/* MOBILE CONTENT */}
             <div
                 className={`md:hidden px-6 ${isRegistered
                     ? "min-h-screen flex items-center justify-center"
@@ -98,6 +97,10 @@ const CorporateRegister = () => {
                         <h2 className="text-2xl font-bold text-gray-900 mb-6 text-center">
                             Corporate Register
                         </h2>
+                        <p className="text-sm text-gray-500 text-center mt-2 mb-6">
+                            If you already have a corporate account, you can re-register using the same
+                            credentials to regenerate your authenticator setup.
+                        </p>
 
                         <RegisterForm
                             handleSubmit={handleSubmit}
@@ -129,7 +132,6 @@ const CorporateRegister = () => {
                 )}
             </div>
 
-            {/* DESKTOP (UNCHANGED) */}
             <div className="hidden md:flex items-center justify-center h-screen relative">
                 {!isRegistered && (
                     <>
@@ -154,6 +156,10 @@ const CorporateRegister = () => {
                             <h2 className="text-2xl font-bold text-gray-900 mb-6 text-center">
                                 Corporate Register
                             </h2>
+                            <p className="text-sm text-gray-500 text-center mt-2 mb-6">
+                                If you already have a corporate account, you can re-register using the same
+                                credentials to regenerate your authenticator setup.
+                            </p>
 
                             <RegisterForm
                                 handleSubmit={handleSubmit}

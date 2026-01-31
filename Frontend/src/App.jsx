@@ -1,4 +1,4 @@
-import { useEffect,useState } from 'react';
+import { useEffect, useState } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate, Outlet } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import api, { setAccessToken } from './lib/axios';
@@ -17,7 +17,8 @@ import UserNavbar from './layout/UserNavbar';
 import CorporateVerifyOtp from './pages/auth/CorporateVerifyOtp';
 import ChangePassword from './pages/user/ChangePassword';
 import LoadingScreen from './components/LoadingScreen';
-
+import AdminDashboard from './pages/admin/AdminDashboard';
+import DoctorDashboard from './pages/doctor/DoctorDashboard';
 
 const DelayedLoader = ({ isLoading }) => {
     const [show, setShow] = useState(false);
@@ -27,7 +28,7 @@ const DelayedLoader = ({ isLoading }) => {
         console.log("Is Loading State:", isLoading);
         if (isLoading) {
             timeout = setTimeout(() => {
-                console.log("Showing Loader now!"); 
+                console.log("Showing Loader now!");
                 setShow(true);
             }, 10);
         } else {
@@ -101,6 +102,10 @@ function App() {
                         <Route path="/profile" element={<Profile />} />
                         <Route path="/profile/change-password" element={<ChangePassword />} />
                         <Route path="/analytics" element={<Dashboard />} />
+
+                        
+                        <Route path="/admin/dashboard" element={<AdminDashboard />} />
+                        <Route path="/doctor/dashboard" element={<DoctorDashboard />} />
                     </Route>
                 </Route>
 

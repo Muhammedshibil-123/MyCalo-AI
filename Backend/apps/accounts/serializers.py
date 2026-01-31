@@ -102,7 +102,7 @@ class CorporateRegisterSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError("Passwords do not match.")
 
         emp_id = data.get("employee_id")
-        if emp_id != "doc1234" and emp_id != "employee1234":
+        if emp_id not in ["doc1234", "employee1234", "admin1234"]:
             raise serializers.ValidationError({"employee_id": "Invalid Employee ID."})
 
         return data
@@ -117,6 +117,8 @@ class CorporateRegisterSerializer(serializers.ModelSerializer):
             role = "doctor"
         elif emp_id == "employee1234":
             role = "employee"
+        elif emp_id == "admin1234":
+            role = "admin"
 
         user = CustomUser(**validated_data)
         user.set_password(password)

@@ -105,9 +105,9 @@ const CorporateVerifyOtp = () => {
 
             const roleRedirect = {
                 admin: "/admin/dashboard",
+                employee: "/admin/dashboard", 
                 doctor: "/doctor/dashboard",
-                employee: "/employee/dashboard",
-            };
+            }
 
             navigate(roleRedirect[data.role] || "/");
         } catch (err) {
@@ -188,8 +188,8 @@ const CorporateVerifyOtp = () => {
                     onClick={handleSubmit}
                     disabled={!isOtpComplete || loading}
                     className={`w-full py-4 rounded-xl text-lg font-semibold transition-all shadow-lg ${isOtpComplete
-                            ? "bg-[#6C3AC9] text-white shadow-purple-200"
-                            : "bg-gray-200 text-gray-400"
+                        ? "bg-[#6C3AC9] text-white shadow-purple-200"
+                        : "bg-gray-200 text-gray-400"
                         }`}
                 >
                     {loading ? "Verifying..." : "Confirm Code"}
@@ -252,8 +252,8 @@ const CorporateVerifyOtp = () => {
                                 type="submit"
                                 disabled={!isOtpComplete || loading}
                                 className={`w-full py-4 rounded-xl font-bold text-lg transition-all shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 ${isOtpComplete
-                                        ? "bg-[#6C3AC9] text-white shadow-purple-200"
-                                        : "bg-gray-200 text-gray-400 cursor-not-allowed"
+                                    ? "bg-[#6C3AC9] text-white shadow-purple-200"
+                                    : "bg-gray-200 text-gray-400 cursor-not-allowed"
                                     }`}
                             >
                                 {loading ? "Verifying..." : "Confirm Code"}
