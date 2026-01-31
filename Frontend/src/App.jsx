@@ -19,6 +19,7 @@ import ChangePassword from './pages/user/ChangePassword';
 import LoadingScreen from './components/LoadingScreen';
 import AdminDashboard from './pages/admin/AdminDashboard';
 import DoctorDashboard from './pages/doctor/DoctorDashboard';
+import NotFound from './pages/user/NotFound';
 
 const DelayedLoader = ({ isLoading }) => {
     const [show, setShow] = useState(false);
@@ -103,13 +104,13 @@ function App() {
                         <Route path="/profile/change-password" element={<ChangePassword />} />
                         <Route path="/analytics" element={<Dashboard />} />
 
-                        
+
                         <Route path="/admin/dashboard" element={<AdminDashboard />} />
                         <Route path="/doctor/dashboard" element={<DoctorDashboard />} />
                     </Route>
                 </Route>
 
-                <Route path="*" element={<Navigate to="/" replace />} />
+                <Route path="*" element={<NotFound/>} />
             </Routes>
         </Router>
     );

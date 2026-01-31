@@ -103,13 +103,21 @@ const CorporateVerifyOtp = () => {
             localStorage.setItem("user_details", JSON.stringify(userDetails));
             localStorage.removeItem("otp_email");
 
-            const roleRedirect = {
-                admin: "/admin/dashboard",
-                employee: "/admin/dashboard", 
-                doctor: "/doctor/dashboard",
+            const corporateRoles = ["admin", "employee", "doctor"];
+
+            if (!corporateRoles.includes(data.role)) {
+                setError("This account is not allowed to access corporate login.");
+                dispatch(logout());
+                return;
             }
 
-            navigate(roleRedirect[data.role] || "/");
+            const roleRedirect = {
+                admin: "/admin/dashboard",
+                employee: "/admin/dashboard",
+                doctor: "/doctor/dashboard",
+            };
+
+            navigate(roleRedirect[data.role], { replace: true });
         } catch (err) {
             const msg = err.response?.data;
             setError(
