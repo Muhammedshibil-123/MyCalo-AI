@@ -67,7 +67,7 @@ function App() {
                 const response = await api.post('/api/users/token/refresh/');
                 setAccessToken(response.data.access);
                 dispatch(setCredentials({
-                    user: response.data.user || { username: 'User' },
+                    user: response.data.user,
                     accessToken: response.data.access
                 }));
             } catch (err) {

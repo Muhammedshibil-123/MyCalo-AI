@@ -57,7 +57,6 @@ const Login = () => {
           })
         );
 
-        localStorage.setItem("user_details", JSON.stringify(userDetails));
         navigate("/");
       } catch (err) {
         setError(err.response?.data?.error || "Google Login Failed");
@@ -108,8 +107,6 @@ const Login = () => {
           user: userDetails,
         })
       );
-
-      localStorage.setItem("user_details", JSON.stringify(userDetails));
 
       navigate("/");
     } catch (err) {

@@ -100,7 +100,6 @@ const CorporateVerifyOtp = () => {
                 })
             );
 
-            localStorage.setItem("user_details", JSON.stringify(userDetails));
             localStorage.removeItem("otp_email");
 
             const corporateRoles = ["admin", "employee", "doctor"];

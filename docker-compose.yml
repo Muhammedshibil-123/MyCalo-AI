@@ -9,10 +9,11 @@ services:
       - ./Backend:/app  # Syncs your code so changes update instantly
     ports:
       - "8000:8000"
+    env_file:
+      - ./Backend/.env
     environment:
       - DATABASE_PASSWORD=postgres
-      - EMAIL_HOST_USER=your_email@gmail.com
-      - EMAIL_HOST_PASSWORD=your_app_password
+      
     depends_on:
       - db
 

@@ -13,7 +13,8 @@ from rest_framework.views import APIView
 from rest_framework_simplejwt.exceptions import InvalidToken, TokenError
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
-from rest_framework_simplejwt.tokens import RefreshToken
+from rest_framework_simplejwt.tokens import RefreshToken,AccessToken
+
 
 from drf_yasg.utils import swagger_auto_schema
 from drf_yasg import openapi
@@ -83,7 +84,20 @@ class CustomTokenRefreshView(TokenRefreshView):
             request.data["refresh"] = refresh_token
 
         try:
-            return super().post(request, *args, **kwargs)
+            response = super().post(request, *args, **kwargs)
+            if response.status_code == 200:
+                access_token_str = response.data.get("access")
+            
+                access_token = AccessToken(access_token_str)
+                user_id = access_token["user_id"]
+
+                user = CustomUser.objects.get(id=user_id)
+
+                user_serializer = UserSerializer(user)
+          
+                response.data["user"] = user_serializer.data
+
+            return response
         except (InvalidToken, TokenError, CustomUser.DoesNotExist) :
             response = Response(
                 {"error": "Invalid token"}, status=status.HTTP_401_UNAUTHORIZED
