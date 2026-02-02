@@ -29,10 +29,12 @@ class UnifiedSearchView(APIView):
             return Response(serializer.data)
         
         else:
-            foods = FoodItem.objects.filter(
-                (Q(name__icontains=query)) & 
-                (Q(is_public=True) | Q(created_by=request.user))
-            ).order_by('-is_verified')[:20]
+            filters = Q(name__icontains=query) & Q(is_public=True)
+            
+            if request.user.is_authenticated:
+                filters = filters | (Q(name__icontains=query) & Q(created_by=request.user))
+            
+            foods = FoodItem.objects.filter(filters).order_by('-is_verified')[:20]
             
             serializer = FoodItemSerializer(foods, many=True)
             return Response(serializer.data)
