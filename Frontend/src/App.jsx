@@ -20,6 +20,7 @@ import LoadingScreen from './components/LoadingScreen';
 import AdminDashboard from './pages/admin/AdminDashboard';
 import DoctorDashboard from './pages/doctor/DoctorDashboard';
 import NotFound from './pages/user/NotFound';
+import SearchPage from './pages/user/SearchPage';
 
 const getHomeRouteForRole = (role) => {
     if (role === 'admin' || role === 'employee') return '/admin/dashboard';
@@ -119,6 +120,7 @@ function App() {
                         <Route path="/profile" element={<Profile />} />
                         <Route path="/profile/change-password" element={<ChangePassword />} />
                         <Route path="/analytics" element={<Dashboard />} />
+                        <Route path="/search" element={<SearchPage />} />
                     </Route>
                 </Route>
 

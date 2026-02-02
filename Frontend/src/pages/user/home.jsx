@@ -38,6 +38,8 @@ const Home = () => {
         <div className="mt-6">
           <div className="relative">
             <input
+              readOnly
+              onClick={() => navigate("/search")}
               placeholder="Search calories, recipes or exercises..."
               className="w-full bg-gray-100 rounded-2xl h-14 px-5 pr-12 text-sm focus:outline-none"
             />
