@@ -1,14 +1,18 @@
 import { Outlet, useNavigate, useLocation } from "react-router-dom";
-import { IoMdHome } from "react-icons/io";
-import { IoAnalyticsSharp } from "react-icons/io5";
-import { FaRegUser } from "react-icons/fa6";
-import { SiHelpscout } from "react-icons/si";
+import { GoHomeFill, GoHome } from "react-icons/go";
+import { TbDashboardFilled, TbDashboard, TbMedicalCross } from "react-icons/tb";
+import { FaRegUser,FaUser  } from "react-icons/fa";
+
+import { IoMedical } from "react-icons/io5";
 
 const UserLayout = () => {
   const navigate = useNavigate();
   const location = useLocation();
 
   const isActive = (path) => location.pathname === path;
+
+  const activeColor = "#793cdd";
+  const inactiveColor = "#bfc3d7";
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -20,41 +24,53 @@ const UserLayout = () => {
             
             <button
               onClick={() => navigate("/")}
-              className={`flex flex-col items-center gap-1 px-3 text-sm ${
-                isActive("/") ? "text-[#6C3AC9]" : "text-gray-500"
-              }`}
+              className="flex flex-col items-center gap-1 px-3 text-sm"
+              style={{ color: isActive("/") ? activeColor : inactiveColor }}
             >
-              <IoMdHome className="text-2xl" />
+              {isActive("/") ? (
+                <GoHomeFill className="text-[30px]" />
+              ) : (
+                <GoHome className="text-[30px]" />
+              )}
               <span className="mt-1 text-xs">Home</span>
             </button>
 
             <button
               onClick={() => navigate("/analytics")}
-              className={`flex flex-col items-center gap-1 px-3 text-sm ${
-                isActive("/analytics") ? "text-[#6C3AC9]" : "text-gray-500"
-              }`}
+              className="flex flex-col items-center gap-1 px-3 text-sm"
+              style={{ color: isActive("/analytics") ? activeColor : inactiveColor }}
             >
-              <IoAnalyticsSharp className="text-2xl" />
+              {isActive("/analytics") ? (
+                <TbDashboardFilled className="text-[30px]" />
+              ) : (
+                <TbDashboard className="text-[30px]" />
+              )}
               <span className="mt-1 text-xs">Analytics</span>
             </button>
 
             <button
               onClick={() => navigate("/consult")}
-              className={`flex flex-col items-center gap-1 px-3 text-sm ${
-                isActive("/consult") ? "text-[#6C3AC9]" : "text-gray-500"
-              }`}
+              className="flex flex-col items-center gap-1 px-3 text-sm"
+              style={{ color: isActive("/consult") ? activeColor : inactiveColor }}
             >
-              <SiHelpscout className="text-2xl" />
+              {isActive("/consult") ? (
+                <IoMedical className="text-[30px]" />
+              ) : (
+                <TbMedicalCross className="text-[30px]" />
+              )}
               <span className="mt-1 text-xs">Consult</span>
             </button>
 
             <button
               onClick={() => navigate("/profile")}
-              className={`flex flex-col items-center gap-1 px-3 text-sm ${
-                isActive("/profile") ? "text-[#6C3AC9]" : "text-gray-500"
-              }`}
+              className="flex flex-col items-center gap-1 px-3 text-sm"
+              style={{ color: isActive("/profile") ? activeColor : inactiveColor }}
             >
-              <FaRegUser className="text-2xl" />
+              {isActive("/profile") ? (
+                <FaUser className="text-[30px]" />
+              ) : (
+                <FaRegUser className="text-[30px]" />
+              )}
               <span className="mt-1 text-xs">Profile</span>
             </button>
 

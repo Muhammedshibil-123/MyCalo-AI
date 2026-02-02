@@ -86,6 +86,19 @@ class CustomTokenRefreshView(TokenRefreshView):
         try:
             response = super().post(request, *args, **kwargs)
             if response.status_code == 200:
+
+                if "refresh" in response.data:
+                    new_refresh_token = response.data["refresh"]
+                    
+                    response.set_cookie(
+                        key=settings.SIMPLE_JWT["AUTH_COOKIE"],
+                        value=new_refresh_token,
+                        expires=settings.SIMPLE_JWT["REFRESH_TOKEN_LIFETIME"],
+                        secure=settings.SIMPLE_JWT["AUTH_COOKIE_SECURE"],
+                        httponly=settings.SIMPLE_JWT["AUTH_COOKIE_HTTP_ONLY"],
+                        samesite=settings.SIMPLE_JWT["AUTH_COOKIE_SAMESITE"],
+                    )
+
                 access_token_str = response.data.get("access")
             
                 access_token = AccessToken(access_token_str)
@@ -200,10 +213,9 @@ class VerifyOTPView(views.APIView):
 
                     refresh = RefreshToken.for_user(user)
 
-                    return Response(
+                    response = Response(
                         {
                             "message": "Account verified successfully!",
-                            "refresh": str(refresh),
                             "access": str(refresh.access_token),
                             "id": user.id,
                             "username": user.username,
@@ -213,6 +225,17 @@ class VerifyOTPView(views.APIView):
                         },
                         status=status.HTTP_200_OK,
                     )
+
+                    response.set_cookie(
+                        key=settings.SIMPLE_JWT["AUTH_COOKIE"],
+                        value=str(refresh),
+                        expires=settings.SIMPLE_JWT["REFRESH_TOKEN_LIFETIME"],
+                        secure=settings.SIMPLE_JWT["AUTH_COOKIE_SECURE"],
+                        httponly=settings.SIMPLE_JWT["AUTH_COOKIE_HTTP_ONLY"],
+                        samesite=settings.SIMPLE_JWT["AUTH_COOKIE_SAMESITE"],
+                    )
+
+                    return response
                 else:
                     return Response(
                         {"error": "Invalid OTP"}, status=status.HTTP_400_BAD_REQUEST
