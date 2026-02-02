@@ -194,6 +194,7 @@ SWAGGER_SETTINGS = {
             'description': 'Enter your JWT token in the format: Bearer <your_token>'
         }
     },
+    'SECURITY_REQUIREMENTS': [{'Bearer': []}],
     'USE_SESSION_AUTH': False, 
 }
 

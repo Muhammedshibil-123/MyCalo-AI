@@ -1,7 +1,7 @@
 from django.urls import include, path
 
-from .views import UnifiedSearchView
+from .views import GlobalSearchView
 
 urlpatterns = [
-    path("", UnifiedSearchView.as_view(), name="search"),
+    path("", GlobalSearchView.as_view(), name="search"),
 ]
