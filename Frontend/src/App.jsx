@@ -21,15 +21,19 @@ import AdminDashboard from './pages/admin/AdminDashboard';
 import DoctorDashboard from './pages/doctor/DoctorDashboard';
 import NotFound from './pages/user/NotFound';
 
+const getHomeRouteForRole = (role) => {
+    if (role === 'admin' || role === 'employee') return '/admin/dashboard';
+    if (role === 'doctor') return '/doctor/dashboard';
+    return '/'; 
+};
+
 const DelayedLoader = ({ isLoading }) => {
     const [show, setShow] = useState(false);
 
     useEffect(() => {
         let timeout;
-        console.log("Is Loading State:", isLoading);
         if (isLoading) {
             timeout = setTimeout(() => {
-                console.log("Showing Loader now!");
                 setShow(true);
             }, 10);
         } else {
@@ -47,14 +51,26 @@ const DelayedLoader = ({ isLoading }) => {
     );
 };
 
-const ProtectedRoute = () => {
-    const { isAuthenticated } = useSelector((state) => state.auth);
-    return isAuthenticated ? <Outlet /> : <Navigate to="/welcome" replace />;
+const PublicRoute = () => {
+    const { isAuthenticated, user } = useSelector((state) => state.auth);
+    if (isAuthenticated) {
+        const dest = getHomeRouteForRole(user?.role);
+        return <Navigate to={dest} replace />;
+    }
+    return <Outlet />;
 };
 
-const PublicRoute = () => {
-    const { isAuthenticated } = useSelector((state) => state.auth);
-    return isAuthenticated ? <Navigate to="/" replace /> : <Outlet />;
+const RoleRoute = ({ allowedRoles }) => {
+    const { user, isAuthenticated } = useSelector((state) => state.auth);
+
+    if (!isAuthenticated) return <Navigate to="/welcome" replace />;
+
+    if (!allowedRoles.includes(user?.role)) {
+        const correctHome = getHomeRouteForRole(user?.role);
+        return <Navigate to={correctHome} replace />;
+    }
+
+    return <Outlet />;
 };
 
 function App() {
@@ -78,7 +94,7 @@ function App() {
         };
 
         checkAuth();
-    }, [dispatch])
+    }, [dispatch]);
 
     if (loading) return <LoadingScreen />;
 
@@ -97,20 +113,24 @@ function App() {
                     <Route path="/welcome" element={<Welcome />} />
                 </Route>
 
-                <Route element={<ProtectedRoute />}>
+                <Route element={<RoleRoute allowedRoles={['user', undefined, null]} />}>
                     <Route element={<UserNavbar />}>
                         <Route path="/" element={<Home />} />
                         <Route path="/profile" element={<Profile />} />
                         <Route path="/profile/change-password" element={<ChangePassword />} />
                         <Route path="/analytics" element={<Dashboard />} />
-
-
-                        <Route path="/admin/dashboard" element={<AdminDashboard />} />
-                        <Route path="/doctor/dashboard" element={<DoctorDashboard />} />
                     </Route>
                 </Route>
 
-                <Route path="*" element={<NotFound/>} />
+                <Route element={<RoleRoute allowedRoles={['admin', 'employee']} />}>
+                    <Route path="/admin/dashboard" element={<AdminDashboard />} />
+                </Route>
+
+                <Route element={<RoleRoute allowedRoles={['doctor']} />}>
+                    <Route path="/doctor/dashboard" element={<DoctorDashboard />} />
+                </Route>
+
+                <Route path="*" element={<NotFound />} />
             </Routes>
         </Router>
     );
