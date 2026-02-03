@@ -11,3 +11,9 @@ class FoodItemSerializer(serializers.ModelSerializer):
         user = self.context['request'].user
         validated_data['created_by'] = user
         return super().create(validated_data)
+    
+class FoodAnalyzeSerializer(serializers.Serializer):
+    query = serializers.CharField(
+        required=True, 
+        help_text="Describe the food, e.g., '2 porotta and beef curry'"
+    )

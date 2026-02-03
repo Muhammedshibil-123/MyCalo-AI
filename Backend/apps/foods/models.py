@@ -10,6 +10,14 @@ class FoodItem(models.Model):
     # Verification System
     is_verified = models.BooleanField(default=False) 
     created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True)
+    SOURCE_CHOICES = [
+        ('AI', 'AI Generated'),
+        ('USER', 'User Created'),
+        ('ADMIN', 'Admin Verified'),
+        ('UNKNOWN', 'Unknown'),
+    ]
+    source = models.CharField(max_length=10, choices=SOURCE_CHOICES, default='UNKNOWN')
+    votes = models.IntegerField(default=0)
     is_public = models.BooleanField(default=True) 
 
     # Energy & Macros
