@@ -3,22 +3,20 @@ import requests
 import asyncio
 from config import settings
 
-
 class GeminiServiceError(Exception):
     def __init__(self, message: str, status_code: int = 502):
         self.message = message
         self.status_code = status_code
         super().__init__(message)
 
-
 class GeminiService:
     def __init__(self):
         if not settings.GEMINI_API_KEY:
             raise RuntimeError("GEMINI_API_KEY not configured")
-
+        
         self.api_key = settings.GEMINI_API_KEY
         self.base_url = "https://generativelanguage.googleapis.com/v1beta/models"
-
+        
         self.models_chain = [
             "gemini-2.5-flash-lite",
             "gemini-2.0-flash-lite",
@@ -27,67 +25,44 @@ class GeminiService:
             "gemini-2.5-pro",
         ]
 
-    async def analyze_food(self, food_query: str) -> dict:
+    async def analyze_food(self, food_query: str) -> dict: 
         prompt = f"""
-You are a professional nutritionist AI.
+        You are a professional nutritionist AI.
 
-The user input may contain:
-- multiple foods
-- misspellings
-- mixed dishes
-- quantities in informal language
+        USER INPUT: "{food_query}"
 
-YOU MUST FOLLOW THESE STEPS STRICTLY:
+        TASK:
+        1. Identify all distinct food items in the input.
+        2. Estimate the serving size based on the user's text.
+        3. Calculate nutrition for TWO standard metrics:
+           - Index 0: Per 100 grams
+           - Index 1: Per the ACTUAL serving size described by the user.
 
-STEP 1 — FOOD EXTRACTION (MANDATORY)
-From the user input, extract ALL distinct food items.
-- Mixed foods MUST be split into individual components.
-- Example: "macaroni with mayonnaise and tomato sauce" →
-  ["macaroni", "mayonnaise", "tomato sauce"]
-- Do NOT keep the original sentence as a food name.
-
-STEP 2 — NUTRITION ESTIMATION (MANDATORY)
-For EACH extracted food item, estimate nutrition separately.
-
-FORMAT RULES (VERY IMPORTANT):
-- Return ONLY valid JSON.
-- NO markdown.
-- NO explanations.
-- You MUST return an ARRAY under "items".
-- Each item MUST represent ONE food only.
-- You are NOT allowed to return a single merged food item.
-- If you cannot estimate exactly, make a reasonable approximation.
-- Use 0 ONLY if a value is truly unknown.
-
-ARRAY RULE:
-For each numeric nutrition field, return an array:
-[index 0 = per 100 grams, index 1 = actual user serving]
-
-STRICT JSON SCHEMA:
-
-{
-  "items": [
-    {
-      "food_name": string,
-      "portion_description": string,
-      "calories": [number, number],
-      "protein": [number, number],
-      "carbs": [number, number],
-      "fats": [number, number],
-      "fiber": [number, number],
-      "sugar": [number, number],
-      "saturated_fat": [number, number],
-      "sodium": [number, number],
-      "cholesterol": [number, number]
-    }
-  ]
-}
-
-"""
+        OUTPUT FORMAT (Strict JSON, No Markdown):
+        {{
+          "items": [
+            {{
+              "food_name": "Specific Food Name",
+              "portion_description": "e.g., 1 bowl (200g)",
+              "calories": [0, 0],
+              "protein": [0, 0],
+              "carbs": [0, 0],
+              "fats": [0, 0],
+              "fiber": [0, 0],
+              "sugar": [0, 0],
+              "saturated_fat": [0, 0],
+              "sodium": [0, 0],
+              "cholesterol": [0, 0]
+            }}
+          ]
+        }}
+        """
 
         payload = {
             "contents": [{"parts": [{"text": prompt}]}],
-            "generationConfig": {"response_mime_type": "application/json"},
+            "generationConfig": {
+                "response_mime_type": "application/json"
+            }
         }
 
         last_error = None
@@ -100,23 +75,20 @@ STRICT JSON SCHEMA:
                     requests.post,
                     f"{self.base_url}/{model}:generateContent?key={self.api_key}",
                     headers={"Content-Type": "application/json"},
-                    json=payload,
+                    json=payload
                 )
 
                 if response.status_code != 200:
-                    print(
-                        f"[FAIL] {model} failed with {response.status_code}. Error: {response.text}"
-                    )
+                    print(f"[FAIL] {model} failed with {response.status_code}. Error: {response.text}")
                     last_error = f"{model} error: {response.status_code}"
                     continue
 
                 result = response.json()
-
+                
                 try:
                     text_data = result["candidates"][0]["content"]["parts"][0]["text"]
-                    text_data = (
-                        text_data.replace("```json", "").replace("```", "").strip()
-                    )
+                    text_data = text_data.replace("```json", "").replace("```", "").strip()
+                    
                     print(f"[SUCCESS] Connected to {model}")
                     return json.loads(text_data)
 
@@ -132,6 +104,6 @@ STRICT JSON SCHEMA:
 
         print("[FATAL] All 5 failover models failed.")
         raise GeminiServiceError(
-            f"Service Unavailable. All AI models failed. Last error: {last_error}",
-            status_code=503,
-        )
+            f"Service Unavailable. All AI models failed. Last error: {last_error}", 
+            status_code=503
+        )   
