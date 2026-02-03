@@ -27,6 +27,18 @@ services:
       - POSTGRES_PASSWORD=postgres
     volumes:
       - postgres_data:/var/lib/postgresql/data
+      
+  # Service 3: NEW AI Service (FastAPI)
+  ai_service:
+    build: ./AI_Service
+    container_name: mycalo_ai_service
+    volumes:
+      - ./AI_Service:/app  # Hot-reloading for development
+    ports:
+      - "8001:8001"
+    env_file:
+      - ./AI_Service/.env  # Make sure this file has your GEMINI_API_KEY
+    # No depends_on needed for db (Stateless)
 
 volumes:
   postgres_data:
