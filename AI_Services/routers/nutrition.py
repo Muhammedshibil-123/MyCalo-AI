@@ -1,6 +1,6 @@
 from fastapi import APIRouter, HTTPException, status
 from schemas.nutrition import FoodCreateRequest, NutritionResponse
-from services import GeminiService
+from services.gemini import GeminiService, GeminiServiceError
 
 router = APIRouter(
     prefix="/nutrition",
@@ -9,31 +9,40 @@ router = APIRouter(
 
 gemini_service = GeminiService()
 
+
 @router.post("/analyze", response_model=NutritionResponse)
 async def analyze_food_with_ai(request: FoodCreateRequest):
     """
-    Receives a food name from Django, asks Gemini for nutrition info, and returns it.
+    Receives a food name, asks Gemini for nutrition info, and returns it.
     """
-    if not request.query:
-        raise HTTPException(status_code=400, detail="Query string is empty")
-
-    print(f"Analyzing food: {request.query}") # Debug log
-
-    data = await gemini_service.analyze_food(request.query)
-
-    if not data:
+    if not request.query or not request.query.strip():
         raise HTTPException(
-            status_code=status.HTTP_502_BAD_GATEWAY, 
-            detail="Failed to generate nutritional data from AI."
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Query string is empty"
         )
 
-    # Ensure the AI returned data matches our schema roughly
+    print(f"[AI REQUEST] Food: {request.query}")
+
+    try:
+        data = await gemini_service.analyze_food(request.query)
+
+    except GeminiServiceError as e:
+        raise HTTPException(
+            status_code=e.status_code,
+            detail=e.message
+        )
+
     return NutritionResponse(
         food_name=data.get("food_name", request.query),
-        calories=data.get("calories", 0),
-        protein=data.get("protein", 0.0),
-        carbs=data.get("carbs", 0.0),
-        fats=data.get("fats", 0.0),
-        fiber=data.get("fiber", 0.0),
-        description=data.get("description", "AI Generated Description")
+        calories=int(data.get("calories", 0)),
+        protein=float(data.get("protein", 0)),
+        carbs=float(data.get("carbs", 0)),
+        fats=float(data.get("fats", 0)),
+        fiber=float(data.get("fiber", 0)),
+        sugar=float(data.get("sugar", 0)),
+        saturated_fat=float(data.get("saturated_fat", 0)),
+        sodium=float(data.get("sodium", 0)),
+        cholesterol=float(data.get("cholesterol", 0)),
+        description=data.get("description"),
+        is_generated=True
     )

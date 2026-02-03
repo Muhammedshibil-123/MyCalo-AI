@@ -1,23 +1,19 @@
-
-
 services:
-  # Service 1: Your Django Backend
   backend:
-    build: ./Backend  # Path to the Dockerfile you just created
+    build: ./Backend
     container_name: mycalo_backend
     volumes:
-      - ./Backend:/app  # Syncs your code so changes update instantly
+      - ./Backend:/app
+    command: python manage.py runserver 0.0.0.0:8000
     ports:
       - "8000:8000"
     env_file:
       - ./Backend/.env
     environment:
       - DATABASE_PASSWORD=postgres
-      
     depends_on:
       - db
 
-  # Service 2: The Database (PostgreSQL)
   db:
     image: postgres:15
     container_name: mycalo_db
@@ -27,18 +23,19 @@ services:
       - POSTGRES_PASSWORD=postgres
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
 
-  # Service 3: NEW AI Service (FastAPI)
   ai_service:
     build: ./AI_Services
     container_name: mycalo_ai_service
     volumes:
-      - ./AI_Services:/app  # Hot-reloading for development
+      - ./AI_Services:/app
+    command: uvicorn main:app --host 0.0.0.0 --port 8001 --reload
     ports:
       - "8001:8001"
     env_file:
-      - ./AI_Services/.env  # Make sure this file has your GEMINI_API_KEY
-    # No depends_on needed for db (Stateless)
+      - ./AI_Services/.env
 
 volumes:
   postgres_data:

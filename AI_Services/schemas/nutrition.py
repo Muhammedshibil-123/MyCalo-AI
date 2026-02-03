@@ -10,5 +10,8 @@ class NutritionResponse(BaseModel):
     carbs: float
     fats: float
     fiber: float
-    description: str
-    is_generated: bool = True
+    sugar: float
+    saturated_fat: float
+    sodium: float
+    cholesterol: float
+    
