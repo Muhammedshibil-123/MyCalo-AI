@@ -1,81 +1,131 @@
-import { useState, useEffect, useRef, memo } from "react";
+import { useState, useEffect, memo, useCallback } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { 
-  IoMdArrowBack, 
-  IoMdSearch, 
-  IoMdAdd, 
-  IoMdClose, 
-  IoMdCheckmark,
-  IoMdRestaurant,
-  IoMdFlame,
-  IoMdFitness
-} from "react-icons/io";
-import { RiRobot2Line, RiEdit2Line, RiShoppingBasketLine } from "react-icons/ri";
+import { IoMdArrowBack, IoMdSearch, IoMdAdd, IoMdClose, IoMdRestaurant, IoMdArrowForward, IoMdFitness } from "react-icons/io";
+import { RiRobot2Line, RiEdit2Line } from "react-icons/ri";
+import { MdFastfood } from "react-icons/md";
 import api from "../../lib/axios";
 
-// --- 1. Isolated Search Input Component (Fixes Rerender Issue) ---
-const SearchHeader = memo(({ onSearch, onBack, initialQuery, onOpenCreateMenu }) => {
+const SearchHeader = memo(({ onSearch, onBack, initialQuery }) => {
   const [localValue, setLocalValue] = useState(initialQuery);
 
   useEffect(() => {
-    const handler = setTimeout(() => {
-      onSearch(localValue);
-    }, 400); // 400ms debounce
+    const handler = setTimeout(() => onSearch(localValue), 400);
     return () => clearTimeout(handler);
   }, [localValue, onSearch]);
 
   return (
-    <div className="flex items-center gap-3 mb-2">
-      <button 
-        onClick={onBack} 
-        className="p-2 -ml-2 rounded-full hover:bg-gray-100 text-gray-700 transition-colors"
-      >
-        <IoMdArrowBack className="text-2xl" />
-      </button>
-      
-      <div className="flex-1 relative group">
-        <input
-          autoFocus
-          value={localValue}
-          onChange={(e) => setLocalValue(e.target.value)}
-          placeholder="Search for food..."
-          className="w-full bg-gray-100/80 rounded-2xl h-12 px-4 pl-11 text-base text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:bg-white transition-all placeholder:text-gray-400"
-        />
-        <IoMdSearch className="absolute left-4 top-1/2 -translate-y-1/2 text-xl text-gray-400 group-focus-within:text-blue-500 transition-colors" />
+    <div className="sticky top-0 z-50 bg-white border-b border-gray-100">
+      <div className="flex items-center gap-3 p-4">
+        <button
+          onClick={onBack}
+          className="w-10 h-10 flex items-center justify-center bg-gray-100 hover:bg-gray-200 rounded-full transition-colors"
+        >
+          <IoMdArrowBack className="text-xl text-gray-700" />
+        </button>
+        <div className="relative flex-1">
+          <IoMdSearch className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 text-xl" />
+          <input
+            type="text"
+            value={localValue}
+            autoFocus
+            onChange={(e) => setLocalValue(e.target.value)}
+            placeholder="Search for food..."
+            className="w-full bg-gradient-to-r from-gray-50 to-gray-100/50 rounded-2xl h-12 px-4 pl-12 text-base focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:from-white focus:to-white transition-all shadow-sm"
+          />
+        </div>
       </div>
+    </div>
+  );
+});
 
-      {/* Top Right: Create New (AI/Manual) */}
-      <button 
-        onClick={onOpenCreateMenu}
-        className="w-12 h-12 flex items-center justify-center bg-black text-white rounded-2xl shadow-lg hover:scale-105 active:scale-95 transition-all"
-      >
-        <IoMdAdd className="text-2xl" />
-      </button>
+const SearchResults = memo(({ results, searchType, loading, onItemClick }) => {
+  if (loading) {
+    return (
+      <div className="space-y-3 p-4">
+        {[1, 2, 3].map(i => (
+          <div key={i} className="h-24 bg-gradient-to-r from-gray-100 via-gray-50 to-gray-100 rounded-2xl animate-pulse" />
+        ))}
+      </div>
+    );
+  }
+
+  if (results.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center py-20 px-4">
+        <div className="w-20 h-20 bg-gradient-to-br from-blue-100 to-blue-50 rounded-full flex items-center justify-center mb-4 animate-bounce">
+          <MdFastfood className="text-4xl text-blue-400" />
+        </div>
+        <p className="text-gray-400 text-sm font-medium">No results found</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-3 p-4 pb-32">
+      {results.map((item) => {
+        return (
+          <div
+            key={item.id}
+            onClick={() => onItemClick(item)}
+            className="relative overflow-hidden p-4 rounded-2xl border bg-white border-gray-100 hover:border-blue-200 hover:shadow-md active:scale-[0.98] transition-all duration-300 cursor-pointer"
+          >
+            <div className="flex items-start justify-between gap-3">
+              <div className="flex-1 min-w-0">
+                <h3 className="font-bold text-gray-900 text-base mb-1 truncate">{item.name}</h3>
+                <div className="flex items-center gap-1.5 mb-2">
+                  <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${
+                    item.source === 'usda' ? 'bg-green-100 text-green-700' : 'bg-purple-100 text-purple-700'
+                  }`}>
+                    {item.source}
+                  </span>
+                </div>
+                {searchType === "foods" ? (
+                  <>
+                    <p className="text-xs text-gray-500 mb-2">{item.serving_size} • {item.brand || 'Generic'}</p>
+                    <div className="flex items-center gap-3 text-xs">
+                      <span className="font-bold text-orange-600 bg-orange-50 px-2 py-1 rounded-lg">
+                        {item.calories} Cal
+                      </span>
+                      <span className="text-gray-600">P: {item.protein}g</span>
+                      <span className="text-gray-600">C: {item.carbohydrates}g</span>
+                      <span className="text-gray-600">F: {item.fat}g</span>
+                    </div>
+                  </>
+                ) : (
+                  <p className="text-xs text-gray-500">{item.met_value} MET</p>
+                )}
+              </div>
+              <div className="w-10 h-10 flex items-center justify-center rounded-full bg-gray-100 text-gray-400 group-hover:bg-blue-50 group-hover:text-blue-500 transition-all shrink-0">
+                <IoMdArrowForward className="text-xl" />
+              </div>
+            </div>
+          </div>
+        );
+      })}
     </div>
   );
 });
 
 const SearchPage = () => {
   const navigate = useNavigate();
-  const [searchParams, setSearchParams] = useSearchParams();
-  
-  // --- Core State ---
+  const [searchParams] = useSearchParams();
   const [query, setQuery] = useState(searchParams.get("q") || "");
   const [searchType, setSearchType] = useState("foods");
   const [results, setResults] = useState([]);
   const [loading, setLoading] = useState(false);
-
-  // --- Meal Context State ---
-  const [selectedMeal, setSelectedMeal] = useState(searchParams.get("meal") || null);
-  const [showMealPopover, setShowMealPopover] = useState(false);
-
-  // --- Batch Selection State ---
-  const [selectedItems, setSelectedItems] = useState([]); // Array of full item objects
-
-  // --- UI State ---
+  const [selectedMeal, setSelectedMeal] = useState(() => {
+    return sessionStorage.getItem("selectedMeal") || null;
+  });
   const [showCreateMenu, setShowCreateMenu] = useState(false);
 
-  // --- Search Logic ---
+  useEffect(() => {
+    if (selectedMeal) {
+      sessionStorage.setItem("selectedMeal", selectedMeal);
+    } else {
+      sessionStorage.removeItem("selectedMeal");
+    }
+  }, [selectedMeal]);
+
   useEffect(() => {
     const fetchResults = async () => {
       if (!query.trim()) {
@@ -85,7 +135,7 @@ const SearchPage = () => {
       setLoading(true);
       try {
         const response = await api.get("/api/search/", {
-          params: { q: query, type: searchType },
+          params: { q: query, type: searchType }
         });
         setResults(response.data);
       } catch (error) {
@@ -97,256 +147,156 @@ const SearchPage = () => {
     fetchResults();
   }, [query, searchType]);
 
-  // Sync meal change to URL (optional, keeps refresh consistancy)
-  useEffect(() => {
-    if (selectedMeal) {
-      searchParams.set("meal", selectedMeal);
-    } else {
-      searchParams.delete("meal");
-    }
-    setSearchParams(searchParams, { replace: true });
-  }, [selectedMeal, searchParams, setSearchParams]);
-
-
-  // --- Handlers ---
-
-  const toggleItemSelection = (item) => {
-    setSelectedItems((prev) => {
-      const exists = prev.find((i) => i.id === item.id);
-      if (exists) {
-        return prev.filter((i) => i.id !== item.id);
+  const handleItemClick = useCallback((item) => {
+    if (searchType === "foods") {
+      if (!selectedMeal) {
+        setShowCreateMenu(true);
+        return;
       }
-      return [...prev, item];
-    });
-  };
-
-  const handleMealSelect = (meal) => {
-    setSelectedMeal(meal);
-    setShowMealPopover(false);
-  };
-
-  const clearMeal = () => {
-    setSelectedMeal(null);
-  };
-
-  const handleBatchAdd = () => {
-    if (!selectedMeal) {
-      // If user tries to add without a meal selected, shake the toggle or show alert
-      // For now, force open the popover or show a toast
-      setShowMealPopover(true);
-      return;
+      navigate(`/food/${item.id}?meal=${selectedMeal}`);
+    } else {
+      navigate(`/exercise/${item.id}`);
     }
-    
-    // API Call to add all items
-    console.log(`Adding ${selectedItems.length} items to ${selectedMeal}`);
-    // await api.post('/track/batch', { meal: selectedMeal, items: selectedItems })
-    // navigate('/dashboard');
-  };
-
-  // Calculate totals for the floating bar
-  const totalCalories = selectedItems.reduce((sum, item) => sum + (item.calories || 0), 0);
+  }, [navigate, selectedMeal, searchType]);
 
   return (
-    <div className="min-h-screen bg-gray-50 pb-32 font-sans selection:bg-blue-100">
-      
-      {/* --- Sticky Header --- */}
-      <div className="bg-white/80 backdrop-blur-md px-4 pt-6 pb-2 sticky top-0 z-30 shadow-sm border-b border-gray-100">
-        <div className="max-w-xl mx-auto">
-          
-          <SearchHeader 
-            initialQuery={query} 
-            onSearch={setQuery} 
-            onBack={() => navigate(-1)}
-            onOpenCreateMenu={() => setShowCreateMenu(true)}
+    <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white">
+      <SearchHeader
+        initialQuery={query}
+        onSearch={setQuery}
+        onBack={() => navigate(-1)}
+      />
+
+      <div className="sticky top-[73px] z-40 bg-white/95 backdrop-blur-sm border-b border-gray-100 p-4 space-y-3">
+        <div className="flex items-center gap-2 bg-gray-100 p-1 rounded-xl">
+          {["foods", "exercises"].map(type => (
+            <button
+              key={type}
+              onClick={() => setSearchType(type)}
+              className={`flex-1 py-2 text-sm font-bold rounded-lg transition-all capitalize ${
+                searchType === type 
+                  ? "bg-white text-gray-900 shadow-md scale-105" 
+                  : "text-gray-500 hover:text-gray-700"
+              }`}
+            >
+              {type}
+            </button>
+          ))}
+        </div>
+
+        {selectedMeal && searchType === "foods" && (
+          <div className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-50 to-blue-100/50 rounded-xl border border-blue-200">
+            <IoMdRestaurant className="text-blue-600 text-lg" />
+            <span className="flex-1 text-sm font-bold text-blue-700 capitalize">{selectedMeal}</span>
+            <button
+              onClick={() => setSelectedMeal(null)}
+              className="w-6 h-6 flex items-center justify-center bg-blue-200 hover:bg-blue-300 rounded-full transition-colors"
+            >
+              <IoMdClose className="text-blue-700 text-sm" />
+            </button>
+          </div>
+        )}
+      </div>
+
+      <SearchResults
+        results={results}
+        searchType={searchType}
+        loading={loading}
+        onItemClick={handleItemClick}
+      />
+
+      {searchType === "foods" ? (
+        <button
+          onClick={() => setShowCreateMenu(true)}
+          className="fixed bottom-6 right-4 w-14 h-14 bg-gradient-to-br from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white rounded-full shadow-2xl flex items-center justify-center transition-all hover:scale-110 active:scale-95 z-40"
+        >
+          <IoMdAdd className="text-3xl" />
+        </button>
+      ) : (
+        <button
+          onClick={() => navigate("/create-exercise")}
+          className="fixed bottom-6 right-4 w-14 h-14 bg-gradient-to-br from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white rounded-full shadow-2xl flex items-center justify-center transition-all hover:scale-110 active:scale-95 z-40"
+        >
+          <IoMdFitness className="text-3xl" />
+        </button>
+      )}
+
+      {showCreateMenu && (
+        <>
+          <div
+            onClick={() => setShowCreateMenu(false)}
+            className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 animate-fadeIn"
           />
-
-          {/* Controls Row: Toggles + Meal Context Trigger */}
-          <div className="flex items-center justify-between gap-3 mt-3">
+          <div className="fixed bottom-0 left-0 right-0 bg-white rounded-t-3xl p-6 z-50 shadow-2xl animate-slideUp">
+            <div className="w-12 h-1.5 bg-gray-300 rounded-full mx-auto mb-6" />
             
-            {/* Type Toggles */}
-            <div className="flex p-1 bg-gray-100 rounded-xl flex-1">
-              <button
-                onClick={() => setSearchType("foods")}
-                className={`flex-1 py-1.5 text-xs font-bold rounded-lg transition-all ${
-                  searchType === "foods" ? "bg-white text-gray-900 shadow-sm" : "text-gray-500"
-                }`}
-              >
-                Foods
-              </button>
-              <button
-                onClick={() => setSearchType("exercises")}
-                className={`flex-1 py-1.5 text-xs font-bold rounded-lg transition-all ${
-                  searchType === "exercises" ? "bg-white text-gray-900 shadow-sm" : "text-gray-500"
-                }`}
-              >
-                Exercises
-              </button>
-            </div>
-
-            {/* Meal Selector Trigger (Right aligned to toggle) */}
-            <div className="relative">
-              {!selectedMeal ? (
-                <button
-                  onClick={() => setShowMealPopover(!showMealPopover)}
-                  className="flex items-center gap-1.5 px-3 py-2 bg-blue-50 text-blue-600 rounded-xl text-xs font-bold hover:bg-blue-100 transition-colors"
-                >
-                  <IoMdRestaurant /> Select Meal
-                  <IoMdAdd />
-                </button>
-              ) : (
-                // Replaces trigger when selected, but positioned separately below in user request? 
-                // User said: "below left of the foods and exerse toggle". 
-                // Let's put the trigger here, and the TAG below as requested.
-                // Keeping a "Change" button here could be useful, but let's hide it to follow "remove then plus button comes back" logic.
-                <button
-                  onClick={() => setShowMealPopover(!showMealPopover)}
-                  className="w-8 h-8 flex items-center justify-center bg-gray-100 text-gray-400 rounded-full hover:bg-gray-200"
-                >
-                  <IoMdAdd className="rotate-45" /> {/* Use as a clear or edit visual? Or just hidden? */}
-                  {/* Actually user said "if remove then plus button click time the pop will come" 
-                      So if selected, we show NOTHING here, but show the TAG below. */}
-                </button>
-              )}
-
-              {/* Mini Popover (Meal Selector) */}
-              {showMealPopover && (
-                <div className="absolute top-full right-0 mt-2 w-40 bg-white rounded-xl shadow-xl border border-gray-100 p-1.5 z-50 animate-in fade-in zoom-in-95 duration-200 origin-top-right">
+            {!selectedMeal && (
+              <div className="mb-6">
+                <p className="text-sm font-semibold text-gray-700 mb-3">Select Meal</p>
+                <div className="grid grid-cols-2 gap-2">
                   {['Breakfast', 'Lunch', 'Dinner', 'Snack'].map(meal => (
                     <button
                       key={meal}
-                      onClick={() => handleMealSelect(meal.toLowerCase())}
-                      className="w-full text-left px-3 py-2 text-xs font-medium text-gray-700 hover:bg-blue-50 hover:text-blue-600 rounded-lg transition-colors"
+                      onClick={() => {
+                        setSelectedMeal(meal.toLowerCase());
+                        setShowCreateMenu(false);
+                      }}
+                      className="px-4 py-3 text-sm font-bold text-gray-700 bg-gray-100 hover:bg-blue-50 hover:text-blue-600 rounded-xl transition-all active:scale-95"
                     >
                       {meal}
                     </button>
                   ))}
                 </div>
-              )}
-            </div>
-          </div>
-
-          {/* Selected Meal Tag (Below Toggle) */}
-          {selectedMeal && (
-            <div className="flex items-center gap-2 mt-3 animate-in slide-in-from-top-2 duration-300">
-              <span className="text-xs font-semibold text-gray-400">Context:</span>
-              <div className="flex items-center gap-1 pl-2 pr-1 py-1 bg-gray-900 text-white rounded-lg text-xs font-medium shadow-sm">
-                <span className="capitalize">{selectedMeal}</span>
-                <button 
-                  onClick={clearMeal}
-                  className="p-0.5 hover:bg-gray-700 rounded-full transition-colors"
-                >
-                  <IoMdClose />
-                </button>
               </div>
-            </div>
-          )}
-        </div>
-      </div>
+            )}
 
-      {/* --- Results List --- */}
-      <div className="max-w-xl mx-auto px-4 mt-4">
-        {loading ? (
-          <div className="space-y-4 animate-pulse">
-            {[1, 2, 3].map(i => (
-              <div key={i} className="h-20 bg-gray-100 rounded-2xl"></div>
-            ))}
-          </div>
-        ) : (
-          <div className="space-y-3">
-            {results.map((item) => {
-              const isSelected = selectedItems.find(i => i.id === item.id);
-              
-              return (
-                <div 
-                  key={item.id} 
-                  onClick={() => toggleItemSelection(item)} // Row click also toggles
-                  className={`relative overflow-hidden p-4 rounded-2xl border transition-all duration-200 cursor-pointer ${
-                    isSelected 
-                      ? "bg-blue-50/50 border-blue-500 shadow-sm" 
-                      : "bg-white border-gray-100 hover:border-blue-100 shadow-[0_2px_8px_rgba(0,0,0,0.02)]"
-                  }`}
-                >
-                  <div className="flex justify-between items-center relative z-10">
-                    <div>
-                      <h3 className={`font-semibold transition-colors ${isSelected ? "text-blue-900" : "text-gray-900"}`}>
-                        {item.name}
-                      </h3>
-                      {searchType === "foods" ? (
-                        <div className="flex items-center gap-2 mt-1">
-                          <span className="text-xs text-gray-500">{item.serving_size}</span>
-                          <span className="w-1 h-1 rounded-full bg-gray-300"></span>
-                          <span className="text-xs font-medium text-orange-600 flex items-center gap-0.5">
-                            <IoMdFlame /> {item.calories}
-                          </span>
-                        </div>
-                      ) : (
-                        <span className="text-xs text-blue-600 flex items-center gap-0.5 mt-1">
-                          <IoMdFitness /> {item.met_value} MET
-                        </span>
-                      )}
-                    </div>
-
-                    {/* Selection Button */}
-                    <button 
-                      className={`w-10 h-10 flex items-center justify-center rounded-full transition-all duration-300 ${
-                        isSelected 
-                          ? "bg-blue-500 text-white shadow-md scale-110" 
-                          : "bg-gray-100 text-gray-400 hover:bg-gray-200"
-                      }`}
-                    >
-                      {isSelected ? <IoMdCheckmark className="text-xl" /> : <IoMdAdd className="text-xl" />}
-                    </button>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        )}
-      </div>
-
-      {/* --- Floating Batch Add Bar (Bottom) --- */}
-      {selectedItems.length > 0 && (
-        <div className="fixed bottom-6 left-0 right-0 px-4 z-40">
-          <div className="max-w-xl mx-auto">
-            <div className="bg-gray-900/90 backdrop-blur-md text-white p-4 rounded-2xl shadow-2xl flex items-center justify-between animate-in slide-in-from-bottom-10 duration-300 border border-white/10">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-white/10 rounded-full flex items-center justify-center text-xl">
-                  <RiShoppingBasketLine />
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-gray-200">{selectedItems.length} items selected</p>
-                  <p className="text-xs text-gray-400">{totalCalories} Cal total</p>
-                </div>
-              </div>
-              
-              <button 
-                onClick={handleBatchAdd}
-                className="bg-white text-black px-6 py-2.5 rounded-xl text-sm font-bold hover:bg-gray-100 hover:scale-105 active:scale-95 transition-all shadow-lg"
+            <div className="space-y-3">
+              <button
+                onClick={() => navigate(`/create-ai?meal=${selectedMeal || ''}`)}
+                className="w-full flex items-center gap-4 p-4 hover:bg-gradient-to-r hover:from-purple-50 hover:to-blue-50 rounded-2xl cursor-pointer transition-all group active:scale-98"
               >
-                Add All
+                <div className="w-12 h-12 bg-gradient-to-br from-purple-100 to-blue-100 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform">
+                  <RiRobot2Line className="text-2xl text-purple-600" />
+                </div>
+                <div className="flex-1 text-left">
+                  <p className="font-bold text-gray-900">AI Track</p>
+                  <p className="text-xs text-gray-500">Quick photo tracking</p>
+                </div>
               </button>
-            </div>
-          </div>
-        </div>
-      )}
 
-      {/* --- Create Menu (Top Right) --- */}
-      {showCreateMenu && (
-        <>
-          <div className="fixed inset-0 z-40 bg-black/5" onClick={() => setShowCreateMenu(false)} />
-          <div className="absolute top-[80px] right-4 z-50 w-56 bg-white rounded-2xl shadow-xl border border-gray-100 p-2 animate-in fade-in zoom-in-95 origin-top-right">
-            <div onClick={() => navigate(`/create-ai?meal=${selectedMeal || ''}`)} className="flex items-center gap-3 p-3 hover:bg-gray-50 rounded-xl cursor-pointer transition-colors">
-              <div className="bg-blue-100 text-blue-600 p-2 rounded-lg"><RiRobot2Line /></div>
-              <span className="text-sm font-semibold text-gray-700">AI Track</span>
-            </div>
-            <div onClick={() => navigate(`/create-manual?meal=${selectedMeal || ''}`)} className="flex items-center gap-3 p-3 hover:bg-gray-50 rounded-xl cursor-pointer transition-colors">
-              <div className="bg-green-100 text-green-600 p-2 rounded-lg"><RiEdit2Line /></div>
-              <span className="text-sm font-semibold text-gray-700">Manual Entry</span>
+              <button
+                onClick={() => navigate(`/create-manual?meal=${selectedMeal || ''}`)}
+                className="w-full flex items-center gap-4 p-4 hover:bg-gradient-to-r hover:from-blue-50 hover:to-green-50 rounded-2xl cursor-pointer transition-all group active:scale-98"
+              >
+                <div className="w-12 h-12 bg-gradient-to-br from-blue-100 to-green-100 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform">
+                  <RiEdit2Line className="text-2xl text-blue-600" />
+                </div>
+                <div className="flex-1 text-left">
+                  <p className="font-bold text-gray-900">Manual Entry</p>
+                  <p className="text-xs text-gray-500">Enter details manually</p>
+                </div>
+              </button>
             </div>
           </div>
         </>
       )}
 
+      <style jsx>{`
+        @keyframes fadeIn {
+          from { opacity: 0; }
+          to { opacity: 1; }
+        }
+        @keyframes slideUp {
+          from { transform: translateY(100%); }
+          to { transform: translateY(0); }
+        }
+        .animate-fadeIn {
+          animation: fadeIn 0.2s ease-out;
+        }
+        .animate-slideUp {
+          animation: slideUp 0.3s ease-out;
+        }
+      `}</style>
     </div>
   );
 };
