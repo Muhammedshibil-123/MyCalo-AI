@@ -1,175 +1,347 @@
-import { useState } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import { RiCameraAiFill } from "react-icons/ri";
-import { IoMdSearch } from "react-icons/io";
+import { useSelector } from "react-redux";
+
+// --- Icons (Combined Set) ---
+import { 
+  RiCameraAiFill, 
+  RiSearchLine,
+  RiFireFill,
+  RiArrowLeftSLine,
+  RiArrowRightSLine
+} from "react-icons/ri";
+import { IoMdAdd } from "react-icons/io";
+import { 
+  MdOutlineFastfood, 
+  MdOutlineRestaurant, 
+  MdOutlineDinnerDining,
+  MdOutlineCookie,
+  MdLocalFireDepartment
+} from "react-icons/md";
+
+import { format, addDays, subDays, isSameDay } from "date-fns";
+import api from "../../lib/axios";
+
+// --- Helper Component: Macro Progress Bar (For the Top Stats) ---
+const MacroProgress = ({ label, current, total, colorClass, delay }) => {
+  const percent = Math.min(100, Math.round((current / total) * 100));
+  
+  return (
+    <div className="flex flex-col gap-1 w-full animate-fade-in-up" style={{ animationDelay: `${delay}ms` }}>
+      <div className="flex justify-between text-xs font-semibold text-gray-500">
+        <span>{label}</span>
+        <span>{current}/{total}g</span>
+      </div>
+      <div className="h-2 w-full bg-gray-100 rounded-full overflow-hidden">
+        <div 
+          className={`h-full rounded-full ${colorClass} transition-all duration-1000 ease-out`}
+          style={{ width: `${percent}%` }}
+        />
+      </div>
+    </div>
+  );
+};
 
 const Home = () => {
   const navigate = useNavigate();
-  
-  // 1. Added State for search input
-  const [searchText, setSearchText] = useState("");
+  const { user } = useSelector((state) => state.auth);
 
-  const kcalLeft = 1500;
-  const percent = 100;
-  const eaten = 0;
-  const burned = 0;
-  const carbs = { cur: 0, total: 113 };
-  const protein = { cur: 0, total: 131 };
-  const fat = { cur: 0, total: 58 };
+  const [currentDate, setCurrentDate] = useState(new Date());
+  const [dailyData, setDailyData] = useState(null);
+  const [loading, setLoading] = useState(true);
 
-  const meals = [
-    { id: "breakfast", title: "Breakfast", subtitle: "Recommended 300–450 kcal" },
-    { id: "lunch", title: "Lunch", subtitle: "Recommended 380–530 kcal" },
-    { id: "dinner", title: "Dinner", subtitle: "Recommended 380–530 kcal" }
-  ];
+  // Goals
+  const GOAL_CALORIES = 2500;
+  const GOAL_PROTEIN = 160;
+  const GOAL_CARBS = 300;
+  const GOAL_FAT = 80;
 
-  // 2. Added Search Handler Function
-  const handleSearch = () => {
-    if (searchText.trim()) {
-      // Navigate to search page with the query param
-      navigate(`/search?q=${encodeURIComponent(searchText)}`);
-    } else {
-      // If empty, just go to search page
-      navigate("/search");
+  // --- Data Fetching ---
+  useEffect(() => {
+    const fetchDailyLogs = async () => {
+      try {
+        setLoading(true);
+        const dateStr = currentDate.toISOString().split("T")[0];
+        const response = await api.get(`/api/tracking/logs/?date=${dateStr}`);
+        setDailyData(response.data);
+      } catch (error) {
+        console.error("Failed to fetch logs:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchDailyLogs();
+  }, [currentDate]);
+
+  // --- Stats Calculation ---
+  const stats = useMemo(() => {
+    let totalConsumed = dailyData?.total_grant_calories || 0;
+    let totalProtein = 0;
+    let totalCarbs = 0;
+    let totalFat = 0;
+
+    if (dailyData?.meals) {
+      dailyData.meals.forEach(meal => {
+        meal.items.forEach(item => {
+          totalProtein += item.food_details.protein || 0;
+          totalCarbs += item.food_details.carbohydrates || 0;
+          totalFat += item.food_details.fat || 0;
+        });
+      });
     }
+
+    return {
+      calories: {
+        goal: GOAL_CALORIES,
+        eaten: Math.round(totalConsumed),
+        left: Math.max(0, GOAL_CALORIES - Math.round(totalConsumed)),
+        percent: Math.min(100, (totalConsumed / GOAL_CALORIES) * 100)
+      },
+      macros: {
+        protein: Math.round(totalProtein),
+        carbs: Math.round(totalCarbs),
+        fat: Math.round(totalFat)
+      }
+    };
+  }, [dailyData]);
+
+  // --- Handlers ---
+  const handleDateChange = (direction) => {
+    setCurrentDate((prev) => direction === "prev" ? subDays(prev, 1) : addDays(prev, 1));
   };
 
-  return (
-    <div className="min-h-screen bg-white text-gray-900 pb-28">
-      <div className="px-5 pt-6 max-w-xl mx-auto">
-        <div className="flex items-start justify-between">
-          <div className="flex-1">
-            <h2 className="text-2xl md:text-3xl font-extrabold leading-tight">Hi, Muhammed</h2>
-          </div>
+  const getMealData = (type) => {
+    if (!dailyData?.meals) return { items: [], total_meal_calories: 0 };
+    return dailyData.meals.find(m => m.meal_type === type) || { items: [], total_meal_calories: 0 };
+  };
 
-          <button
+  // --- Configuration (Your Preferred Colors & Icons) ---
+  const mealSections = [
+    { 
+      id: "breakfast", 
+      label: "Breakfast", 
+      icon: MdOutlineFastfood,
+      time: "7:00 - 10:00 AM",
+      gradient: "from-orange-50 to-orange-100/50",
+      iconBg: "from-orange-100 to-orange-50"
+    },
+    { 
+      id: "lunch", 
+      label: "Lunch", 
+      icon: MdOutlineRestaurant,
+      time: "12:00 - 2:00 PM",
+      gradient: "from-blue-50 to-blue-100/50",
+      iconBg: "from-blue-100 to-blue-50"
+    },
+    { 
+      id: "dinner", 
+      label: "Dinner", 
+      icon: MdOutlineDinnerDining,
+      time: "6:00 - 9:00 PM",
+      gradient: "from-purple-50 to-purple-100/50",
+      iconBg: "from-purple-100 to-purple-50"
+    },
+    { 
+      id: "snack", 
+      label: "Snacks", 
+      icon: MdOutlineCookie,
+      time: "Anytime",
+      gradient: "from-green-50 to-green-100/50",
+      iconBg: "from-green-100 to-green-50"
+    },
+  ];
+
+  // Circle Progress Math
+  const radius = 60;
+  const circumference = 2 * Math.PI * radius;
+  const strokeDashoffset = circumference - (stats.calories.percent / 100) * circumference;
+
+  return (
+    <div className="min-h-screen bg-gray-50 pb-28 font-sans">
+      <style>{`
+        @keyframes fade-in-up {
+          from { opacity: 0; transform: translateY(15px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-fade-in-up { animation: fade-in-up 0.5s ease-out forwards; }
+      `}</style>
+
+      {/* --- TOP SECTION (My Design) --- */}
+      <div className="bg-white rounded-b-[2.5rem] shadow-sm px-6 pt-6 pb-8 z-10 relative mb-6">
+        
+        {/* Header & QR */}
+        <div className="flex items-center justify-between mb-6">
+          <div>
+            <h1 className="text-xl font-bold text-gray-900">
+              Hi, {user?.first_name || "User"} 👋
+            </h1>
+            <p className="text-xs text-gray-500 font-medium mt-0.5">Let's hit your goals today!</p>
+          </div>
+          <button 
             onClick={() => navigate("/qr")}
-            className="ml-4 w-12 h-12 rounded-full bg-black/90 flex items-center justify-center text-white shadow-md"
-            aria-label="scan-qr"
+            className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center text-gray-700 hover:bg-gray-200 transition-colors shadow-sm"
           >
             <RiCameraAiFill className="text-xl" />
           </button>
         </div>
 
-        <div className="mt-6">
-          <div className="relative">
-            {/* 3. Updated Input Field */}
-            <input
-              value={searchText}
-              onChange={(e) => setSearchText(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && handleSearch()}
-              placeholder="Search calories, recipes or exercises..."
-              className="w-full bg-gray-100 rounded-2xl h-14 px-5 pr-12 text-sm focus:outline-none"
-            />
-            {/* 4. Updated Search Icon Button */}
-            <button 
-              onClick={handleSearch}
-              className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 p-2"
-            >
-              <IoMdSearch className="text-xl" />
-            </button>
-          </div>
+        {/* Search Bar */}
+        <div 
+          onClick={() => navigate("/search")}
+          className="bg-gray-50 border border-gray-100 rounded-2xl p-3.5 flex items-center gap-3 mb-6 cursor-pointer active:scale-[0.98] transition-transform"
+        >
+          <RiSearchLine className="text-gray-400 text-xl" />
+          <span className="text-gray-400 text-sm font-medium">Search for food, recipes...</span>
         </div>
 
-        <div className="mt-5 bg-gradient-to-b from-gray-50 to-white rounded-2xl p-4 shadow-sm">
-          <div className="text-sm text-gray-700">Hey, I'm <span className="font-semibold text-[#6C3AC9]">Sofiya</span> — your AI assistant.</div>
-          <div className="mt-2 text-xs text-gray-700">
-            Today your protein intake looks low and cholesterol indicators are slightly high. Try adding a small portion of lean protein (eggs, chicken), more vegetables and fiber-rich snacks. Prefer grilled or steamed options.
+        {/* Date Selector */}
+        <div className="flex items-center justify-between bg-gray-50 p-1 rounded-xl mb-6">
+          <button onClick={() => handleDateChange("prev")} className="p-2 text-gray-400 hover:text-gray-600 active:scale-90 transition-transform">
+            <RiArrowLeftSLine className="text-xl" />
+          </button>
+          <div className="flex items-center gap-2">
+            <span className="text-sm font-bold text-gray-800">
+              {isSameDay(currentDate, new Date()) ? "Today" : format(currentDate, "MMMM d")}
+            </span>
           </div>
+          <button onClick={() => handleDateChange("next")} className="p-2 text-gray-400 hover:text-gray-600 active:scale-90 transition-transform">
+            <RiArrowRightSLine className="text-xl" />
+          </button>
         </div>
 
-        <div className="mt-6 rounded-xl overflow-hidden p-4 shadow-sm bg-white border">
-          <div className="flex flex-col md:flex-row items-center gap-4">
-            <div className="w-28 h-28 rounded-full flex items-center justify-center relative mx-auto md:mx-0">
-              <div className="absolute inset-0 rounded-full border border-gray-200"></div>
-              <div className="w-24 h-24 rounded-full bg-gradient-to-tr from-blue-50 to-white flex flex-col items-center justify-center">
-                <div className="text-3xl md:text-4xl font-extrabold text-blue-500">{kcalLeft}</div>
-                <div className="text-[10px] md:text-xs text-gray-400">KCAL LEFT</div>
-                <div className="mt-1 text-blue-500 text-sm">{percent} %</div>
-              </div>
+        {/* Main Stats (Circular + Macros) */}
+        <div className="flex items-center gap-6">
+          {/* Circular Progress */}
+          <div className="relative w-32 h-32 flex-shrink-0">
+            <svg className="w-full h-full transform -rotate-90">
+              <circle cx="64" cy="64" r={radius} stroke="#f3f4f6" strokeWidth="8" fill="none" />
+              <circle
+                cx="64" cy="64" r={radius}
+                stroke="url(#gradient)" strokeWidth="8" fill="none"
+                strokeDasharray={circumference}
+                strokeDashoffset={strokeDashoffset}
+                strokeLinecap="round"
+                className="transition-all duration-1000 ease-out"
+              />
+              <defs>
+                <linearGradient id="gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" stopColor="#3b82f6" />
+                  <stop offset="100%" stopColor="#8b5cf6" />
+                </linearGradient>
+              </defs>
+            </svg>
+            <div className="absolute inset-0 flex flex-col items-center justify-center">
+              <span className="text-2xl font-bold text-gray-800">{stats.calories.left}</span>
+              <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Left</span>
+            </div>
+          </div>
+
+          {/* Macros & Small Cards */}
+          <div className="flex-1 space-y-4">
+            <div className="grid grid-cols-2 gap-3 mb-2">
+               <div className="bg-green-50 rounded-xl p-2.5">
+                 <div className="flex items-center gap-1 mb-1">
+                   <RiFireFill className="text-green-500 text-xs" />
+                   <span className="text-[10px] font-bold text-green-700 uppercase">Eaten</span>
+                 </div>
+                 <span className="text-lg font-bold text-gray-800">{stats.calories.eaten}</span>
+               </div>
+               <div className="bg-orange-50 rounded-xl p-2.5">
+                 <div className="flex items-center gap-1 mb-1">
+                   <MdLocalFireDepartment className="text-orange-500 text-xs" />
+                   <span className="text-[10px] font-bold text-orange-700 uppercase">Burnt</span>
+                 </div>
+                 <span className="text-lg font-bold text-gray-800">0</span>
+               </div>
             </div>
 
-            <div className="flex-1 w-full">
-              <div className="flex justify-between gap-3">
-                <div className="flex-1 bg-green-50 rounded-xl p-3 flex flex-col items-center">
-                  <div className="text-2xl font-semibold">{eaten}</div>
-                  <div className="text-xs text-gray-600 mt-1">EATEN</div>
-                </div>
-
-                <div className="flex-1 bg-red-50 rounded-xl p-3 flex flex-col items-center">
-                  <div className="text-2xl font-semibold">{burned}</div>
-                  <div className="text-xs text-gray-600 mt-1">BURNED</div>
-                </div>
-              </div>
-
-              <div className="mt-4 bg-black/90 rounded-xl text-white p-3">
-                <div className="flex justify-between items-center">
-                  <div className="text-sm opacity-80">STATS</div>
-                  <div className="text-sm">▾</div>
-                </div>
-
-                <div className="mt-3 grid grid-cols-3 gap-3">
-                  <div className="text-center">
-                    <div className="text-xs md:text-sm">Carbs</div>
-                    <div className="mt-2 h-1 bg-white/30 rounded-full overflow-hidden">
-                      <div style={{ width: `${(carbs.cur / carbs.total) * 100 || 0}%` }} className="h-1 bg-white rounded-full"></div>
-                    </div>
-                    <div className="mt-1 text-[10px] md:text-xs">{carbs.cur}/{carbs.total}g</div>
-                  </div>
-
-                  <div className="text-center">
-                    <div className="text-xs md:text-sm">Protein</div>
-                    <div className="mt-2 h-1 bg-white/30 rounded-full overflow-hidden">
-                      <div style={{ width: `${(protein.cur / protein.total) * 100 || 0}%` }} className="h-1 bg-white rounded-full"></div>
-                    </div>
-                    <div className="mt-1 text-[10px] md:text-xs">{protein.cur}/{protein.total}g</div>
-                  </div>
-
-                  <div className="text-center">
-                    <div className="text-xs md:text-sm">Fat</div>
-                    <div className="mt-2 h-1 bg-white/30 rounded-full overflow-hidden">
-                      <div style={{ width: `${(fat.cur / fat.total) * 100 || 0}%` }} className="h-1 bg-white rounded-full"></div>
-                    </div>
-                    <div className="mt-1 text-[10px] md:text-xs">{fat.cur}/{fat.total}g</div>
-                  </div>
-                </div>
-              </div>
-
-              <div className="mt-4 flex items-center justify-center gap-6 text-gray-600">
-                <button className="p-2 rounded-full bg-gray-100">◀</button>
-                <div className="text-center">
-                  <div className="text-xs">JAN 26, 2026</div>
-                  <div className="text-sm font-semibold">TODAY</div>
-                </div>
-                <button className="p-2 rounded-full bg-gray-100">▶</button>
-              </div>
+            <div className="space-y-2.5">
+              <MacroProgress label="Protein" current={stats.macros.protein} total={GOAL_PROTEIN} colorClass="bg-blue-500" delay={100} />
+              <MacroProgress label="Carbs" current={stats.macros.carbs} total={GOAL_CARBS} colorClass="bg-purple-500" delay={200} />
+              <MacroProgress label="Fat" current={stats.macros.fat} total={GOAL_FAT} colorClass="bg-yellow-500" delay={300} />
             </div>
           </div>
         </div>
+      </div>
 
-        <div className="mt-6 space-y-4">
-          {meals.map((m) => (
-            <div key={m.id} className="flex items-center justify-between bg-white border rounded-2xl px-4 py-3 shadow-sm">
-              <div className="flex items-center gap-4">
-                <div className="w-12 h-12 rounded-full bg-gradient-to-br from-pink-400 to-yellow-300 flex items-center justify-center text-white text-sm font-semibold">
-                  {m.title[0]}
-                </div>
-                <div>
-                  <div className="text-base font-semibold">{m.title}</div>
-                  <div className="text-sm text-gray-500 mt-1">{m.subtitle}</div>
-                </div>
-              </div>
-
-              <button
-                onClick={() => navigate("/add-meal")}
-                className="w-9 h-9 rounded-full bg-gray-100 flex items-center justify-center text-gray-600"
-                aria-label={`add-${m.id}`}
+      {/* --- MEAL SECTION (Your Design) --- */}
+      <div className="px-4 space-y-4">
+        {loading ? (
+          // Loading Skeletons
+          [1, 2, 3].map(i => (
+            <div key={i} className="h-28 bg-gray-200 rounded-2xl animate-pulse" />
+          ))
+        ) : (
+          mealSections.map((meal, index) => {
+            const data = getMealData(meal.id);
+            const MealIcon = meal.icon;
+            
+            return (
+              <div 
+                key={meal.id} 
+                className="bg-white rounded-2xl shadow-sm overflow-hidden border border-gray-100 transition-all duration-300 hover:shadow-md animate-fade-in-up"
+                style={{ animationDelay: `${300 + index * 100}ms` }}
               >
-                +
-              </button>
-            </div>
-          ))}
-        </div>
+                {/* Header (Your Gradient Style) */}
+                <div className={`px-4 py-3 bg-gradient-to-r ${meal.gradient} border-b border-gray-100`}>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className={`w-11 h-11 rounded-xl bg-gradient-to-br ${meal.iconBg} flex items-center justify-center shadow-sm`}>
+                        <MealIcon className="text-xl text-gray-700" />
+                      </div>
+                      <div>
+                        <div className="text-sm font-bold text-gray-900">{meal.label}</div>
+                        <div className="text-xs text-gray-600 font-medium">
+                          {data.total_meal_calories > 0 
+                            ? `${data.total_meal_calories} kcal` 
+                            : meal.time}
+                        </div>
+                      </div>
+                    </div>
+
+                    <button
+                      onClick={() => navigate(`/search?meal=${meal.id}&date=${currentDate.toISOString().split('T')[0]}`)}
+                      className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center text-white hover:from-blue-600 hover:to-blue-700 shadow-md active:scale-95 transition-all"
+                    >
+                      <IoMdAdd className="text-xl" />
+                    </button>
+                  </div>
+                </div>
+
+                {/* Items List (Your List Style) */}
+                {data.items.length > 0 ? (
+                  <div className="divide-y divide-gray-100">
+                    {data.items.map((item, itemIndex) => (
+                      <div 
+                        key={item.id} 
+                        className="px-4 py-3 flex items-center justify-between hover:bg-gray-50 transition-colors"
+                      >
+                        <div className="flex-1 pr-4">
+                          <div className="text-sm font-bold text-gray-900">{item.food_details.name}</div>
+                          <div className="text-xs text-gray-500 mt-1 flex items-center gap-2">
+                            <span>{item.user_serving_grams}g</span>
+                            <span className="w-1 h-1 bg-gray-300 rounded-full" />
+                            <span>{item.food_details.protein}g Protein</span>
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <div className="text-base font-bold text-orange-600 bg-orange-50 px-2 py-1 rounded-lg">
+                            {item.food_details.calories}
+                          </div>
+                          <div className="text-[10px] text-gray-500 font-semibold mt-0.5">kcal</div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="px-4 py-6 text-center">
+                    <p className="text-xs text-gray-400 font-medium">No food logged yet</p>
+                  </div>
+                )}
+              </div>
+            );
+          })
+        )}
       </div>
     </div>
   );

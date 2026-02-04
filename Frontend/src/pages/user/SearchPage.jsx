@@ -164,7 +164,7 @@ const SearchPage = () => {
       <SearchHeader
         initialQuery={query}
         onSearch={setQuery}
-        onBack={() => navigate(-1)}
+        onBack={() => navigate("/")}
       />
 
       <div className="sticky top-[73px] z-40 bg-white/95 backdrop-blur-sm border-b border-gray-100 p-4 space-y-3">

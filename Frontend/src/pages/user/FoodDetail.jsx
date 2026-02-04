@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { IoMdArrowBack, IoMdFlame, IoMdCheckmark, IoMdNutrition } from "react-icons/io";
+import { AiOutlineLoading3Quarters } from "react-icons/ai"; // Added loading icon
 import { TbScale } from "react-icons/tb";
 import api from "../../lib/axios";
 
@@ -8,9 +9,14 @@ const FoodDetail = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
+  
+  // Get meal and date from URL params (defaults provided if missing)
   const meal = searchParams.get("meal");
+  const dateParam = searchParams.get("date");
+  
   const [food, setFood] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [isAdding, setIsAdding] = useState(false); // State for the add button loading
   const [grams, setGrams] = useState(100);
   const [selectedUnit, setSelectedUnit] = useState("grams");
 
@@ -47,6 +53,44 @@ const FoodDetail = () => {
     const numValue = parseFloat(value) || 0;
     setGrams(numValue);
     setSelectedUnit("custom");
+  };
+
+  // --- NEW: Handle Adding Food ---
+  const handleAddFood = async () => {
+    if (isAdding) return;
+    setIsAdding(true);
+
+    // 1. Artificial 1-second delay for UX
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+
+    try {
+      // 2. Prepare Data
+      // Use date from URL or default to Today (YYYY-MM-DD)
+      const dateToLog = dateParam || new Date().toISOString().split('T')[0];
+      
+      // Ensure meal type is Uppercase (e.g., "lunch" -> "LUNCH")
+      const mealType = meal ? meal.toUpperCase() : "SNACK";
+
+      const payload = {
+        food_item: id,
+        user_serving_grams: grams,
+        meal_type: mealType,
+        date: dateToLog,
+      };
+
+      // 3. API Call
+      await api.post("/api/tracking/logs/", payload);
+
+      // 4. Redirect to Search Page
+      // Passing meal/date back allows the user to keep adding items to the same meal
+      navigate(`/search?meal=${meal || 'snack'}&date=${dateToLog}`);
+
+    } catch (error) {
+      console.error("Error adding food to diary:", error);
+      // Optional: You could add toast notification here
+    } finally {
+      setIsAdding(false);
+    }
   };
 
   if (loading) {
@@ -225,9 +269,26 @@ const FoodDetail = () => {
 
       <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-4">
         <div className="max-w-2xl mx-auto">
-          <button className="w-full py-3.5 bg-gray-900 hover:bg-gray-800 text-white font-semibold rounded-xl transition-all active:scale-98 flex items-center justify-center gap-2">
-            <IoMdCheckmark className="text-xl" />
-            Add to {meal ? meal.charAt(0).toUpperCase() + meal.slice(1) : 'Diary'}
+          <button
+            onClick={handleAddFood}
+            disabled={isAdding}
+            className={`w-full py-3.5 font-semibold rounded-xl transition-all flex items-center justify-center gap-2 ${
+              isAdding 
+              ? 'bg-gray-800 text-gray-300 cursor-not-allowed' 
+              : 'bg-gray-900 hover:bg-gray-800 text-white active:scale-98'
+            }`}
+          >
+            {isAdding ? (
+              <>
+                <AiOutlineLoading3Quarters className="text-xl animate-spin" />
+                <span>Adding...</span>
+              </>
+            ) : (
+              <>
+                <IoMdCheckmark className="text-xl" />
+                <span>Add to {meal ? meal.charAt(0).toUpperCase() + meal.slice(1) : 'Diary'}</span>
+              </>
+            )}
           </button>
         </div>
       </div>
