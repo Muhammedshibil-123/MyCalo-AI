@@ -1,9 +1,14 @@
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { RiCameraAiFill } from "react-icons/ri";
 import { IoMdSearch } from "react-icons/io";
 
 const Home = () => {
   const navigate = useNavigate();
+  
+  // 1. Added State for search input
+  const [searchText, setSearchText] = useState("");
+
   const kcalLeft = 1500;
   const percent = 100;
   const eaten = 0;
@@ -17,6 +22,17 @@ const Home = () => {
     { id: "lunch", title: "Lunch", subtitle: "Recommended 380–530 kcal" },
     { id: "dinner", title: "Dinner", subtitle: "Recommended 380–530 kcal" }
   ];
+
+  // 2. Added Search Handler Function
+  const handleSearch = () => {
+    if (searchText.trim()) {
+      // Navigate to search page with the query param
+      navigate(`/search?q=${encodeURIComponent(searchText)}`);
+    } else {
+      // If empty, just go to search page
+      navigate("/search");
+    }
+  };
 
   return (
     <div className="min-h-screen bg-white text-gray-900 pb-28">
@@ -37,15 +53,21 @@ const Home = () => {
 
         <div className="mt-6">
           <div className="relative">
+            {/* 3. Updated Input Field */}
             <input
-              readOnly
-              onClick={() => navigate("/search")}
+              value={searchText}
+              onChange={(e) => setSearchText(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && handleSearch()}
               placeholder="Search calories, recipes or exercises..."
               className="w-full bg-gray-100 rounded-2xl h-14 px-5 pr-12 text-sm focus:outline-none"
             />
-            <div className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400">
-              <IoMdSearch />
-            </div>
+            {/* 4. Updated Search Icon Button */}
+            <button 
+              onClick={handleSearch}
+              className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 p-2"
+            >
+              <IoMdSearch className="text-xl" />
+            </button>
           </div>
         </div>
 

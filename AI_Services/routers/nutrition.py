@@ -20,7 +20,7 @@ async def analyze_food_with_ai(request: FoodCreateRequest):
         data = await gemini_service.analyze_food(request.query)
         
         if not data or "items" not in data:
-             return {"items": []}
+             return {"overall_suggestion": "Could not analyze food.", "items": []}
 
         return data
 
@@ -28,4 +28,4 @@ async def analyze_food_with_ai(request: FoodCreateRequest):
         raise HTTPException(status_code=e.status_code, detail=e.message)
     except Exception as e:
         print(f"[INTERNAL ERROR] {e}")
-        return {"items": []}
+        return {"overall_suggestion": "Service currently unavailable.", "items": []}

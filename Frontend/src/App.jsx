@@ -120,8 +120,8 @@ function App() {
                         <Route path="/profile" element={<Profile />} />
                         <Route path="/profile/change-password" element={<ChangePassword />} />
                         <Route path="/analytics" element={<Dashboard />} />
-                        <Route path="/search" element={<SearchPage />} />
                     </Route>
+                    <Route path="/search" element={<SearchPage />} />
                 </Route>
 
                 <Route element={<RoleRoute allowedRoles={['admin', 'employee']} />}>
