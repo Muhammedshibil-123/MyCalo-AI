@@ -5,7 +5,7 @@ import { startFetching, stopFetching } from "../redux/authslice";
 let access_token_in_memory = null;
 
 const api = axios.create({
-  baseURL: "http://localhost:8000",
+  baseURL: "http://localhost:8080",
   withCredentials: true,
 });
 

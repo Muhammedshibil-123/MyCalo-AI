@@ -20,11 +20,12 @@ class GeminiVisionService:
         
         # Models that support vision (images)
         self.models_chain = [
-            "gemini-2.5-pro",
             "gemini-2.5-flash",
             "gemini-2.5-flash-lite",
+            "gemini-2.5-pro",
             "gemini-2.0-flash",
             "gemini-2.0-flash-lite",
+            
         ]
 
     async def analyze_food_image(self, image_bytes: bytes, mime_type: str) -> dict:

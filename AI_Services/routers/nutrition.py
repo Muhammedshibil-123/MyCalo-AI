@@ -1,12 +1,14 @@
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, HTTPException, status, Depends # Import Depends
 from schemas.nutrition import FoodCreateRequest, NutritionResponse
 from services.gemini import GeminiService, GeminiServiceError
+from dependencies import verify_token # Import the security guard
 
 router = APIRouter(prefix="/nutrition", tags=["Nutrition"])
 
 gemini_service = GeminiService()
 
-@router.post("/analyze", response_model=NutritionResponse)
+# Add dependencies=[Depends(verify_token)] to lock this endpoint
+@router.post("/analyze", response_model=NutritionResponse, dependencies=[Depends(verify_token)])
 async def analyze_food_with_ai(request: FoodCreateRequest):
     if not request.query or not request.query.strip():
         raise HTTPException(
@@ -18,10 +20,8 @@ async def analyze_food_with_ai(request: FoodCreateRequest):
 
     try:
         data = await gemini_service.analyze_food(request.query)
-        
         if not data or "items" not in data:
              return {"overall_suggestion": "Could not analyze food.", "items": []}
-
         return data
 
     except GeminiServiceError as e:

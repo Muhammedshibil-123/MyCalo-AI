@@ -97,7 +97,7 @@ DATABASES = {
         "ENGINE": "django.db.backends.postgresql",
         "NAME": "mycalo_ai_db",
         "USER": "postgres",
-        "PASSWORD": os.getenv("DATABASE_PASSWORD", "postgres"),
+        "PASSWORD": "postgres",
         "HOST": "db",
         "PORT": "5432",
     }

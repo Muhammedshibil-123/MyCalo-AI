@@ -24,7 +24,7 @@ const CreateWithAI = () => {
 
     try {
       // 2. Call API
-      const response = await api.post('/api/foods/analyze/', { query: prompt });
+      const response = await api.post('/nutrition/analyze/', { query: prompt });
       
       // 3. SUCCESS: Store data and switch view INSTANTLY
       setResultData(response.data);
