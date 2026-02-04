@@ -2,6 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from config import settings
 from routers import nutrition
+from routers import vision_nutrition
 
 app = FastAPI(
     title=settings.PROJECT_NAME,
@@ -19,6 +20,7 @@ app.add_middleware(
 
 # Include Routers
 app.include_router(nutrition.router)
+app.include_router(vision_nutrition.router)
 
 @app.get("/")
 def health_check():
