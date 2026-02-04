@@ -49,6 +49,7 @@ const Home = () => {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [dailyData, setDailyData] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState("");
 
   // Goals
   const GOAL_CALORIES = 2500;
@@ -108,6 +109,19 @@ const Home = () => {
   // --- Handlers ---
   const handleDateChange = (direction) => {
     setCurrentDate((prev) => direction === "prev" ? subDays(prev, 1) : addDays(prev, 1));
+  };
+
+  const handleSearch = (e) => {
+    if (e.key === 'Enter' && searchQuery.trim()) {
+      navigate(`/search?q=${encodeURIComponent(searchQuery)}`);
+    }
+  };
+
+  const handleAddFood = (mealId) => {
+    // Set in sessionStorage for the SearchPage compatibility
+    sessionStorage.setItem("selectedMeal", mealId);
+    // Navigate with query params as requested
+    navigate(`/search?meal=${mealId}`);
   };
 
   const getMealData = (type) => {
@@ -173,7 +187,8 @@ const Home = () => {
         <div className="flex items-center justify-between mb-6">
           <div>
             <h1 className="text-xl font-bold text-gray-900">
-              Hi, {user?.first_name || "User"} 👋
+              {/* Added fallbacks to ensure name is displayed */}
+              Hi, {user?.first_name || user?.name || user?.username || "User"} 👋
             </h1>
             <p className="text-xs text-gray-500 font-medium mt-0.5">Let's hit your goals today!</p>
           </div>
@@ -186,12 +201,16 @@ const Home = () => {
         </div>
 
         {/* Search Bar */}
-        <div 
-          onClick={() => navigate("/search")}
-          className="bg-gray-50 border border-gray-100 rounded-2xl p-3.5 flex items-center gap-3 mb-6 cursor-pointer active:scale-[0.98] transition-transform"
-        >
-          <RiSearchLine className="text-gray-400 text-xl" />
-          <span className="text-gray-400 text-sm font-medium">Search for food, recipes...</span>
+        <div className="bg-gray-50 border border-gray-100 rounded-2xl p-3.5 flex items-center gap-3 mb-6 focus-within:ring-2 focus-within:ring-blue-100 transition-all">
+          <RiSearchLine className="text-gray-400 text-xl shrink-0" />
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            onKeyDown={handleSearch}
+            placeholder="Search for food, recipes..."
+            className="bg-transparent border-none outline-none w-full text-sm font-medium text-gray-700 placeholder:text-gray-400"
+          />
         </div>
 
         {/* Date Selector */}
@@ -300,7 +319,7 @@ const Home = () => {
                     </div>
 
                     <button
-                      onClick={() => navigate(`/search?meal=${meal.id}&date=${currentDate.toISOString().split('T')[0]}`)}
+                      onClick={() => handleAddFood(meal.id)}
                       className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center text-white hover:from-blue-600 hover:to-blue-700 shadow-md active:scale-95 transition-all"
                     >
                       <IoMdAdd className="text-xl" />

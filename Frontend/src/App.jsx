@@ -22,6 +22,7 @@ import DoctorDashboard from './pages/doctor/DoctorDashboard';
 import NotFound from './pages/user/NotFound';
 import SearchPage from './pages/user/SearchPage';
 import FoodDetail from './pages/user/FoodDetail';
+import CreateWithAI from './pages/user/CreateWithAI';
 
 const getHomeRouteForRole = (role) => {
     if (role === 'admin' || role === 'employee') return '/admin/dashboard';
@@ -124,6 +125,7 @@ function App() {
                     </Route>
                     <Route path="/search" element={<SearchPage />} />
                     <Route path="/food/:id" element={<FoodDetail />} />
+                    <Route path="/create-ai" element={<CreateWithAI />} />
                 </Route>
 
                 <Route element={<RoleRoute allowedRoles={['admin', 'employee']} />}>

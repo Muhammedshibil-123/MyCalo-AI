@@ -259,8 +259,8 @@ const SearchPage = () => {
                   <RiRobot2Line className="text-2xl text-purple-600" />
                 </div>
                 <div className="flex-1 text-left">
-                  <p className="font-bold text-gray-900">AI Track</p>
-                  <p className="text-xs text-gray-500">Quick photo tracking</p>
+                  <p className="font-bold text-gray-900">Create With AI</p>
+                  <p className="text-xs text-gray-500">Describe your meals in seconds</p>
                 </div>
               </button>
 
