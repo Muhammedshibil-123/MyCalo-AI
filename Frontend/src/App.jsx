@@ -23,6 +23,7 @@ import NotFound from './pages/user/NotFound';
 import SearchPage from './pages/user/SearchPage';
 import FoodDetail from './pages/user/FoodDetail';
 import CreateWithAI from './pages/user/CreateWithAI';
+import AnalyzeImageResult from './pages/user/AnalyzeImageResult';
 
 const getHomeRouteForRole = (role) => {
     if (role === 'admin' || role === 'employee') return '/admin/dashboard';
@@ -126,6 +127,7 @@ function App() {
                     <Route path="/search" element={<SearchPage />} />
                     <Route path="/food/:id" element={<FoodDetail />} />
                     <Route path="/create-ai" element={<CreateWithAI />} />
+                    <Route path="/analyze-image-result" element={<AnalyzeImageResult />} />
                 </Route>
 
                 <Route element={<RoleRoute allowedRoles={['admin', 'employee']} />}>

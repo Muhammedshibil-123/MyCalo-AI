@@ -2,15 +2,10 @@ from rest_framework import generics, permissions, status
 from rest_framework.response import Response
 from .models import FoodItem
 from .serializers import FoodItemSerializer
-import requests
 from rest_framework.views import APIView
 from .models import FoodItem
 from apps.tracking.models import DailyLog
-from .serializers import FoodAnalyzeSerializer
-from drf_yasg.utils import swagger_auto_schema  
-from drf_yasg import openapi
 
-AI_SERVICE_URL = "http://ai_service:8001/nutrition/analyze"
 
 # Create your views here.
 class CreateCustomFoodView(generics.CreateAPIView):
@@ -25,49 +20,6 @@ class FoodDetailView(generics.RetrieveAPIView):
     serializer_class = FoodItemSerializer
     permission_classes = [permissions.IsAuthenticated]
 
-class AIAnalyzeFoodView(APIView):
-    permission_classes = [permissions.IsAuthenticated]
-
-    @swagger_auto_schema(
-        request_body=FoodAnalyzeSerializer,
-        responses={
-            200: openapi.Response(
-                description="Analysis Successful",
-                examples={
-                    "application/json": {
-                        "items": [
-                            {
-                                "food_name": "Porotta",
-                                "calories": [300, 300],
-                                "protein": [8, 8],
-                                # ...
-                            }
-                        ]
-                    }
-                }
-            ),
-            400: "Query required",
-            503: "AI Service Unavailable"
-        }
-    )
-
-    def post(self, request):
-        serializer = FoodAnalyzeSerializer(data=request.data)
-        if not serializer.is_valid():
-            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-            
-        query = serializer.validated_data.get("query")
-
-        try:
-            response = requests.post(AI_SERVICE_URL, json={"query": query}, timeout=10)
-            
-            if response.status_code == 200:
-                return Response(response.json(), status=status.HTTP_200_OK)
-            else:
-                return Response({"error": "AI Service failed"}, status=response.status_code)
-                
-        except requests.exceptions.RequestException as e:
-            return Response({"error": f"AI Service unreachable: {str(e)}"}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
 
 
 class LogFoodView(APIView):

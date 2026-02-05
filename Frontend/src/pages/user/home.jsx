@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { useSelector } from "react-redux";
 
@@ -50,6 +50,9 @@ const Home = () => {
   const [dailyData, setDailyData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
+  
+  // Ref for hidden file input
+  const fileInputRef = useRef(null);
 
   // Goals
   const GOAL_CALORIES = 2500;
@@ -118,10 +121,44 @@ const Home = () => {
   };
 
   const handleAddFood = (mealId) => {
-    // Set in sessionStorage for the SearchPage compatibility
     sessionStorage.setItem("selectedMeal", mealId);
-    // Navigate with query params as requested
     navigate(`/search?meal=${mealId}`);
+  };
+
+  // --- Image Analysis Handler ---
+  const handleCameraClick = () => {
+    if (fileInputRef.current) {
+      fileInputRef.current.click();
+    }
+  };
+
+  const handleImageUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Reset input value so same file can be selected again if needed
+    e.target.value = null;
+
+    const formData = new FormData();
+    // Assuming backend expects key 'file' or 'image'. 
+    // If backend uses UploadFile without specific name, usually 'file' works.
+    formData.append("file", file); 
+
+    try {
+      // The Axios interceptor in your lib/axios.js will handle showing the LoadingScreen
+      const response = await api.post("/nutrition/analyze-image", formData, {
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
+      });
+
+      // Navigate to result page with data
+      navigate("/analyze-image-result", { state: { data: response.data } });
+
+    } catch (error) {
+      console.error("Image analysis failed:", error);
+      alert("Failed to analyze image. Please try again.");
+    }
   };
 
   const getMealData = (type) => {
@@ -129,7 +166,7 @@ const Home = () => {
     return dailyData.meals.find(m => m.meal_type === type) || { items: [], total_meal_calories: 0 };
   };
 
-  // --- Configuration (Your Preferred Colors & Icons) ---
+  // --- Configuration ---
   const mealSections = [
     { 
       id: "breakfast", 
@@ -165,7 +202,6 @@ const Home = () => {
     },
   ];
 
-  // Circle Progress Math
   const radius = 60;
   const circumference = 2 * Math.PI * radius;
   const strokeDashoffset = circumference - (stats.calories.percent / 100) * circumference;
@@ -180,20 +216,28 @@ const Home = () => {
         .animate-fade-in-up { animation: fade-in-up 0.5s ease-out forwards; }
       `}</style>
 
-      {/* --- TOP SECTION (My Design) --- */}
+      {/* Hidden File Input for Camera/Gallery */}
+      <input 
+        type="file" 
+        ref={fileInputRef}
+        accept="image/*"
+        onChange={handleImageUpload}
+        className="hidden"
+      />
+
+      {/* --- TOP SECTION --- */}
       <div className="bg-white rounded-b-[2.5rem] shadow-sm px-6 pt-6 pb-8 z-10 relative mb-6">
         
-        {/* Header & QR */}
+        {/* Header & QR/Camera */}
         <div className="flex items-center justify-between mb-6">
           <div>
             <h1 className="text-xl font-bold text-gray-900">
-              {/* Added fallbacks to ensure name is displayed */}
               Hi, {user?.first_name || user?.name || user?.username || "User"} 👋
             </h1>
             <p className="text-xs text-gray-500 font-medium mt-0.5">Let's hit your goals today!</p>
           </div>
           <button 
-            onClick={() => navigate("/qr")}
+            onClick={handleCameraClick}
             className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center text-gray-700 hover:bg-gray-200 transition-colors shadow-sm"
           >
             <RiCameraAiFill className="text-xl" />
@@ -283,7 +327,7 @@ const Home = () => {
         </div>
       </div>
 
-      {/* --- MEAL SECTION (Your Design) --- */}
+      {/* --- MEAL SECTION --- */}
       <div className="px-4 space-y-4">
         {loading ? (
           // Loading Skeletons
@@ -301,7 +345,7 @@ const Home = () => {
                 className="bg-white rounded-2xl shadow-sm overflow-hidden border border-gray-100 transition-all duration-300 hover:shadow-md animate-fade-in-up"
                 style={{ animationDelay: `${300 + index * 100}ms` }}
               >
-                {/* Header (Your Gradient Style) */}
+                {/* Header */}
                 <div className={`px-4 py-3 bg-gradient-to-r ${meal.gradient} border-b border-gray-100`}>
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
@@ -327,7 +371,7 @@ const Home = () => {
                   </div>
                 </div>
 
-                {/* Items List (Your List Style) */}
+                {/* Items List */}
                 {data.items.length > 0 ? (
                   <div className="divide-y divide-gray-100">
                     {data.items.map((item, itemIndex) => (
