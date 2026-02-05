@@ -1,8 +1,13 @@
-from pydantic import BaseModel, Field
 from typing import List, Optional
 
+from pydantic import BaseModel, Field
+
+
 class FoodCreateRequest(BaseModel):
-    query: str = Field(..., example="Pani Puri", description="The name of the food to analyze")
+    query: str = Field(
+        ..., example="Pani Puri", description="The name of the food to analyze"
+    )
+
 
 class NutritionValues(BaseModel):
     calories: float
@@ -15,10 +20,12 @@ class NutritionValues(BaseModel):
     sodium: float
     cholesterol: float
 
+
 class NutritionItem(BaseModel):
     food_name: str
     user_serving_size_g: int
     nutrition_data_100g: NutritionValues = Field(..., alias="100g_serving_size")
+
 
 class NutritionResponse(BaseModel):
     overall_suggestion: str

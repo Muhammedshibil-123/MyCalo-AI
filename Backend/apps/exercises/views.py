@@ -1,6 +1,8 @@
 from rest_framework import generics, permissions
+
 from .models import Exercise
 from .serializers import ExerciseSerializer
+
 
 # Create your views here.
 class CreateExerciseView(generics.CreateAPIView):

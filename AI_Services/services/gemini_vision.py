@@ -1,14 +1,18 @@
-import json
-import requests
 import asyncio
 import base64
+import json
+
+import requests
+
 from config import settings
+
 
 class GeminiVisionServiceError(Exception):
     def __init__(self, message: str, status_code: int = 502):
         self.message = message
         self.status_code = status_code
         super().__init__(message)
+
 
 class GeminiVisionService:
     def __init__(self):
@@ -24,7 +28,6 @@ class GeminiVisionService:
             "gemini-2.5-pro",
             "gemini-2.0-flash",
             "gemini-2.0-flash-lite",
-            
         ]
 
     async def analyze_food_image(self, image_bytes: bytes, mime_type: str) -> dict:
@@ -67,19 +70,15 @@ class GeminiVisionService:
         - If the image is unclear or not food, return an empty items list.
         """
 
-      
         payload = {
-            "contents": [{
-                "parts": [
-                    {"text": prompt},
-                    {
-                        "inline_data": {
-                            "mime_type": mime_type,
-                            "data": b64_image
-                        }
-                    }
-                ]
-            }],
+            "contents": [
+                {
+                    "parts": [
+                        {"text": prompt},
+                        {"inline_data": {"mime_type": mime_type, "data": b64_image}},
+                    ]
+                }
+            ],
             "generationConfig": {"response_mime_type": "application/json"},
         }
 
@@ -97,7 +96,9 @@ class GeminiVisionService:
                 )
 
                 if response.status_code != 200:
-                    print(f"[FAIL] {model} failed with {response.status_code}. Error: {response.text}")
+                    print(
+                        f"[FAIL] {model} failed with {response.status_code}. Error: {response.text}"
+                    )
                     last_error = f"{model} error: {response.status_code}"
                     continue
 
@@ -105,8 +106,10 @@ class GeminiVisionService:
 
                 try:
                     text_data = result["candidates"][0]["content"]["parts"][0]["text"]
-                    text_data = text_data.replace("```json", "").replace("```", "").strip()
-                    
+                    text_data = (
+                        text_data.replace("```json", "").replace("```", "").strip()
+                    )
+
                     print(f"[SUCCESS] Vision analysis with {model}")
                     return json.loads(text_data)
 
@@ -122,6 +125,6 @@ class GeminiVisionService:
 
         print("[FATAL] All vision models failed.")
         raise GeminiVisionServiceError(
-            f"Service Unavailable. Vision analysis failed. Last error: {last_error}", 
-            status_code=503
+            f"Service Unavailable. Vision analysis failed. Last error: {last_error}",
+            status_code=503,
         )

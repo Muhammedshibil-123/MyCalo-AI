@@ -44,18 +44,18 @@ INSTALLED_APPS = [
     "django.contrib.messages",
     "django.contrib.staticfiles",
     "corsheaders",
-    'rest_framework',
+    "rest_framework",
     "rest_framework_simplejwt.token_blacklist",
-    'drf_yasg',
+    "drf_yasg",
     "apps.accounts",
-    'apps.profiles',
-    'apps.foods',
-    'apps.tracking',
-    'apps.consultations',
-    'apps.notifications',
-    'apps.search',
-    'apps.analytics',
-    'apps.exercises',
+    "apps.profiles",
+    "apps.foods",
+    "apps.tracking",
+    "apps.consultations",
+    "apps.notifications",
+    "apps.search",
+    "apps.analytics",
+    "apps.exercises",
 ]
 
 MIDDLEWARE = [
@@ -186,15 +186,14 @@ CORS_ALLOWED_ORIGINS = [
 CORS_ALLOW_CREDENTIALS = True
 
 SWAGGER_SETTINGS = {
-    'SECURITY_DEFINITIONS': {
-        'Bearer': {
-            'type': 'apiKey',
-            'name': 'Authorization',
-            'in': 'header',
-            'description': 'Enter your JWT token in the format: Bearer <your_token>'
+    "SECURITY_DEFINITIONS": {
+        "Bearer": {
+            "type": "apiKey",
+            "name": "Authorization",
+            "in": "header",
+            "description": "Enter your JWT token in the format: Bearer <your_token>",
         }
     },
-    'SECURITY_REQUIREMENTS': [{'Bearer': []}],
-    'USE_SESSION_AUTH': False, 
+    "SECURITY_REQUIREMENTS": [{"Bearer": []}],
+    "USE_SESSION_AUTH": False,
 }
-

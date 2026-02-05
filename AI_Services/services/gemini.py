@@ -1,6 +1,8 @@
-import json
-import requests
 import asyncio
+import json
+
+import requests
+
 from config import settings
 
 
@@ -27,7 +29,7 @@ class GeminiService:
             "gemini-2.5-pro",
         ]
 
-    async def analyze_food(self, food_query: str) -> dict:  
+    async def analyze_food(self, food_query: str) -> dict:
         prompt = f"""
         You are a professional nutritionist AI.
 

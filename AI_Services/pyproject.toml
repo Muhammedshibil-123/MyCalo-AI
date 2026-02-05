@@ -1,0 +1,17 @@
+[tool.black]
+line-length = 88
+target-version = ['py310']
+include = '\.pyi?$'
+# Exclude migrations and virtual envs
+extend-exclude = '''
+(
+  /migrations/
+  | /venv/
+  | /env/
+)
+'''
+
+[tool.isort]
+profile = "black"
+multi_line_output = 3
+skip = ["migrations", "venv", "env"]

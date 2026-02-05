@@ -1,5 +1,7 @@
 from rest_framework import serializers
+
 from .models import DailyLog
+
 
 class DailyLogSerializer(serializers.ModelSerializer):
     food_details = serializers.SerializerMethodField()
@@ -7,24 +9,24 @@ class DailyLogSerializer(serializers.ModelSerializer):
     class Meta:
         model = DailyLog
         fields = [
-            'id', 
-            'food_item',         
-            'user_serving_grams', 
-            'meal_type',          
-            'date',               
-            'food_details'        
+            "id",
+            "food_item",
+            "user_serving_grams",
+            "meal_type",
+            "date",
+            "food_details",
         ]
 
         extra_kwargs = {
-            'food_item': {'write_only': True}, 
-            'meal_type': {'write_only': True}, 
-            'date': {'write_only': True},
+            "food_item": {"write_only": True},
+            "meal_type": {"write_only": True},
+            "date": {"write_only": True},
         }
 
     def get_food_details(self, obj):
         food = obj.food_item
         grams = obj.user_serving_grams
-        
+
         if grams <= 0:
             ratio = 0
         else:

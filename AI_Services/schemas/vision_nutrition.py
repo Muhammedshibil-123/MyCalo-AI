@@ -1,5 +1,7 @@
-from pydantic import BaseModel, Field
 from typing import List
+
+from pydantic import BaseModel, Field
+
 
 class NutritionValues(BaseModel):
     calories: float
@@ -12,10 +14,12 @@ class NutritionValues(BaseModel):
     sodium: float
     cholesterol: float
 
+
 class NutritionItem(BaseModel):
     food_name: str
     user_serving_size_g: int
     nutrition_data_100g: NutritionValues = Field(..., alias="100g_serving_size")
+
 
 class VisionNutritionResponse(BaseModel):
     overall_suggestion: str

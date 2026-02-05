@@ -1,29 +1,36 @@
-from fastapi import APIRouter, HTTPException, status, UploadFile, File, Depends 
+from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
+
+from dependencies import verify_token
 from schemas.vision_nutrition import VisionNutritionResponse
 from services.gemini_vision import GeminiVisionService, GeminiVisionServiceError
-from dependencies import verify_token
 
 router = APIRouter(prefix="/nutrition", tags=["Nutrition Vision"])
 
 gemini_vision_service = GeminiVisionService()
 
 
-@router.post("/analyze-image", response_model=VisionNutritionResponse, dependencies=[Depends(verify_token)])
+@router.post(
+    "/analyze-image",
+    response_model=VisionNutritionResponse,
+    dependencies=[Depends(verify_token)],
+)
 async def analyze_food_image_with_ai(file: UploadFile = File(...)):
     if file.content_type not in ["image/jpeg", "image/png", "image/webp", "image/heic"]:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Invalid image type. Supported: JPEG, PNG, WEBP, HEIC"
+            detail="Invalid image type. Supported: JPEG, PNG, WEBP, HEIC",
         )
-    
+
     print(f"[VISION REQUEST] Received file: {file.filename}")
 
     try:
         image_bytes = await file.read()
-        data = await gemini_vision_service.analyze_food_image(image_bytes, file.content_type)
-        
+        data = await gemini_vision_service.analyze_food_image(
+            image_bytes, file.content_type
+        )
+
         if not data or "items" not in data:
-             return {"overall_suggestion": "Could not analyze image.", "items": []}
+            return {"overall_suggestion": "Could not analyze image.", "items": []}
 
         return data
 
