@@ -1,14 +1,15 @@
 import { useState, useEffect, useMemo, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { useSelector } from "react-redux";
-
-// --- Icons (Combined Set) ---
 import { 
   RiCameraAiFill, 
   RiSearchLine,
   RiFireFill,
   RiArrowLeftSLine,
-  RiArrowRightSLine
+  RiArrowRightSLine,
+  RiCameraFill,
+  RiImageFill,
+  RiCloseLine
 } from "react-icons/ri";
 import { IoMdAdd } from "react-icons/io";
 import { 
@@ -18,11 +19,9 @@ import {
   MdOutlineCookie,
   MdLocalFireDepartment
 } from "react-icons/md";
-
 import { format, addDays, subDays, isSameDay } from "date-fns";
 import api from "../../lib/axios";
 
-// --- Helper Component: Macro Progress Bar (For the Top Stats) ---
 const MacroProgress = ({ label, current, total, colorClass, delay }) => {
   const percent = Math.min(100, Math.round((current / total) * 100));
   
@@ -51,16 +50,19 @@ const Home = () => {
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   
-  // Ref for hidden file input
+  const [showOptions, setShowOptions] = useState(false);
+  const [showCamera, setShowCamera] = useState(false);
+  
   const fileInputRef = useRef(null);
+  const videoRef = useRef(null);
+  const canvasRef = useRef(null);
+  const streamRef = useRef(null);
 
-  // Goals
   const GOAL_CALORIES = 2500;
   const GOAL_PROTEIN = 160;
   const GOAL_CARBS = 300;
   const GOAL_FAT = 80;
 
-  // --- Data Fetching ---
   useEffect(() => {
     const fetchDailyLogs = async () => {
       try {
@@ -69,7 +71,7 @@ const Home = () => {
         const response = await api.get(`/api/tracking/logs/?date=${dateStr}`);
         setDailyData(response.data);
       } catch (error) {
-        console.error("Failed to fetch logs:", error);
+        console.error(error);
       } finally {
         setLoading(false);
       }
@@ -77,7 +79,6 @@ const Home = () => {
     fetchDailyLogs();
   }, [currentDate]);
 
-  // --- Stats Calculation ---
   const stats = useMemo(() => {
     let totalConsumed = dailyData?.total_grant_calories || 0;
     let totalProtein = 0;
@@ -109,7 +110,6 @@ const Home = () => {
     };
   }, [dailyData]);
 
-  // --- Handlers ---
   const handleDateChange = (direction) => {
     setCurrentDate((prev) => direction === "prev" ? subDays(prev, 1) : addDays(prev, 1));
   };
@@ -125,38 +125,83 @@ const Home = () => {
     navigate(`/search?meal=${mealId}`);
   };
 
-  // --- Image Analysis Handler ---
-  const handleCameraClick = () => {
+  const handleMainButtonClick = () => {
+    setShowOptions(true);
+  };
+
+  const handleGalleryClick = () => {
+    setShowOptions(false);
     if (fileInputRef.current) {
       fileInputRef.current.click();
     }
   };
 
-  const handleImageUpload = async (e) => {
+  const handleCameraClick = async () => {
+    setShowOptions(false);
+    setShowCamera(true);
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: "environment" } 
+      });
+      streamRef.current = stream;
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+      }
+    } catch (err) {
+      console.error("Camera access error:", err);
+      alert("Unable to access camera. Please check permissions.");
+      setShowCamera(false);
+    }
+  };
+
+  const stopCamera = () => {
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach(track => track.stop());
+      streamRef.current = null;
+    }
+    setShowCamera(false);
+  };
+
+  const capturePhoto = () => {
+    if (videoRef.current && canvasRef.current) {
+      const video = videoRef.current;
+      const canvas = canvasRef.current;
+      
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      
+      const context = canvas.getContext('2d');
+      context.drawImage(video, 0, 0, canvas.width, canvas.height);
+      
+      canvas.toBlob((blob) => {
+        if (blob) {
+          const file = new File([blob], "camera_capture.jpg", { type: "image/jpeg" });
+          uploadFile(file);
+          stopCamera();
+        }
+      }, 'image/jpeg', 0.8);
+    }
+  };
+
+  const handleFileUpload = (e) => {
     const file = e.target.files?.[0];
-    if (!file) return;
+    if (file) {
+      uploadFile(file);
+    }
+    e.target.value = null; 
+  };
 
-    // Reset input value so same file can be selected again if needed
-    e.target.value = null;
-
+  const uploadFile = async (file) => {
     const formData = new FormData();
-    // Assuming backend expects key 'file' or 'image'. 
-    // If backend uses UploadFile without specific name, usually 'file' works.
     formData.append("file", file); 
 
     try {
-      // The Axios interceptor in your lib/axios.js will handle showing the LoadingScreen
       const response = await api.post("/nutrition/analyze-image", formData, {
-        headers: {
-          "Content-Type": "multipart/form-data",
-        },
+        headers: { "Content-Type": "multipart/form-data" },
       });
-
-      // Navigate to result page with data
       navigate("/analyze-image-result", { state: { data: response.data } });
-
     } catch (error) {
-      console.error("Image analysis failed:", error);
+      console.error("Analysis failed:", error);
       alert("Failed to analyze image. Please try again.");
     }
   };
@@ -166,7 +211,6 @@ const Home = () => {
     return dailyData.meals.find(m => m.meal_type === type) || { items: [], total_meal_calories: 0 };
   };
 
-  // --- Configuration ---
   const mealSections = [
     { 
       id: "breakfast", 
@@ -216,19 +260,83 @@ const Home = () => {
         .animate-fade-in-up { animation: fade-in-up 0.5s ease-out forwards; }
       `}</style>
 
-      {/* Hidden File Input for Camera/Gallery */}
       <input 
         type="file" 
         ref={fileInputRef}
         accept="image/*"
-        onChange={handleImageUpload}
+        onChange={handleFileUpload}
         className="hidden"
       />
 
-      {/* --- TOP SECTION --- */}
+      {showCamera && (
+        <div className="fixed inset-0 z-[100] bg-black flex flex-col">
+            <div className="relative flex-1 bg-black overflow-hidden">
+                <video 
+                    ref={videoRef} 
+                    autoPlay 
+                    playsInline 
+                    className="absolute inset-0 w-full h-full object-cover"
+                />
+                <button 
+                    onClick={stopCamera}
+                    className="absolute top-6 right-6 p-2 bg-black/50 rounded-full text-white"
+                >
+                    <RiCloseLine className="text-3xl" />
+                </button>
+            </div>
+            <div className="h-32 bg-black flex items-center justify-center pb-8">
+                <button 
+                    onClick={capturePhoto}
+                    className="w-20 h-20 bg-white rounded-full border-4 border-gray-300 flex items-center justify-center active:scale-95 transition-transform"
+                >
+                    <div className="w-16 h-16 bg-white rounded-full border-2 border-black" />
+                </button>
+            </div>
+            <canvas ref={canvasRef} className="hidden" />
+        </div>
+      )}
+
+      {showOptions && !showCamera && (
+        <div 
+          onClick={() => setShowOptions(false)}
+          className="fixed inset-0 z-50 flex items-end justify-center sm:items-center bg-black/40 backdrop-blur-sm p-4 animate-fade-in"
+        >
+          <div 
+            onClick={(e) => e.stopPropagation()}
+            className="bg-white w-full max-w-sm rounded-3xl p-6 shadow-2xl space-y-4 animate-fade-in-up"
+          >
+            <h3 className="text-lg font-bold text-gray-800 text-center mb-2">Choose Source</h3>
+            <div className="grid grid-cols-2 gap-4">
+                <button 
+                    onClick={handleCameraClick}
+                    className="flex flex-col items-center justify-center gap-2 p-6 bg-blue-50 rounded-2xl hover:bg-blue-100 transition-colors border border-blue-100"
+                >
+                    <div className="w-12 h-12 bg-blue-500 rounded-full flex items-center justify-center text-white text-2xl shadow-lg shadow-blue-200">
+                        <RiCameraFill />
+                    </div>
+                    <span className="font-semibold text-gray-700">Camera</span>
+                </button>
+                <button 
+                    onClick={handleGalleryClick}
+                    className="flex flex-col items-center justify-center gap-2 p-6 bg-purple-50 rounded-2xl hover:bg-purple-100 transition-colors border border-purple-100"
+                >
+                    <div className="w-12 h-12 bg-purple-500 rounded-full flex items-center justify-center text-white text-2xl shadow-lg shadow-purple-200">
+                        <RiImageFill />
+                    </div>
+                    <span className="font-semibold text-gray-700">Gallery</span>
+                </button>
+            </div>
+            <button 
+                onClick={() => setShowOptions(false)}
+                className="w-full py-3.5 rounded-xl font-bold text-gray-500 hover:bg-gray-100 transition-colors"
+            >
+                Cancel
+            </button>
+          </div>
+        </div>
+      )}
+
       <div className="bg-white rounded-b-[2.5rem] shadow-sm px-6 pt-6 pb-8 z-10 relative mb-6">
-        
-        {/* Header & QR/Camera */}
         <div className="flex items-center justify-between mb-6">
           <div>
             <h1 className="text-xl font-bold text-gray-900">
@@ -237,14 +345,13 @@ const Home = () => {
             <p className="text-xs text-gray-500 font-medium mt-0.5">Let's hit your goals today!</p>
           </div>
           <button 
-            onClick={handleCameraClick}
+            onClick={handleMainButtonClick}
             className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center text-gray-700 hover:bg-gray-200 transition-colors shadow-sm"
           >
             <RiCameraAiFill className="text-xl" />
           </button>
         </div>
 
-        {/* Search Bar */}
         <div className="bg-gray-50 border border-gray-100 rounded-2xl p-3.5 flex items-center gap-3 mb-6 focus-within:ring-2 focus-within:ring-blue-100 transition-all">
           <RiSearchLine className="text-gray-400 text-xl shrink-0" />
           <input
@@ -257,7 +364,6 @@ const Home = () => {
           />
         </div>
 
-        {/* Date Selector */}
         <div className="flex items-center justify-between bg-gray-50 p-1 rounded-xl mb-6">
           <button onClick={() => handleDateChange("prev")} className="p-2 text-gray-400 hover:text-gray-600 active:scale-90 transition-transform">
             <RiArrowLeftSLine className="text-xl" />
@@ -272,9 +378,7 @@ const Home = () => {
           </button>
         </div>
 
-        {/* Main Stats (Circular + Macros) */}
         <div className="flex items-center gap-6">
-          {/* Circular Progress */}
           <div className="relative w-32 h-32 flex-shrink-0">
             <svg className="w-full h-full transform -rotate-90">
               <circle cx="64" cy="64" r={radius} stroke="#f3f4f6" strokeWidth="8" fill="none" />
@@ -299,7 +403,6 @@ const Home = () => {
             </div>
           </div>
 
-          {/* Macros & Small Cards */}
           <div className="flex-1 space-y-4">
             <div className="grid grid-cols-2 gap-3 mb-2">
                <div className="bg-green-50 rounded-xl p-2.5">
@@ -327,10 +430,8 @@ const Home = () => {
         </div>
       </div>
 
-      {/* --- MEAL SECTION --- */}
       <div className="px-4 space-y-4">
         {loading ? (
-          // Loading Skeletons
           [1, 2, 3].map(i => (
             <div key={i} className="h-28 bg-gray-200 rounded-2xl animate-pulse" />
           ))
@@ -345,7 +446,6 @@ const Home = () => {
                 className="bg-white rounded-2xl shadow-sm overflow-hidden border border-gray-100 transition-all duration-300 hover:shadow-md animate-fade-in-up"
                 style={{ animationDelay: `${300 + index * 100}ms` }}
               >
-                {/* Header */}
                 <div className={`px-4 py-3 bg-gradient-to-r ${meal.gradient} border-b border-gray-100`}>
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
@@ -371,7 +471,6 @@ const Home = () => {
                   </div>
                 </div>
 
-                {/* Items List */}
                 {data.items.length > 0 ? (
                   <div className="divide-y divide-gray-100">
                     {data.items.map((item, itemIndex) => (

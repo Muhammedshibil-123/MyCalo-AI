@@ -1,7 +1,6 @@
 from pydantic import BaseModel, Field
 from typing import List
 
-# Reusing the structure to match your exact JSON requirement
 class NutritionValues(BaseModel):
     calories: float
     protein: float

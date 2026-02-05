@@ -9,7 +9,7 @@ services:
       - ./Backend:/app
     command: python manage.py runserver 0.0.0.0:8000
     ports:
-      - "8000:8000"   # Open for direct debugging
+      - "8000:8000"   
     env_file:
       - ./Backend/.env
     depends_on:
@@ -38,17 +38,17 @@ services:
     env_file:
       - ./AI_Services/.env
     ports:
-      - "8001:8001"   # Open for direct debugging
+      - "8001:8001"  
 
   # --- API GATEWAY (Nginx) ---
   gateway:
     image: nginx:alpine
     container_name: mycalo_gateway
     volumes:
-      # THIS IS THE FIX: Mount to conf.d/default.conf
+      
       - ./nginx/nginx.conf:/etc/nginx/conf.d/default.conf
     ports:
-      - "8080:80"     # Main entry point for your app
+      - "8080:80"     
     depends_on:
       - backend
       - ai_service

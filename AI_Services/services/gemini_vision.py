@@ -17,8 +17,7 @@ class GeminiVisionService:
 
         self.api_key = settings.GEMINI_API_KEY
         self.base_url = "https://generativelanguage.googleapis.com/v1beta/models"
-        
-        # Models that support vision (images)
+
         self.models_chain = [
             "gemini-2.5-flash",
             "gemini-2.5-flash-lite",
@@ -29,7 +28,7 @@ class GeminiVisionService:
         ]
 
     async def analyze_food_image(self, image_bytes: bytes, mime_type: str) -> dict:
-        # 1. Encode image to Base64
+
         b64_image = base64.b64encode(image_bytes).decode("utf-8")
 
         prompt = """
@@ -68,7 +67,7 @@ class GeminiVisionService:
         - If the image is unclear or not food, return an empty items list.
         """
 
-        # 2. Construct Payload with Inline Data
+      
         payload = {
             "contents": [{
                 "parts": [
