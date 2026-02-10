@@ -1,16 +1,26 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation, Navigate } from 'react-router-dom';
-import { IoMdArrowBack, IoMdAdd } from 'react-icons/io';
+import { 
+  IoMdArrowBack, 
+  IoMdAdd, 
+  IoMdCreate, 
+  IoMdTrash, 
+  IoMdCheckmark, 
+  IoMdClose,
+  IoMdInformationCircle
+} from 'react-icons/io';
 import { RiCameraAiFill, RiSparklingFill } from 'react-icons/ri';
+import api from '../../lib/axios';
+import { AiOutlineLoading3Quarters } from "react-icons/ai";
 
 const AnalyzeImageResult = () => {
   const navigate = useNavigate();
   const location = useLocation();
   
-  // Retrieve data passed from the Home page
+  // Retrieve data passed from the Home page (camera/gallery upload)
   const resultData = location.state?.data;
 
-  // Redirect if no data is present (e.g., user refreshed the page)
+  // Redirect if no data is present
   if (!resultData) {
     return <Navigate to="/" replace />;
   }
@@ -18,31 +28,38 @@ const AnalyzeImageResult = () => {
   return (
     <div className="min-h-screen bg-gray-50 pb-24">
       {/* Header */}
-      <div className="sticky top-0 z-50 bg-white border-b border-gray-100 px-4 h-16 flex items-center gap-4">
+      <div className="sticky top-0 z-50 bg-white/80 backdrop-blur-md border-b border-gray-100 px-4 h-16 flex items-center gap-4 transition-all">
         <button 
           onClick={() => navigate('/')} 
-          className="w-10 h-10 flex items-center justify-center bg-gray-100 rounded-full hover:bg-gray-200 transition-colors"
+          className="w-10 h-10 flex items-center justify-center bg-gray-100 rounded-full hover:bg-gray-200 transition-colors active:scale-95"
         >
           <IoMdArrowBack className="text-xl text-gray-700" />
         </button>
         <h1 className="text-lg font-bold text-gray-800 flex items-center gap-2">
-          <RiCameraAiFill className="text-blue-500" />
+          <RiCameraAiFill className="text-indigo-600" />
           Image Analysis
         </h1>
       </div>
 
       <div className="p-4 max-w-xl mx-auto">
-        <ResultsView data={resultData} />
+        <ResultsView initialData={resultData} navigate={navigate} />
       </div>
     </div>
   );
 };
 
-// --- SUB-COMPONENT: RESULTS VIEW (Reused Logic) ---
-const ResultsView = ({ data }) => {
+// --- SUB-COMPONENT: RESULTS VIEW ---
+const ResultsView = ({ initialData, navigate }) => {
+  const [data, setData] = useState(initialData);
   const [aiText, setAiText] = useState("");
   const [isThinking, setIsThinking] = useState(true);
+  const [isLogging, setIsLogging] = useState(false);
   
+  // State for Interactions
+  const [editingIndex, setEditingIndex] = useState(null);
+  const [editGrams, setEditGrams] = useState(0);
+  const [expandedItems, setExpandedItems] = useState({});
+
   const fullSuggestion = data.overall_suggestion || "";
 
   // Helper: Calculate Nutrient based on user serving size
@@ -50,16 +67,14 @@ const ResultsView = ({ data }) => {
     return Math.round((val100g * userServing) / 100);
   };
 
-  // Logic: 2s Thinking -> Smooth Typing
+  // AI Typing Effect (3s Wait, then Fast Type)
   useEffect(() => {
     let typeInterval;
-    
-    // 1. Initial Delay ("Thinking Dots")
+    // 1. Wait 3 Seconds
     const startDelay = setTimeout(() => {
       setIsThinking(false);
-
-      // 2. Typewriter Effect
       let charIndex = -1;
+      // 2. Type Faster (15ms per char)
       typeInterval = setInterval(() => {
         charIndex++;
         if (charIndex <= fullSuggestion.length) {
@@ -67,9 +82,8 @@ const ResultsView = ({ data }) => {
         } else {
           clearInterval(typeInterval);
         }
-      }, 15); // Speed
-
-    }, 2000); 
+      }, 15); 
+    }, 3000); 
 
     return () => {
       clearTimeout(startDelay);
@@ -77,101 +91,263 @@ const ResultsView = ({ data }) => {
     };
   }, [fullSuggestion]);
 
+  // --- ACTIONS ---
+  
+  const handleRemoveItem = (index) => {
+    const updatedItems = data.items.filter((_, i) => i !== index);
+    setData({ ...data, items: updatedItems });
+  };
+
+  const startEditing = (index, currentGrams) => {
+    setEditingIndex(index);
+    setEditGrams(currentGrams);
+  };
+
+  const saveEdit = (index) => {
+    const updatedItems = [...data.items];
+    updatedItems[index].user_serving_size_g = parseFloat(editGrams) || 0;
+    setData({ ...data, items: updatedItems });
+    setEditingIndex(null);
+  };
+
+  const toggleExpand = (index) => {
+    // Only toggle if NOT editing
+    if (editingIndex === null) {
+      setExpandedItems(prev => ({
+        ...prev,
+        [index]: !prev[index]
+      }));
+    }
+  };
+
+  const handleAddToLog = async () => {
+    if (data.items.length === 0) return;
+    setIsLogging(true);
+    
+    // Retrieve context from Session Storage
+    const selectedMeal = sessionStorage.getItem("selectedMeal") || "SNACK";
+    const selectedDate = sessionStorage.getItem("selectedDate") || new Date().toISOString().split('T')[0];
+
+    // UX Delay
+    await new Promise(r => setTimeout(r, 800));
+
+    try {
+      const payload = {
+        meal_type: selectedMeal.toUpperCase(), 
+        date: selectedDate,
+        items: data.items,
+        overall_suggestion: data.overall_suggestion
+      };
+
+      await api.post("/api/tracking/log-ai-meal/", payload);
+      navigate('/'); 
+      
+    } catch (err) {
+      console.error("Failed to log meal", err);
+    } finally {
+      setIsLogging(false);
+    }
+  };
+
   return (
     <div className="space-y-6 animate-fade-in-up">
+      
       {/* 1. AI Suggestion Box */}
-      <div className="bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-100 rounded-3xl p-6 min-h-[140px]">
-        <h3 className="text-blue-900 font-bold mb-3 flex items-center gap-2">
-          <RiSparklingFill className="text-blue-500" /> AI Insights
+      <div className="bg-white border border-gray-100 rounded-3xl p-6 shadow-sm relative overflow-hidden transition-all">
+        <div className="absolute top-0 right-0 w-24 h-24 bg-indigo-50 rounded-full blur-2xl -mr-8 -mt-8 pointer-events-none" />
+        
+        <h3 className="text-gray-900 font-bold mb-3 flex items-center gap-2 relative z-10">
+          <RiSparklingFill className="text-indigo-500" /> AI Insights
         </h3>
         
         {isThinking ? (
-          /* Loading Dots Animation */
           <div className="flex items-center gap-1 h-6 pl-1">
-            <span className="w-2 h-2 bg-blue-400 rounded-full animate-bounce [animation-delay:-0.3s]"></span>
-            <span className="w-2 h-2 bg-blue-400 rounded-full animate-bounce [animation-delay:-0.15s]"></span>
-            <span className="w-2 h-2 bg-blue-400 rounded-full animate-bounce"></span>
+            <span className="w-1.5 h-1.5 bg-indigo-400 rounded-full animate-bounce [animation-delay:-0.3s]"></span>
+            <span className="w-1.5 h-1.5 bg-indigo-400 rounded-full animate-bounce [animation-delay:-0.15s]"></span>
+            <span className="w-1.5 h-1.5 bg-indigo-400 rounded-full animate-bounce"></span>
           </div>
         ) : (
-          /* Typed Text */
-          <p className="text-blue-800/90 text-sm leading-relaxed whitespace-pre-line font-medium">
+          <p className="text-gray-600 text-sm leading-relaxed whitespace-pre-line font-medium relative z-10">
             {aiText}
-            {aiText.length < fullSuggestion.length && <span className="animate-pulse text-blue-500">|</span>}
+            {aiText.length < fullSuggestion.length && <span className="animate-pulse text-indigo-500 font-bold ml-1">|</span>}
           </p>
         )}
       </div>
 
-      {/* 2. Instant Food Breakdown */}
+      {/* 2. Detected Items List */}
       <div className="space-y-4 pb-20">
         <div className="flex items-center justify-between px-1">
-            <h3 className="font-bold text-gray-800">Meal Breakdown</h3>
-            <span className="text-xs font-semibold bg-green-100 text-green-700 px-3 py-1 rounded-full">
-                {data.items.length} Items Found
+            <h3 className="font-bold text-gray-900 text-lg">Detected Items</h3>
+            <span className="text-xs font-bold bg-gray-900 text-white px-3 py-1 rounded-full">
+                {data.items.length} Found
             </span>
         </div>
         
-        {data.items.map((item, idx) => (
-          <div key={idx} className="bg-white rounded-3xl p-5 shadow-sm border border-gray-100 transition-transform active:scale-[0.99]">
-            <div className="flex justify-between items-start mb-4">
-              <div>
-                <h4 className="font-bold text-gray-800 text-lg capitalize">{item.food_name}</h4>
-                <span className="text-xs font-medium text-gray-500 bg-gray-100 px-2 py-1 rounded-lg">
-                  {item.user_serving_size_g}g serving
-                </span>
-              </div>
-              <div className="text-right">
-                <span className="block text-2xl font-bold text-indigo-600">
-                  {calculateNutrient(item['100g_serving_size'].calories, item.user_serving_size_g)}
-                </span>
-                <span className="text-xs font-bold text-gray-400">KCAL</span>
-              </div>
-            </div>
-
-            {/* Macros Grid */}
-            <div className="grid grid-cols-4 gap-2">
-              <MacroItem 
-                label="Protein" 
-                value={calculateNutrient(item['100g_serving_size'].protein, item.user_serving_size_g)} 
-                color="bg-green-50 text-green-700" 
-              />
-              <MacroItem 
-                label="Carbs" 
-                value={calculateNutrient(item['100g_serving_size'].carbs, item.user_serving_size_g)} 
-                color="bg-orange-50 text-orange-700" 
-              />
-              <MacroItem 
-                label="Fats" 
-                value={calculateNutrient(item['100g_serving_size'].fats, item.user_serving_size_g)} 
-                color="bg-yellow-50 text-yellow-700" 
-              />
-                <MacroItem 
-                label="Fiber" 
-                value={calculateNutrient(item['100g_serving_size'].fiber, item.user_serving_size_g)} 
-                color="bg-purple-50 text-purple-700" 
-              />
-            </div>
+        {data.items.length === 0 ? (
+          <div className="text-center py-12 bg-white rounded-3xl border border-dashed border-gray-300">
+            <IoMdInformationCircle className="text-4xl text-gray-300 mx-auto mb-2" />
+            <p className="text-gray-400 text-sm font-medium">No items left to log.</p>
           </div>
-        ))}
+        ) : (
+          data.items.map((item, idx) => {
+            const isExpanded = expandedItems[idx];
+            const p = calculateNutrient(item['100g_serving_size'].protein, item.user_serving_size_g);
+            const c = calculateNutrient(item['100g_serving_size'].carbs, item.user_serving_size_g);
+            const f = calculateNutrient(item['100g_serving_size'].fats, item.user_serving_size_g);
+            const cal = calculateNutrient(item['100g_serving_size'].calories, item.user_serving_size_g);
+
+            return (
+              <div 
+                key={idx} 
+                onClick={() => toggleExpand(idx)}
+                className="bg-white rounded-3xl shadow-sm border border-gray-100 transition-all hover:shadow-md overflow-hidden cursor-pointer active:scale-[0.99]"
+              >
+                
+                {/* Main Row: Always Visible */}
+                <div className="p-5">
+                  <div className="flex justify-between items-start">
+                    
+                    {/* Left Side: Name & Minimalist Macros */}
+                    <div className="flex-1 pr-2">
+                      <h4 className="font-black text-gray-900 text-lg capitalize leading-tight mb-2">
+                        {item.food_name}
+                      </h4>
+                      <div className="flex items-center gap-2 text-xs font-semibold text-gray-500">
+                        <span className="text-blue-600">{p}g Protein</span>
+                        <span className="text-gray-300">•</span>
+                        <span className="text-purple-600">{c}g Carbs</span>
+                        <span className="text-gray-300">•</span>
+                        <span className="text-orange-600">{f}g Fats</span>
+                      </div>
+                    </div>
+
+                    {/* Right Side: Calories & Controls */}
+                    <div className="flex flex-col items-end gap-3">
+                      
+                      {/* Calories Badge */}
+                      <div className="flex items-baseline gap-1">
+                        <span className="text-xl font-black text-gray-900">{cal}</span>
+                        <span className="text-[10px] font-bold text-gray-400 uppercase">kcal</span>
+                      </div>
+
+                      {/* Controls Row - Prevents Expand on Click */}
+                      <div 
+                        className="flex items-center gap-1 bg-gray-50 rounded-xl p-1 border border-gray-100"
+                        onClick={(e) => e.stopPropagation()} // Important: Stops card from expanding when clicking controls
+                      >
+                        {editingIndex === idx ? (
+                          <div className="flex items-center gap-1">
+                            <input
+                              type="number"
+                              autoFocus
+                              value={editGrams}
+                              onChange={(e) => setEditGrams(e.target.value)}
+                              className="w-12 bg-white rounded-lg px-1 py-1 text-center font-bold text-gray-900 text-xs border border-gray-200 outline-none focus:border-indigo-500"
+                            />
+                            <button onClick={() => saveEdit(idx)} className="p-1.5 text-green-600 hover:bg-green-50 rounded-lg">
+                              <IoMdCheckmark />
+                            </button>
+                            <button onClick={() => setEditingIndex(null)} className="p-1.5 text-gray-400 hover:bg-gray-100 rounded-lg">
+                              <IoMdClose />
+                            </button>
+                          </div>
+                        ) : (
+                          <>
+                            {/* Grams Display (Click to Edit) */}
+                            <button 
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                startEditing(idx, item.user_serving_size_g);
+                              }}
+                              className="px-2 py-1 text-xs font-bold text-gray-600 hover:text-indigo-600 hover:bg-white rounded-lg transition-all"
+                            >
+                              {item.user_serving_size_g}g
+                            </button>
+                            
+                            <div className="w-px h-3 bg-gray-200" />
+                            
+                            {/* Edit Button */}
+                            <button 
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                startEditing(idx, item.user_serving_size_g);
+                              }}
+                              className="p-1.5 text-gray-400 hover:text-indigo-600 hover:bg-white rounded-lg transition-all"
+                            >
+                              <IoMdCreate className="text-sm" />
+                            </button>
+
+                            <div className="w-px h-3 bg-gray-200" />
+                            
+                            {/* Delete Button */}
+                            <button 
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleRemoveItem(idx);
+                              }}
+                              className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-white rounded-lg transition-all"
+                            >
+                              <IoMdTrash className="text-sm" />
+                            </button>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Expanded Details: Nutritional Grid */}
+                {isExpanded && (
+                  <div className="px-5 pb-5 pt-0 animate-fade-in">
+                    <div className="pt-4 border-t border-gray-100 grid grid-cols-3 gap-3">
+                      {[
+                        { label: 'Fiber', val: item['100g_serving_size'].fiber },
+                        { label: 'Sugar', val: item['100g_serving_size'].sugar },
+                        { label: 'Sodium', val: item['100g_serving_size'].sodium, unit: 'mg' },
+                        { label: 'Cholesterol', val: item['100g_serving_size'].cholesterol, unit: 'mg' },
+                        { label: 'Sat. Fat', val: item['100g_serving_size'].saturated_fat },
+                      ].map((nut, i) => (
+                        <div key={i} className="bg-gray-50 rounded-xl p-2 flex flex-col items-center justify-center text-center">
+                          <span className="text-xs font-bold text-gray-800">
+                            {calculateNutrient(nut.val, item.user_serving_size_g)}{nut.unit || 'g'}
+                          </span>
+                          <span className="text-[9px] font-bold text-gray-400 uppercase tracking-wider">{nut.label}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            );
+          })
+        )}
       </div>
 
       {/* 3. Sticky Add Button */}
-      <div className="fixed bottom-0 left-0 right-0 p-4 bg-white/80 backdrop-blur-md border-t border-gray-100 z-40">
+      <div className="fixed bottom-0 left-0 right-0 p-4 bg-white/90 backdrop-blur-xl border-t border-gray-100 z-40 safe-area-bottom">
         <button 
-          onClick={() => console.log("Add to Log Logic Here")} 
-          className="w-full max-w-xl mx-auto py-4 rounded-2xl font-bold text-white shadow-lg shadow-indigo-200 bg-gray-900 flex items-center justify-center gap-2 hover:bg-black transition-all active:scale-[0.98]"
+          onClick={handleAddToLog} 
+          disabled={isLogging || data.items.length === 0}
+          className={`w-full max-w-xl mx-auto py-4 rounded-2xl font-bold text-white shadow-xl flex items-center justify-center gap-2 transition-all active:scale-[0.98]
+            ${isLogging || data.items.length === 0
+              ? 'bg-gray-900 cursor-not-allowed text-gray-500 opacity-80' 
+              : 'bg-black hover:bg-gray-900 shadow-gray-200'
+            }`}
         >
-          <IoMdAdd className="text-xl" /> Add to Log
+          {isLogging ? (
+            <>
+              <AiOutlineLoading3Quarters className="animate-spin text-xl" />
+              Logging...
+            </>
+          ) : (
+            <>
+              <IoMdAdd className="text-xl" /> Add to Log
+            </>
+          )}
         </button>
       </div>
     </div>
   );
 };
-
-const MacroItem = ({ label, value, color }) => (
-  <div className={`${color} rounded-xl p-2 flex flex-col items-center justify-center`}>
-    <span className="font-bold text-sm">{value}g</span>
-    <span className="text-[10px] opacity-70 uppercase tracking-wider">{label}</span>
-  </div>
-);
 
 export default AnalyzeImageResult;

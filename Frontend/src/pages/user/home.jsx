@@ -11,7 +11,14 @@ import {
   RiImageFill,
   RiCloseLine
 } from "react-icons/ri";
-import { IoMdAdd } from "react-icons/io";
+import { 
+  IoMdAdd, 
+  IoMdCreate, 
+  IoMdTrash, 
+  IoMdCheckmark, 
+  IoMdClose, 
+  IoIosArrowDown 
+} from "react-icons/io";
 import { 
   MdOutlineFastfood, 
   MdOutlineRestaurant, 
@@ -22,6 +29,7 @@ import {
 import { format, addDays, subDays, isSameDay } from "date-fns";
 import api from "../../lib/axios";
 
+// --- Original MacroProgress Component ---
 const MacroProgress = ({ label, current, total, colorClass, delay }) => {
   const percent = Math.min(100, Math.round((current / total) * 100));
   
@@ -41,6 +49,24 @@ const MacroProgress = ({ label, current, total, colorClass, delay }) => {
   );
 };
 
+// --- COMPONENT: Macro Pill for Expanded Food Details ---
+const MacroPill = ({ label, value, unit="g", theme }) => {
+  const themes = {
+    blue: "bg-blue-50 text-blue-700",
+    purple: "bg-purple-50 text-purple-700",
+    orange: "bg-orange-50 text-orange-700",
+    green: "bg-green-50 text-green-700",
+    gray: "bg-gray-50 text-gray-700"
+  };
+
+  return (
+    <div className={`${themes[theme] || themes.gray} rounded-xl p-2 flex flex-col items-center justify-center text-center`}>
+      <span className="font-bold text-xs leading-none mb-1">{value}{unit}</span>
+      <span className="text-[9px] opacity-70 font-bold uppercase tracking-wider">{label}</span>
+    </div>
+  );
+};
+
 const Home = () => {
   const navigate = useNavigate();
   const { user } = useSelector((state) => state.auth);
@@ -53,6 +79,11 @@ const Home = () => {
   const [showOptions, setShowOptions] = useState(false);
   const [showCamera, setShowCamera] = useState(false);
   
+  // Interactive State for Log Items
+  const [editingId, setEditingId] = useState(null); 
+  const [editGrams, setEditGrams] = useState(0);
+  const [expandedId, setExpandedId] = useState(null);
+  
   const fileInputRef = useRef(null);
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
@@ -63,21 +94,64 @@ const Home = () => {
   const GOAL_CARBS = 300;
   const GOAL_FAT = 80;
 
+  // Sync Date to Session Storage
   useEffect(() => {
-    const fetchDailyLogs = async () => {
-      try {
-        setLoading(true);
-        const dateStr = currentDate.toISOString().split("T")[0];
-        const response = await api.get(`/api/tracking/logs/?date=${dateStr}`);
-        setDailyData(response.data);
-      } catch (error) {
-        console.error(error);
-      } finally {
-        setLoading(false);
-      }
-    };
+    const dateStr = format(currentDate, "yyyy-MM-dd");
+    sessionStorage.setItem("selectedDate", dateStr);
+  }, [currentDate]);
+
+  // Fetch Logs Helper
+  const fetchDailyLogs = async () => {
+    try {
+      if (!dailyData) setLoading(true); 
+      const dateStr = currentDate.toISOString().split("T")[0];
+      const response = await api.get(`/api/tracking/logs/?date=${dateStr}`);
+      setDailyData(response.data);
+    } catch (error) {
+      console.error(error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
     fetchDailyLogs();
   }, [currentDate]);
+
+  // --- ACTIONS ---
+
+  const startEditing = (logId, currentGrams) => {
+    setEditingId(logId);
+    setEditGrams(currentGrams);
+  };
+
+  const toggleExpand = (logId) => {
+    if (editingId) return; 
+    setExpandedId(prev => prev === logId ? null : logId);
+  };
+
+  const handleUpdateLog = async (logId) => {
+    try {
+      await api.patch(`/api/tracking/logs/${logId}/`, {
+        user_serving_grams: parseFloat(editGrams)
+      });
+      setEditingId(null);
+      fetchDailyLogs(); 
+    } catch (error) {
+      console.error("Failed to update log", error);
+      alert("Failed to update. Please try again.");
+    }
+  };
+
+  const handleDeleteLog = async (logId) => {
+    
+    try {
+      await api.delete(`/api/tracking/logs/${logId}/`);
+      fetchDailyLogs(); 
+    } catch (error) {
+      console.error("Failed to delete log", error);
+    }
+  };
 
   const stats = useMemo(() => {
     let totalConsumed = dailyData?.total_grant_calories || 0;
@@ -125,85 +199,40 @@ const Home = () => {
     navigate(`/search?meal=${mealId}`);
   };
 
-  const handleMainButtonClick = () => {
-    setShowOptions(true);
-  };
-
-  const handleGalleryClick = () => {
-    setShowOptions(false);
-    if (fileInputRef.current) {
-      fileInputRef.current.click();
-    }
-  };
-
+  // Camera & File Handlers
+  const handleMainButtonClick = () => setShowOptions(true);
+  const handleGalleryClick = () => { setShowOptions(false); fileInputRef.current?.click(); };
   const handleCameraClick = async () => {
-    setShowOptions(false);
-    setShowCamera(true);
+    setShowOptions(false); setShowCamera(true);
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: "environment" } 
-      });
+      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
       streamRef.current = stream;
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-      }
-    } catch (err) {
-      console.error("Camera access error:", err);
-      alert("Unable to access camera. Please check permissions.");
-      setShowCamera(false);
-    }
+      if (videoRef.current) videoRef.current.srcObject = stream;
+    } catch (err) { console.error(err); setShowCamera(false); }
   };
-
   const stopCamera = () => {
-    if (streamRef.current) {
-      streamRef.current.getTracks().forEach(track => track.stop());
-      streamRef.current = null;
-    }
+    streamRef.current?.getTracks().forEach(t => t.stop());
+    streamRef.current = null;
     setShowCamera(false);
   };
-
   const capturePhoto = () => {
     if (videoRef.current && canvasRef.current) {
-      const video = videoRef.current;
-      const canvas = canvasRef.current;
-      
-      canvas.width = video.videoWidth;
-      canvas.height = video.videoHeight;
-      
-      const context = canvas.getContext('2d');
-      context.drawImage(video, 0, 0, canvas.width, canvas.height);
-      
-      canvas.toBlob((blob) => {
-        if (blob) {
-          const file = new File([blob], "camera_capture.jpg", { type: "image/jpeg" });
-          uploadFile(file);
-          stopCamera();
-        }
-      }, 'image/jpeg', 0.8);
+      const v = videoRef.current;
+      const c = canvasRef.current;
+      c.width = v.videoWidth;
+      c.height = v.videoHeight;
+      c.getContext('2d').drawImage(v, 0, 0);
+      c.toBlob(b => { if(b) { uploadFile(new File([b], "cam.jpg", {type:"image/jpeg"})); stopCamera(); }}, 'image/jpeg');
     }
   };
-
-  const handleFileUpload = (e) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      uploadFile(file);
-    }
-    e.target.value = null; 
-  };
-
+  const handleFileUpload = (e) => { if(e.target.files?.[0]) uploadFile(e.target.files[0]); e.target.value=null; };
   const uploadFile = async (file) => {
     const formData = new FormData();
-    formData.append("file", file); 
-
+    formData.append("file", file);
     try {
-      const response = await api.post("/nutrition/analyze-image", formData, {
-        headers: { "Content-Type": "multipart/form-data" },
-      });
-      navigate("/analyze-image-result", { state: { data: response.data } });
-    } catch (error) {
-      console.error("Analysis failed:", error);
-      alert("Failed to analyze image. Please try again.");
-    }
+      const res = await api.post("/nutrition/analyze-image", formData, { headers: { "Content-Type": "multipart/form-data" } });
+      navigate("/analyze-image-result", { state: { data: res.data } });
+    } catch (e) { alert("Failed to analyze."); }
   };
 
   const getMealData = (type) => {
@@ -212,38 +241,10 @@ const Home = () => {
   };
 
   const mealSections = [
-    { 
-      id: "breakfast", 
-      label: "Breakfast", 
-      icon: MdOutlineFastfood,
-      time: "7:00 - 10:00 AM",
-      gradient: "from-orange-50 to-orange-100/50",
-      iconBg: "from-orange-100 to-orange-50"
-    },
-    { 
-      id: "lunch", 
-      label: "Lunch", 
-      icon: MdOutlineRestaurant,
-      time: "12:00 - 2:00 PM",
-      gradient: "from-blue-50 to-blue-100/50",
-      iconBg: "from-blue-100 to-blue-50"
-    },
-    { 
-      id: "dinner", 
-      label: "Dinner", 
-      icon: MdOutlineDinnerDining,
-      time: "6:00 - 9:00 PM",
-      gradient: "from-purple-50 to-purple-100/50",
-      iconBg: "from-purple-100 to-purple-50"
-    },
-    { 
-      id: "snack", 
-      label: "Snacks", 
-      icon: MdOutlineCookie,
-      time: "Anytime",
-      gradient: "from-green-50 to-green-100/50",
-      iconBg: "from-green-100 to-green-50"
-    },
+    { id: "breakfast", label: "Breakfast", icon: MdOutlineFastfood, time: "7:00 - 10:00 AM", gradient: "from-orange-50 to-orange-100/50", iconBg: "from-orange-100 to-orange-50" },
+    { id: "lunch", label: "Lunch", icon: MdOutlineRestaurant, time: "12:00 - 2:00 PM", gradient: "from-blue-50 to-blue-100/50", iconBg: "from-blue-100 to-blue-50" },
+    { id: "dinner", label: "Dinner", icon: MdOutlineDinnerDining, time: "6:00 - 9:00 PM", gradient: "from-purple-50 to-purple-100/50", iconBg: "from-purple-100 to-purple-50" },
+    { id: "snack", label: "Snacks", icon: MdOutlineCookie, time: "Anytime", gradient: "from-green-50 to-green-100/50", iconBg: "from-green-100 to-green-50" },
   ];
 
   const radius = 60;
@@ -260,124 +261,65 @@ const Home = () => {
         .animate-fade-in-up { animation: fade-in-up 0.5s ease-out forwards; }
       `}</style>
 
-      <input 
-        type="file" 
-        ref={fileInputRef}
-        accept="image/*"
-        onChange={handleFileUpload}
-        className="hidden"
-      />
+      <input type="file" ref={fileInputRef} accept="image/*" onChange={handleFileUpload} className="hidden" />
 
+      {/* Camera Modal */}
       {showCamera && (
         <div className="fixed inset-0 z-[100] bg-black flex flex-col">
             <div className="relative flex-1 bg-black overflow-hidden">
-                <video 
-                    ref={videoRef} 
-                    autoPlay 
-                    playsInline 
-                    className="absolute inset-0 w-full h-full object-cover"
-                />
-                <button 
-                    onClick={stopCamera}
-                    className="absolute top-6 right-6 p-2 bg-black/50 rounded-full text-white"
-                >
-                    <RiCloseLine className="text-3xl" />
-                </button>
+                <video ref={videoRef} autoPlay playsInline className="absolute inset-0 w-full h-full object-cover"/>
+                <button onClick={stopCamera} className="absolute top-6 right-6 p-2 bg-black/50 rounded-full text-white"><RiCloseLine className="text-3xl" /></button>
             </div>
             <div className="h-32 bg-black flex items-center justify-center pb-8">
-                <button 
-                    onClick={capturePhoto}
-                    className="w-20 h-20 bg-white rounded-full border-4 border-gray-300 flex items-center justify-center active:scale-95 transition-transform"
-                >
-                    <div className="w-16 h-16 bg-white rounded-full border-2 border-black" />
-                </button>
+                <button onClick={capturePhoto} className="w-20 h-20 bg-white rounded-full border-4 border-gray-300 flex items-center justify-center active:scale-95 transition-transform"><div className="w-16 h-16 bg-white rounded-full border-2 border-black" /></button>
             </div>
             <canvas ref={canvasRef} className="hidden" />
         </div>
       )}
 
+      {/* Options Modal */}
       {showOptions && !showCamera && (
-        <div 
-          onClick={() => setShowOptions(false)}
-          className="fixed inset-0 z-50 flex items-end justify-center sm:items-center bg-black/40 backdrop-blur-sm p-4 animate-fade-in"
-        >
-          <div 
-            onClick={(e) => e.stopPropagation()}
-            className="bg-white w-full max-w-sm rounded-3xl p-6 shadow-2xl space-y-4 animate-fade-in-up"
-          >
+        <div onClick={() => setShowOptions(false)} className="fixed inset-0 z-50 flex items-end justify-center sm:items-center bg-black/40 backdrop-blur-sm p-4 animate-fade-in">
+          <div onClick={(e) => e.stopPropagation()} className="bg-white w-full max-w-sm rounded-3xl p-6 shadow-2xl space-y-4 animate-fade-in-up">
             <h3 className="text-lg font-bold text-gray-800 text-center mb-2">Choose Source</h3>
             <div className="grid grid-cols-2 gap-4">
-                <button 
-                    onClick={handleCameraClick}
-                    className="flex flex-col items-center justify-center gap-2 p-6 bg-blue-50 rounded-2xl hover:bg-blue-100 transition-colors border border-blue-100"
-                >
-                    <div className="w-12 h-12 bg-blue-500 rounded-full flex items-center justify-center text-white text-2xl shadow-lg shadow-blue-200">
-                        <RiCameraFill />
-                    </div>
+                <button onClick={handleCameraClick} className="flex flex-col items-center justify-center gap-2 p-6 bg-blue-50 rounded-2xl border border-blue-100 hover:bg-blue-50">
+                    <div className="w-12 h-12 bg-blue-500 rounded-full flex items-center justify-center text-white text-2xl shadow-lg"><RiCameraFill /></div>
                     <span className="font-semibold text-gray-700">Camera</span>
                 </button>
-                <button 
-                    onClick={handleGalleryClick}
-                    className="flex flex-col items-center justify-center gap-2 p-6 bg-purple-50 rounded-2xl hover:bg-purple-100 transition-colors border border-purple-100"
-                >
-                    <div className="w-12 h-12 bg-purple-500 rounded-full flex items-center justify-center text-white text-2xl shadow-lg shadow-purple-200">
-                        <RiImageFill />
-                    </div>
+                <button onClick={handleGalleryClick} className="flex flex-col items-center justify-center gap-2 p-6 bg-purple-50 rounded-2xl border border-purple-100 hover:bg-purple-50">
+                    <div className="w-12 h-12 bg-purple-500 rounded-full flex items-center justify-center text-white text-2xl shadow-lg"><RiImageFill /></div>
                     <span className="font-semibold text-gray-700">Gallery</span>
                 </button>
             </div>
-            <button 
-                onClick={() => setShowOptions(false)}
-                className="w-full py-3.5 rounded-xl font-bold text-gray-500 hover:bg-gray-100 transition-colors"
-            >
-                Cancel
-            </button>
+            <button onClick={() => setShowOptions(false)} className="w-full py-3.5 rounded-xl font-bold text-gray-500 hover:bg-gray-100">Cancel</button>
           </div>
         </div>
       )}
 
+      {/* Top Header */}
       <div className="bg-white rounded-b-[2.5rem] shadow-sm px-6 pt-6 pb-8 z-10 relative mb-6">
         <div className="flex items-center justify-between mb-6">
           <div>
-            <h1 className="text-xl font-bold text-gray-900">
-              Hi, {user?.first_name || user?.name || user?.username || "User"} 👋
-            </h1>
+            <h1 className="text-xl font-bold text-gray-900">Hi, {user?.first_name || user?.name || user?.username || "User"} 👋</h1>
             <p className="text-xs text-gray-500 font-medium mt-0.5">Let's hit your goals today!</p>
           </div>
-          <button 
-            onClick={handleMainButtonClick}
-            className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center text-gray-700 hover:bg-gray-200 transition-colors shadow-sm"
-          >
-            <RiCameraAiFill className="text-xl" />
-          </button>
+          <button onClick={handleMainButtonClick} className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center text-gray-700 hover:bg-gray-200 transition-colors shadow-sm"><RiCameraAiFill className="text-xl" /></button>
         </div>
 
         <div className="bg-gray-50 border border-gray-100 rounded-2xl p-3.5 flex items-center gap-3 mb-6 focus-within:ring-2 focus-within:ring-blue-100 transition-all">
           <RiSearchLine className="text-gray-400 text-xl shrink-0" />
-          <input
-            type="text"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            onKeyDown={handleSearch}
-            placeholder="Search for food, recipes..."
-            className="bg-transparent border-none outline-none w-full text-sm font-medium text-gray-700 placeholder:text-gray-400"
-          />
+          <input type="text" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} onKeyDown={handleSearch} placeholder="Search for food..." className="bg-transparent border-none outline-none w-full text-sm font-medium text-gray-700" />
         </div>
 
-        <div className="flex items-center justify-between bg-gray-50 p-1 rounded-xl mb-6">
-          <button onClick={() => handleDateChange("prev")} className="p-2 text-gray-400 hover:text-gray-600 active:scale-90 transition-transform">
-            <RiArrowLeftSLine className="text-xl" />
-          </button>
-          <div className="flex items-center gap-2">
-            <span className="text-sm font-bold text-gray-800">
-              {isSameDay(currentDate, new Date()) ? "Today" : format(currentDate, "MMMM d")}
-            </span>
-          </div>
-          <button onClick={() => handleDateChange("next")} className="p-2 text-gray-400 hover:text-gray-600 active:scale-90 transition-transform">
-            <RiArrowRightSLine className="text-xl" />
-          </button>
+        {/* Date Selector */}
+        <div className="flex items-center justify-between bg-gray-50 p-1 rounded-xl mb-8">
+          <button onClick={() => handleDateChange("prev")} className="p-2 text-gray-400 hover:text-gray-600 active:scale-90 transition-transform"><RiArrowLeftSLine className="text-xl" /></button>
+          <span className="text-sm font-bold text-gray-800">{isSameDay(currentDate, new Date()) ? "Today" : format(currentDate, "MMMM d")}</span>
+          <button onClick={() => handleDateChange("next")} className="p-2 text-gray-400 hover:text-gray-600 active:scale-90 transition-transform"><RiArrowRightSLine className="text-xl" /></button>
         </div>
 
+        {/* --- ORIGINAL STATS SECTION --- */}
         <div className="flex items-center gap-6">
           <div className="relative w-32 h-32 flex-shrink-0">
             <svg className="w-full h-full transform -rotate-90">
@@ -430,11 +372,10 @@ const Home = () => {
         </div>
       </div>
 
+      {/* --- INTERACTIVE FOOD LIST --- */}
       <div className="px-4 space-y-4">
         {loading ? (
-          [1, 2, 3].map(i => (
-            <div key={i} className="h-28 bg-gray-200 rounded-2xl animate-pulse" />
-          ))
+          [1, 2, 3].map(i => <div key={i} className="h-28 bg-gray-200 rounded-2xl animate-pulse" />)
         ) : (
           mealSections.map((meal, index) => {
             const data = getMealData(meal.id);
@@ -455,17 +396,11 @@ const Home = () => {
                       <div>
                         <div className="text-sm font-bold text-gray-900">{meal.label}</div>
                         <div className="text-xs text-gray-600 font-medium">
-                          {data.total_meal_calories > 0 
-                            ? `${data.total_meal_calories} kcal` 
-                            : meal.time}
+                          {data.total_meal_calories > 0 ? `${data.total_meal_calories} kcal` : meal.time}
                         </div>
                       </div>
                     </div>
-
-                    <button
-                      onClick={() => handleAddFood(meal.id)}
-                      className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center text-white hover:from-blue-600 hover:to-blue-700 shadow-md active:scale-95 transition-all"
-                    >
+                    <button onClick={() => handleAddFood(meal.id)} className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center text-white hover:from-blue-600 hover:to-blue-700 shadow-md active:scale-95 transition-all">
                       <IoMdAdd className="text-xl" />
                     </button>
                   </div>
@@ -473,27 +408,77 @@ const Home = () => {
 
                 {data.items.length > 0 ? (
                   <div className="divide-y divide-gray-100">
-                    {data.items.map((item, itemIndex) => (
-                      <div 
-                        key={item.id} 
-                        className="px-4 py-3 flex items-center justify-between hover:bg-gray-50 transition-colors"
-                      >
-                        <div className="flex-1 pr-4">
-                          <div className="text-sm font-bold text-gray-900">{item.food_details.name}</div>
-                          <div className="text-xs text-gray-500 mt-1 flex items-center gap-2">
-                            <span>{item.user_serving_grams}g</span>
-                            <span className="w-1 h-1 bg-gray-300 rounded-full" />
-                            <span>{item.food_details.protein}g Protein</span>
+                    {data.items.map((item) => {
+                      const isExpanded = expandedId === item.id;
+                      const isEditing = editingId === item.id;
+                      
+                      return (
+                        <div key={item.id} className="transition-colors hover:bg-gray-50">
+                          {/* Main Row */}
+                          <div 
+                            onClick={() => toggleExpand(item.id)}
+                            className="px-4 py-3 flex items-start justify-between cursor-pointer"
+                          >
+                            <div className="flex-1 pr-2">
+                              <div className="text-sm font-bold text-gray-900">{item.food_details.name}</div>
+                              <div className="text-xs text-gray-500 mt-1 flex items-center gap-1.5 font-medium">
+                                <span className="text-blue-600">{item.food_details.protein}g P</span>
+                                <span className="text-gray-300">•</span>
+                                <span className="text-purple-600">{item.food_details.carbohydrates}g C</span>
+                                <span className="text-gray-300">•</span>
+                                <span className="text-orange-600">{item.food_details.fat}g F</span>
+                              </div>
+                            </div>
+
+                            <div className="flex flex-col items-end gap-2" onClick={(e) => e.stopPropagation()}>
+                              <div className="flex items-baseline gap-1">
+                                <span className="text-base font-black text-gray-900">{item.food_details.calories}</span>
+                                <span className="text-[10px] font-bold text-gray-400">KCAL</span>
+                              </div>
+
+                              {isEditing ? (
+                                <div className="flex items-center gap-1 bg-white border border-gray-200 rounded-lg p-0.5 shadow-sm">
+                                  <input 
+                                    type="number" 
+                                    value={editGrams} 
+                                    onChange={(e) => setEditGrams(e.target.value)}
+                                    className="w-12 text-center text-xs font-bold border-none outline-none"
+                                    autoFocus
+                                  />
+                                  <button onClick={() => handleUpdateLog(item.id)} className="p-1 text-green-600 hover:bg-green-50 rounded"><IoMdCheckmark /></button>
+                                  <button onClick={() => setEditingId(null)} className="p-1 text-gray-400 hover:bg-gray-100 rounded"><IoMdClose /></button>
+                                </div>
+                              ) : (
+                                <div className="flex items-center gap-1 bg-white border border-gray-100 rounded-lg p-1">
+                                  <div className="text-[10px] font-bold text-gray-600 px-1.5">{item.user_serving_grams}g</div>
+                                  <div className="w-px h-3 bg-gray-200"></div>
+                                  <button onClick={() => startEditing(item.id, item.user_serving_grams)} className="p-1 text-gray-400 hover:text-indigo-600 transition-colors"><IoMdCreate /></button>
+                                  <button onClick={() => handleDeleteLog(item.id)} className="p-1 text-gray-400 hover:text-red-500 transition-colors"><IoMdTrash /></button>
+                                  <button 
+                                    onClick={() => toggleExpand(item.id)} 
+                                    className={`p-1 text-gray-400 hover:text-indigo-600 transition-transform ${isExpanded ? 'rotate-180' : ''}`}
+                                  >
+                                    <IoIosArrowDown />
+                                  </button>
+                                </div>
+                              )}
+                            </div>
                           </div>
+
+                          {/* Expanded Details Section */}
+                          {isExpanded && !isEditing && (
+                            <div className="px-4 pb-4 pt-0 animate-fade-in">
+                              <div className="pt-3 border-t border-gray-100 grid grid-cols-4 gap-2">
+                                <MacroPill label="Fiber" value={item.food_details.fiber || 0} theme="green" />
+                                <MacroPill label="Sugar" value={item.food_details.sugar || 0} theme="orange" />
+                                <MacroPill label="Sodium" value={item.food_details.sodium || 0} unit="mg" theme="blue" />
+                                <MacroPill label="Sat. Fat" value={item.food_details.saturated_fat || 0} theme="purple" />
+                              </div>
+                            </div>
+                          )}
                         </div>
-                        <div className="text-right">
-                          <div className="text-base font-bold text-orange-600 bg-orange-50 px-2 py-1 rounded-lg">
-                            {item.food_details.calories}
-                          </div>
-                          <div className="text-[10px] text-gray-500 font-semibold mt-0.5">kcal</div>
-                        </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 ) : (
                   <div className="px-4 py-6 text-center">

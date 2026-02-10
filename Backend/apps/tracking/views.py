@@ -1,8 +1,10 @@
 from django.utils import timezone
-from rest_framework import permissions, status, viewsets
+from rest_framework import permissions, status, viewsets,views
 from rest_framework.response import Response
+from django.db import transaction
 
 from .models import DailyLog
+from apps.foods.models import FoodItem
 from .serializers import DailyLogSerializer
 
 
@@ -65,3 +67,82 @@ class DailyLogViewSet(viewsets.ModelViewSet):
         response_data["meals"] = list(meal_groups.values())
 
         return Response(response_data)
+    
+class LogAIMealView(views.APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request):
+        """
+        Expects the specific AI JSON structure with 'items' containing
+        '100g_serving_size' and 'user_serving_size_g'.
+        """
+        data = request.data
+        user = request.user
+
+        meal_type = data.get("meal_type", "SNACK").upper()
+        date_str = data.get("date", str(timezone.now().date()))
+        
+        ai_items = data.get("items", [])
+
+        if not ai_items:
+            return Response(
+                {"error": "No items provided in the AI response"}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        try:
+            with transaction.atomic():
+                created_logs = []
+
+                for item in ai_items:
+                    food_name = item.get("food_name")
+                    details_100g = item.get("100g_serving_size", {})
+                   
+                    food_defaults = {
+                        "name": food_name,
+                        "serving_size": "100g", 
+                        "calories": details_100g.get("calories", 0),
+                        "protein": details_100g.get("protein", 0),
+                        "carbohydrates": details_100g.get("carbs", 0),
+                        "fat": details_100g.get("fats", 0),
+                        "fiber": details_100g.get("fiber", 0),
+                        "sugar": details_100g.get("sugar", 0),
+                        "saturated_fat": details_100g.get("saturated_fat", 0),
+                        "sodium": details_100g.get("sodium", 0),
+                        "cholesterol": details_100g.get("cholesterol", 0),
+                        "source": "AI",
+                        "is_public": True,
+                        "is_verified": False, 
+                        "votes": 0,
+                    }
+
+                    food_item, _ = FoodItem.objects.get_or_create(
+                        name__iexact=food_name,
+                        defaults=food_defaults
+                    )
+
+                    user_grams = item.get("user_serving_size_g", 100)
+                    
+                    log = DailyLog.objects.create(
+                        user=user,
+                        food_item=food_item,
+                        user_serving_grams=user_grams,
+                        meal_type=meal_type,
+                        date=date_str
+                    )
+                    created_logs.append(log.id)
+
+            return Response(
+                {
+                    "message": "AI Meal logged successfully",
+                    "logs_created": len(created_logs),
+                    "success": True
+                },
+                status=status.HTTP_201_CREATED,
+            )
+
+        except Exception as e:
+            return Response(
+                {"error": str(e), "success": False},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
