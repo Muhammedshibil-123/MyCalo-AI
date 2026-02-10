@@ -265,7 +265,7 @@ const SearchPage = () => {
               </button>
 
               <button
-                onClick={() => navigate(`/create-manual?meal=${selectedMeal || ''}`)}
+                onClick={() => navigate(`/manual-entry`)}
                 className="w-full flex items-center gap-4 p-4 hover:bg-gradient-to-r hover:from-blue-50 hover:to-green-50 rounded-2xl cursor-pointer transition-all group active:scale-98"
               >
                 <div className="w-12 h-12 bg-gradient-to-br from-blue-100 to-green-100 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform">

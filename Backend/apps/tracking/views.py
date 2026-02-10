@@ -1,10 +1,11 @@
 from django.utils import timezone
 from rest_framework import permissions, status, viewsets,views
 from rest_framework.response import Response
+from rest_framework.parsers import MultiPartParser, FormParser
 from django.db import transaction
 
 from .models import DailyLog
-from apps.foods.models import FoodItem
+from apps.foods.models import FoodItem,FoodImage
 from .serializers import DailyLogSerializer
 
 
@@ -72,10 +73,7 @@ class LogAIMealView(views.APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def post(self, request):
-        """
-        Expects the specific AI JSON structure with 'items' containing
-        '100g_serving_size' and 'user_serving_size_g'.
-        """
+        
         data = request.data
         user = request.user
 
@@ -140,6 +138,93 @@ class LogAIMealView(views.APIView):
                 },
                 status=status.HTTP_201_CREATED,
             )
+
+        except Exception as e:
+            return Response(
+                {"error": str(e), "success": False},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+
+class LogManualFoodView(views.APIView):
+    permission_classes = [permissions.IsAuthenticated]
+    parser_classes = (MultiPartParser, FormParser)
+
+    def post(self, request):
+        data = request.data
+        user = request.user
+
+        meal_type = data.get("meal_type", "SNACK").upper()
+        date_str = data.get("date", str(timezone.now().date()))
+        
+        try:
+            user_serving_grams = float(data.get("user_serving_grams", 100))
+            if user_serving_grams <= 0: raise ValueError
+        except ValueError:
+            return Response({"error": "Invalid serving weight"}, status=400)
+
+        normalization_factor = 100 / user_serving_grams
+
+        def get_normalized_value(key):
+            val = data.get(key)
+            if val in [None, '', 'null', 'undefined']:
+                return 0.0
+            try:
+                user_value = float(val)
+                return round(user_value * normalization_factor, 2)
+            except ValueError:
+                return 0.0
+
+        food_name = data.get("name")
+        if not food_name:
+            return Response({"error": "Food name is required"}, status=400)
+
+        try:
+            with transaction.atomic():
+                food_item = FoodItem.objects.create(
+                    name=food_name,
+                    brand=data.get("brand", ""),
+                    serving_size="100g", 
+                    calories=int(get_normalized_value("calories")),
+                    protein=get_normalized_value("protein"),
+                    carbohydrates=get_normalized_value("carbohydrates"),
+                    fat=get_normalized_value("fat"),
+                    fiber=get_normalized_value("fiber"),
+                    sugar=get_normalized_value("sugar"),
+                    saturated_fat=get_normalized_value("saturated_fat"),
+                    sodium=get_normalized_value("sodium"),
+                    cholesterol=get_normalized_value("cholesterol"),
+                    source="USER", 
+                    is_public=True, 
+                    is_verified=False, 
+                    created_by=user,
+                    votes=0
+                    # REMOVED: image=... (This caused the error)
+                )
+
+                # 2. Handle Multiple Images
+                # We use 'images' (plural) as the key
+                images = request.FILES.getlist('images') 
+                
+                for img in images:
+                    FoodImage.objects.create(food=food_item, image=img)
+
+                # 3. Create the Log
+                log = DailyLog.objects.create(
+                    user=user,
+                    food_item=food_item,
+                    user_serving_grams=user_serving_grams,
+                    meal_type=meal_type,
+                    date=date_str
+                )
+
+                return Response({
+                    "message": "Food logged with multiple images successfully",
+                    "log_id": log.id,
+                    "food_id": food_item.id,
+                    "images_uploaded": len(images),
+                    "success": True
+                }, status=status.HTTP_201_CREATED)
 
         except Exception as e:
             return Response(

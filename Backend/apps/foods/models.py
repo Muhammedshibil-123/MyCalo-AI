@@ -54,3 +54,8 @@ class FoodItem(models.Model):
 
     def __str__(self):
         return f"{self.name} ({self.calories} kcal)"
+    
+
+class FoodImage(models.Model):
+    food = models.ForeignKey(FoodItem, related_name='images', on_delete=models.CASCADE)
+    image = models.ImageField(upload_to='food_images/')

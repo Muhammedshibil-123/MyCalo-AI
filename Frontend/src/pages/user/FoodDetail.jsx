@@ -5,27 +5,33 @@ import {
   RiCheckFill, 
   RiFireFill,
   RiArrowUpSLine,
-  RiArrowDownSLine
+  RiArrowDownSLine,
+  RiArrowLeftSLine,   // Added for image slider
+  RiArrowRightSLine   // Added for image slider
 } from "react-icons/ri";
 import { 
   MdOutlineEggAlt,     
   MdOutlineBakeryDining, 
   MdOutlineOilBarrel,    
   MdOutlineWaterDrop,
-  MdOutlineScience
+  MdOutlineScience,
+  MdOutlineImageNotSupported
 } from "react-icons/md";
 import { TbSalt } from "react-icons/tb";
 import { AiOutlineLoading3Quarters } from "react-icons/ai";
 import { motion } from "framer-motion";
 import api from "../../lib/axios";
 
-const ITEM_HEIGHT = 40; // Height of each scroll item in pixels (h-10 = 40px)
+const ITEM_HEIGHT = 40; 
 
 const FoodDetail = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const scrollRef = useRef(null);
+  
+  // Refs for scrolling
+  const scrollRef = useRef(null);      // For serving units
+  const imageScrollRef = useRef(null); // For image slider
   
   const meal = searchParams.get("meal");
   const dateParam = searchParams.get("date");
@@ -62,30 +68,17 @@ const FoodDetail = () => {
     fetchFood();
   }, [id]);
 
-  // --- SCROLL HANDLING LOGIC ---
+  // --- SERVING UNIT SCROLL LOGIC ---
   const handleScroll = () => {
     if (scrollRef.current) {
       const scrollTop = scrollRef.current.scrollTop;
-      // Calculate which item index is currently centered
       const centerIndex = Math.round(scrollTop / ITEM_HEIGHT);
-      
-      // Ensure index is within bounds
       if (centerIndex >= 0 && centerIndex < servingUnits.length) {
         const targetUnit = servingUnits[centerIndex];
-        
-        // Only update if it's different to prevent loops
         if (targetUnit.value !== selectedUnit.value) {
           setSelectedUnit(targetUnit);
-          
-          // Optional: Smart Reset Logic
-          // If switching TO Grams from a bowl/plate, reset quantity to standard 100
-          if (targetUnit.value === 'grams' && quantity < 10) {
-             setQuantity(100);
-          }
-          // If switching FROM Grams to a bowl/plate, reset quantity to 1
-          else if (selectedUnit.value === 'grams' && targetUnit.value !== 'grams' && quantity > 10) {
-             setQuantity(1);
-          }
+          if (targetUnit.value === 'grams' && quantity < 10) setQuantity(100);
+          else if (selectedUnit.value === 'grams' && targetUnit.value !== 'grams' && quantity > 10) setQuantity(1);
         }
       }
     }
@@ -94,23 +87,23 @@ const FoodDetail = () => {
   const scrollByItem = (direction) => {
     if (scrollRef.current) {
       const currentScroll = scrollRef.current.scrollTop;
-      const targetScroll = direction === 'up' 
-        ? currentScroll - ITEM_HEIGHT 
-        : currentScroll + ITEM_HEIGHT;
-
-      scrollRef.current.scrollTo({
-        top: targetScroll,
-        behavior: 'smooth'
-      });
+      const targetScroll = direction === 'up' ? currentScroll - ITEM_HEIGHT : currentScroll + ITEM_HEIGHT;
+      scrollRef.current.scrollTo({ top: targetScroll, behavior: 'smooth' });
     }
   };
 
   const scrollToItem = (index) => {
     if (scrollRef.current) {
-        scrollRef.current.scrollTo({
-            top: index * ITEM_HEIGHT,
-            behavior: 'smooth'
-        });
+        scrollRef.current.scrollTo({ top: index * ITEM_HEIGHT, behavior: 'smooth' });
+    }
+  };
+
+  // --- IMAGE SLIDER LOGIC ---
+  const scrollImages = (direction) => {
+    if (imageScrollRef.current) {
+      const { clientWidth } = imageScrollRef.current;
+      const scrollAmount = direction === 'left' ? -clientWidth : clientWidth;
+      imageScrollRef.current.scrollBy({ left: scrollAmount, behavior: 'smooth' });
     }
   };
 
@@ -175,10 +168,10 @@ const FoodDetail = () => {
     { label: "Fat", val: nutrients.fat, unit: "g", icon: MdOutlineOilBarrel, color: "text-orange-600", bg: "bg-orange-50" },
   ];
 
-  // Helper to calculate padding for the scroll container to center the first/last items
-  // Container height is h-32 (128px or 8rem). Item height is h-10 (40px).
-  // Padding = (ContainerHeight - ItemHeight) / 2 = (128 - 40) / 2 = 44px
   const containerPaddingY = 44; 
+
+  // Check if we have multiple images
+  const hasImages = food.images && food.images.length > 0;
 
   return (
     <div className="min-h-screen bg-white pb-32 font-sans text-gray-900">
@@ -197,27 +190,81 @@ const FoodDetail = () => {
         </div>
       </div>
 
-      <div className="max-w-md mx-auto px-5 pt-6 space-y-8">
+      <div className="max-w-md mx-auto px-5 pt-6 space-y-6">
         
-        {/* Title & Source Tag */}
-        <div className="text-center space-y-3">
-          <h1 className="text-2xl font-black leading-tight text-gray-900">{food.name}</h1>
+        {/* Title, Source & Image Section */}
+        <div className="text-center space-y-2">
           
-          <div className="flex flex-col items-center gap-2">
-            <div className="flex items-center gap-2 text-sm text-gray-500 font-medium">
-              <span>{food.brand || 'Generic'}</span>
-              <span className="w-1 h-1 bg-gray-300 rounded-full" />
-              <span>{food.serving_size}</span>
-            </div>
-            
-            <span className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wide border ${
+          <div className="flex items-center justify-center gap-2">
+            <h1 className="text-2xl font-black leading-tight text-gray-900">{food.name}</h1>
+            <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wide border ${
               food.source === 'AI' ? 'bg-purple-50 text-purple-600 border-purple-100' :
               food.source === 'ADMIN' ? 'bg-emerald-50 text-emerald-600 border-emerald-100' : 
               'bg-gray-50 text-gray-500 border-gray-100'
             }`}>
-              {food.source} Source
+              {food.source}
             </span>
           </div>
+          
+          <div className="flex items-center justify-center gap-2 text-sm text-gray-400 font-medium">
+            <span>{food.brand || 'Generic'}</span>
+            <span className="w-1 h-1 bg-gray-300 rounded-full" />
+            <span>{food.serving_size}</span>
+          </div>
+
+          {/* --- IMAGE SLIDER --- */}
+          <div className="relative group w-full aspect-video bg-gray-50 rounded-2xl border border-gray-100 shadow-sm mt-4">
+             {hasImages ? (
+                <>
+                    {/* Scroll Container */}
+                    <div 
+                        ref={imageScrollRef}
+                        className="w-full h-full flex overflow-x-auto snap-x snap-mandatory scrollbar-hide scroll-smooth"
+                    >
+                        {food.images.map((imgObj) => (
+                            <div key={imgObj.id} className="min-w-full h-full snap-center flex-shrink-0">
+                                <img 
+                                   src={imgObj.image} 
+                                   alt={food.name} 
+                                   className="w-full h-full object-cover"
+                                />
+                            </div>
+                        ))}
+                    </div>
+
+                    {/* Navigation Buttons (Only show if > 1 image) */}
+                    {food.images.length > 1 && (
+                        <>
+                            <button 
+                                onClick={() => scrollImages('left')}
+                                className="absolute left-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-white/80 backdrop-blur-sm shadow-md flex items-center justify-center text-gray-700 hover:bg-white active:scale-95 transition-all opacity-0 group-hover:opacity-100 md:opacity-100"
+                            >
+                                <RiArrowLeftSLine className="text-xl" />
+                            </button>
+                            <button 
+                                onClick={() => scrollImages('right')}
+                                className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-white/80 backdrop-blur-sm shadow-md flex items-center justify-center text-gray-700 hover:bg-white active:scale-95 transition-all opacity-0 group-hover:opacity-100 md:opacity-100"
+                            >
+                                <RiArrowRightSLine className="text-xl" />
+                            </button>
+                            
+                            {/* Page Indicators */}
+                            <div className="absolute bottom-2 left-0 right-0 flex justify-center gap-1.5">
+                                {food.images.map((_, i) => (
+                                    <div key={i} className="w-1.5 h-1.5 rounded-full bg-white/60 shadow-sm" />
+                                ))}
+                            </div>
+                        </>
+                    )}
+                </>
+             ) : (
+                <div className="w-full h-full flex flex-col items-center justify-center text-gray-300">
+                    <MdOutlineImageNotSupported className="text-4xl" />
+                    <span className="text-[10px] uppercase font-bold tracking-wider mt-2">No Image</span>
+                </div>
+             )}
+          </div>
+
         </div>
 
         {/* --- MAIN INPUT SECTION --- */}
@@ -226,8 +273,6 @@ const FoodDetail = () => {
             
             {/* Left: Scroll Unit Selector */}
             <div className="w-2/5 relative border-r border-gray-200 flex flex-col">
-               
-               {/* Clickable Up Arrow */}
                <button 
                   onClick={() => scrollByItem('up')}
                   className="absolute top-0 left-0 right-0 h-8 z-20 flex items-center justify-center text-gray-400 hover:text-gray-900 bg-gradient-to-b from-gray-50 to-transparent rounded-tl-2xl cursor-pointer"
@@ -235,7 +280,6 @@ const FoodDetail = () => {
                   <RiArrowUpSLine />
                </button>
                
-               {/* Scrollable Container */}
                <div 
                   ref={scrollRef}
                   onScroll={handleScroll}
@@ -262,7 +306,6 @@ const FoodDetail = () => {
                  })}
                </div>
 
-               {/* Clickable Down Arrow */}
                <button 
                   onClick={() => scrollByItem('down')}
                   className="absolute bottom-0 left-0 right-0 h-8 z-20 flex items-center justify-center text-gray-400 hover:text-gray-900 bg-gradient-to-t from-gray-50 to-transparent rounded-bl-2xl cursor-pointer"
@@ -270,7 +313,6 @@ const FoodDetail = () => {
                   <RiArrowDownSLine />
                </button>
                
-               {/* Center Highlight Bar (Visual Only) */}
                <div className="absolute top-1/2 left-0 right-0 h-10 -mt-5 border-y border-gray-200 pointer-events-none bg-white/40" />
             </div>
 
