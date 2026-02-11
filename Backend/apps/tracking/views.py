@@ -199,17 +199,14 @@ class LogManualFoodView(views.APIView):
                     is_verified=False, 
                     created_by=user,
                     votes=0
-                    # REMOVED: image=... (This caused the error)
+                    
                 )
 
-                # 2. Handle Multiple Images
-                # We use 'images' (plural) as the key
                 images = request.FILES.getlist('images') 
                 
                 for img in images:
                     FoodImage.objects.create(food=food_item, image=img)
 
-                # 3. Create the Log
                 log = DailyLog.objects.create(
                     user=user,
                     food_item=food_item,

@@ -1,9 +1,39 @@
 import { useState, useEffect, memo, useCallback } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { IoMdArrowBack, IoMdSearch, IoMdAdd, IoMdClose, IoMdRestaurant, IoMdArrowForward, IoMdFitness } from "react-icons/io";
-import { RiRobot2Line, RiEdit2Line } from "react-icons/ri";
+import { IoMdArrowBack, IoMdSearch, IoMdClose, IoMdRestaurant, IoMdArrowForward, IoMdFitness, IoMdAdd } from "react-icons/io";
 import { MdFastfood } from "react-icons/md";
+import { RiVerifiedBadgeFill, RiArrowLeftSFill, RiArrowRightSFill, RiRobot2Line, RiEdit2Line } from "react-icons/ri"; 
 import api from "../../lib/axios";
+
+// --- MEAL SELECTION MODAL ---
+const MealSelectionModal = ({ isOpen, onSelect }) => {
+  if (!isOpen) return null;
+  return (
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[60] flex items-center justify-center p-6 animate-fadeIn">
+      <div className="bg-white rounded-[2rem] p-6 w-full max-w-sm shadow-2xl animate-scaleIn">
+        <div className="text-center mb-6">
+           <div className="w-16 h-16 bg-blue-50 rounded-full flex items-center justify-center mx-auto mb-3">
+              <IoMdRestaurant className="text-3xl text-blue-500" />
+           </div>
+           <h3 className="text-xl font-black text-gray-900">Select Meal</h3>
+           <p className="text-sm text-gray-500">What are you logging right now?</p>
+        </div>
+        
+        <div className="grid grid-cols-1 gap-3">
+           {['Breakfast', 'Lunch', 'Dinner', 'Snack'].map(meal => (
+             <button
+               key={meal}
+               onClick={() => onSelect(meal.toLowerCase())}
+               className="py-4 rounded-2xl font-bold text-lg bg-gray-50 hover:bg-blue-600 hover:text-white hover:shadow-lg hover:shadow-blue-200 text-gray-700 transition-all active:scale-95"
+             >
+               {meal}
+             </button>
+           ))}
+        </div>
+      </div>
+    </div>
+  );
+};
 
 const SearchHeader = memo(({ onSearch, onBack, initialQuery }) => {
   const [localValue, setLocalValue] = useState(initialQuery);
@@ -69,9 +99,29 @@ const SearchResults = memo(({ results, searchType, loading, onItemClick }) => {
             onClick={() => onItemClick(item)}
             className="relative overflow-hidden p-4 rounded-2xl border bg-white border-gray-100 hover:border-blue-200 hover:shadow-md active:scale-[0.98] transition-all duration-300 cursor-pointer"
           >
-            <div className="flex items-start justify-between gap-3">
+            {/* Main Flex Container - items-center ensures vertical centering of arrow */}
+            <div className="flex items-center justify-between gap-3">
+              
               <div className="flex-1 min-w-0">
-                <h3 className="font-bold text-gray-900 text-base mb-1 truncate">{item.name}</h3>
+                {/* --- TITLE ROW: Title+Badge LEFT | Votes RIGHT --- */}
+                <div className="flex items-center justify-between gap-2 mb-1">
+                    <div className="flex items-center gap-1.5 min-w-0">
+                        <h3 className="font-bold text-gray-900 text-base truncate">
+                            {item.name}
+                        </h3>
+                        {item.is_verified && (
+                            <RiVerifiedBadgeFill className="text-blue-500 text-lg shrink-0" />
+                        )}
+                    </div>
+
+                    {/* Votes Badge - Pushed to right end of this section */}
+                    <div className="flex items-center gap-1 bg-gray-50 border border-gray-100 rounded-full px-2 py-0.5 shrink-0">
+                        <RiArrowLeftSFill className="text-gray-400 text-xs" />
+                        <span className="text-[10px] font-bold text-[#EA580C] leading-none">{item.votes || 0}</span>
+                        <RiArrowRightSFill className="text-gray-400 text-xs" />
+                    </div>
+                </div>
+
                 <div className="flex items-center gap-1.5 mb-2">
                   <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${
                     item.source === 'usda' ? 'bg-green-100 text-green-700' : 'bg-purple-100 text-purple-700'
@@ -95,6 +145,8 @@ const SearchResults = memo(({ results, searchType, loading, onItemClick }) => {
                   <p className="text-xs text-gray-500">{item.met_value} MET</p>
                 )}
               </div>
+
+              {/* Right Arrow - Centered Vertically due to parent items-center */}
               <div className="w-10 h-10 flex items-center justify-center rounded-full bg-gray-100 text-gray-400 group-hover:bg-blue-50 group-hover:text-blue-500 transition-all shrink-0">
                 <IoMdArrowForward className="text-xl" />
               </div>
@@ -113,18 +165,26 @@ const SearchPage = () => {
   const [searchType, setSearchType] = useState("foods");
   const [results, setResults] = useState([]);
   const [loading, setLoading] = useState(false);
+  
   const [selectedMeal, setSelectedMeal] = useState(() => {
     return sessionStorage.getItem("selectedMeal") || null;
   });
-  const [showCreateMenu, setShowCreateMenu] = useState(false);
+  
+  const [showMealModal, setShowMealModal] = useState(false);
+  const [showCreateMenu, setShowCreateMenu] = useState(false); // Restored Menu State
 
   useEffect(() => {
     if (selectedMeal) {
       sessionStorage.setItem("selectedMeal", selectedMeal);
     } else {
-      sessionStorage.removeItem("selectedMeal");
+      setShowMealModal(true);
     }
   }, [selectedMeal]);
+
+  const handleMealSelect = (meal) => {
+      setSelectedMeal(meal);
+      setShowMealModal(false);
+  };
 
   useEffect(() => {
     const fetchResults = async () => {
@@ -150,7 +210,7 @@ const SearchPage = () => {
   const handleItemClick = useCallback((item) => {
     if (searchType === "foods") {
       if (!selectedMeal) {
-        setShowCreateMenu(true);
+        setShowMealModal(true);
         return;
       }
       navigate(`/food/${item.id}?meal=${selectedMeal}`);
@@ -205,6 +265,7 @@ const SearchPage = () => {
         onItemClick={handleItemClick}
       />
 
+      {/* --- FLOATING ACTION BUTTON RESTORED --- */}
       {searchType === "foods" ? (
         <button
           onClick={() => setShowCreateMenu(true)}
@@ -221,6 +282,7 @@ const SearchPage = () => {
         </button>
       )}
 
+      {/* --- RESTORED CREATE MENU (Without "Select Meal" Grid) --- */}
       {showCreateMenu && (
         <>
           <div
@@ -230,26 +292,6 @@ const SearchPage = () => {
           <div className="fixed bottom-0 left-0 right-0 bg-white rounded-t-3xl p-6 z-50 shadow-2xl animate-slideUp">
             <div className="w-12 h-1.5 bg-gray-300 rounded-full mx-auto mb-6" />
             
-            {!selectedMeal && (
-              <div className="mb-6">
-                <p className="text-sm font-semibold text-gray-700 mb-3">Select Meal</p>
-                <div className="grid grid-cols-2 gap-2">
-                  {['Breakfast', 'Lunch', 'Dinner', 'Snack'].map(meal => (
-                    <button
-                      key={meal}
-                      onClick={() => {
-                        setSelectedMeal(meal.toLowerCase());
-                        setShowCreateMenu(false);
-                      }}
-                      className="px-4 py-3 text-sm font-bold text-gray-700 bg-gray-100 hover:bg-blue-50 hover:text-blue-600 rounded-xl transition-all active:scale-95"
-                    >
-                      {meal}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
-
             <div className="space-y-3">
               <button
                 onClick={() => navigate(`/create-ai?meal=${selectedMeal || ''}`)}
@@ -281,17 +323,30 @@ const SearchPage = () => {
         </>
       )}
 
+      {/* --- FORCED MEAL SELECTION POPUP --- */}
+      <MealSelectionModal 
+        isOpen={showMealModal} 
+        onSelect={handleMealSelect} 
+      />
+
       <style jsx>{`
         @keyframes fadeIn {
           from { opacity: 0; }
           to { opacity: 1; }
+        }
+        @keyframes scaleIn {
+          from { opacity: 0; transform: scale(0.95); }
+          to { opacity: 1; transform: scale(1); }
         }
         @keyframes slideUp {
           from { transform: translateY(100%); }
           to { transform: translateY(0); }
         }
         .animate-fadeIn {
-          animation: fadeIn 0.2s ease-out;
+          animation: fadeIn 0.2s ease-out forwards;
+        }
+        .animate-scaleIn {
+          animation: scaleIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
         }
         .animate-slideUp {
           animation: slideUp 0.3s ease-out;

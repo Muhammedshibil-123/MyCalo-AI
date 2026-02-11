@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, memo } from "react";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { 
   RiArrowLeftLine, 
@@ -6,8 +6,11 @@ import {
   RiFireFill,
   RiArrowUpSLine,
   RiArrowDownSLine,
-  RiArrowLeftSLine,   // Added for image slider
-  RiArrowRightSLine   // Added for image slider
+  RiArrowLeftSLine,   
+  RiArrowRightSLine,
+  RiArrowUpSFill,
+  RiArrowDownSFill,
+  RiVerifiedBadgeFill // Added for verified tick
 } from "react-icons/ri";
 import { 
   MdOutlineEggAlt,     
@@ -24,14 +27,96 @@ import api from "../../lib/axios";
 
 const ITEM_HEIGHT = 40; 
 
+// --- ISOLATED VOTE COMPONENT ---
+// This component manages its own state, so the parent (FoodDetail) doesn't re-render on vote.
+const VoteWidget = memo(({ foodId, initialVotes }) => {
+  const [voteCount, setVoteCount] = useState(initialVotes);
+  const [userVote, setUserVote] = useState(0); // 0: None, 1: Up, -1: Down
+  const [isVoting, setIsVoting] = useState(false);
+
+  const handleVote = async (type) => {
+    if (isVoting) return;
+    setIsVoting(true);
+
+    // Optimistic Update (makes it feel instant)
+    const voteValue = type === 'upvote' ? 1 : -1;
+    const previousUserVote = userVote;
+    const previousCount = voteCount;
+
+    let newVoteStatus = 0;
+    let newCount = voteCount;
+
+    if (userVote === voteValue) {
+      // Toggle off
+      newVoteStatus = 0;
+      newCount -= voteValue;
+    } else {
+      // New vote or switch vote
+      newVoteStatus = voteValue;
+      newCount += (voteValue - userVote);
+    }
+
+    setUserVote(newVoteStatus);
+    setVoteCount(newCount);
+
+    try {
+        const res = await api.post(`/api/foods/${foodId}/vote/`, { vote_type: type });
+        // Sync with actual server data to be safe
+        setVoteCount(res.data.total_votes);
+        if (res.data.user_vote !== undefined) {
+             setUserVote(res.data.user_vote || 0); 
+        }
+    } catch (error) {
+        console.error("Voting failed", error);
+        // Revert on error
+        setUserVote(previousUserVote);
+        setVoteCount(previousCount);
+    } finally {
+        setIsVoting(false);
+    }
+  };
+
+  return (
+    <div className="flex flex-col items-center justify-center bg-gray-50 border border-gray-100 rounded-full py-2 px-1 min-w-[3rem] shadow-sm">
+        <button 
+            onClick={() => handleVote('upvote')}
+            className={`w-8 h-8 flex items-center justify-center rounded-full transition-all active:scale-90 ${
+                userVote === 1 
+                ? 'bg-orange-100 text-orange-500 shadow-inner' 
+                : 'text-gray-400 hover:bg-gray-200'
+            }`}
+        >
+            <RiArrowUpSFill className="text-2xl" />
+        </button>
+        
+        <span className={`text-sm font-bold my-1 ${
+            userVote !== 0 ? 'text-gray-800' : 'text-gray-500'
+        }`}>
+            {voteCount}
+        </span>
+        
+        <button 
+            onClick={() => handleVote('downvote')}
+            className={`w-8 h-8 flex items-center justify-center rounded-full transition-all active:scale-90 ${
+                userVote === -1 
+                ? 'bg-blue-100 text-blue-500 shadow-inner' 
+                : 'text-gray-400 hover:bg-gray-200'
+            }`}
+        >
+            <RiArrowDownSFill className="text-2xl" />
+        </button>
+    </div>
+  );
+});
+
 const FoodDetail = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   
   // Refs for scrolling
-  const scrollRef = useRef(null);      // For serving units
-  const imageScrollRef = useRef(null); // For image slider
+  const scrollRef = useRef(null);      
+  const imageScrollRef = useRef(null); 
   
   const meal = searchParams.get("meal");
   const dateParam = searchParams.get("date");
@@ -169,8 +254,6 @@ const FoodDetail = () => {
   ];
 
   const containerPaddingY = 44; 
-
-  // Check if we have multiple images
   const hasImages = food.images && food.images.length > 0;
 
   return (
@@ -192,31 +275,47 @@ const FoodDetail = () => {
 
       <div className="max-w-md mx-auto px-5 pt-6 space-y-6">
         
-        {/* Title, Source & Image Section */}
-        <div className="text-center space-y-2">
+        {/* Title, Votes & Info Section */}
+        <div className="space-y-4">
           
-          <div className="flex items-center justify-center gap-2">
-            <h1 className="text-2xl font-black leading-tight text-gray-900">{food.name}</h1>
-            <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wide border ${
-              food.source === 'AI' ? 'bg-purple-50 text-purple-600 border-purple-100' :
-              food.source === 'ADMIN' ? 'bg-emerald-50 text-emerald-600 border-emerald-100' : 
-              'bg-gray-50 text-gray-500 border-gray-100'
-            }`}>
-              {food.source}
-            </span>
-          </div>
-          
-          <div className="flex items-center justify-center gap-2 text-sm text-gray-400 font-medium">
-            <span>{food.brand || 'Generic'}</span>
-            <span className="w-1 h-1 bg-gray-300 rounded-full" />
-            <span>{food.serving_size}</span>
-          </div>
+          <div className="flex items-start justify-between">
+            {/* Left: Title and Description */}
+            <div className="flex-1 pr-4">
+                <h1 className="text-xl font-black leading-tight text-gray-900 flex items-center gap-1.5">
+                    {food.name}
+                    {food.is_verified && (
+                        <RiVerifiedBadgeFill className="text-blue-500 text-xl shrink-0" />
+                    )}
+                </h1>
+                
+                {/* Description Line */}
+                <div className="flex flex-wrap items-center gap-2 mt-2">
+                    <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wide border ${
+                        food.source === 'AI' ? 'bg-purple-50 text-purple-600 border-purple-100' :
+                        food.source === 'ADMIN' ? 'bg-emerald-50 text-emerald-600 border-emerald-100' : 
+                        'bg-gray-50 text-gray-500 border-gray-100'
+                    }`}>
+                        {food.source}
+                    </span>
+                    
+                    <span className="text-gray-300 text-xs">•</span>
+                    
+                    <div className="flex items-center gap-2 text-sm text-gray-400 font-medium">
+                        <span>{food.brand || 'Generic'}</span>
+                        <span className="w-1 h-1 bg-gray-300 rounded-full" />
+                        <span>{food.serving_size}</span>
+                    </div>
+                </div>
+            </div>
 
+            {/* Right: Isolated Vote Widget */}
+            <VoteWidget foodId={id} initialVotes={food.votes || 0} />
+          </div>
+          
           {/* --- IMAGE SLIDER --- */}
           <div className="relative group w-full aspect-video bg-gray-50 rounded-2xl border border-gray-100 shadow-sm mt-4">
              {hasImages ? (
                 <>
-                    {/* Scroll Container */}
                     <div 
                         ref={imageScrollRef}
                         className="w-full h-full flex overflow-x-auto snap-x snap-mandatory scrollbar-hide scroll-smooth"
@@ -232,7 +331,7 @@ const FoodDetail = () => {
                         ))}
                     </div>
 
-                    {/* Navigation Buttons (Only show if > 1 image) */}
+                    {/* Navigation Buttons */}
                     {food.images.length > 1 && (
                         <>
                             <button 
@@ -248,7 +347,6 @@ const FoodDetail = () => {
                                 <RiArrowRightSLine className="text-xl" />
                             </button>
                             
-                            {/* Page Indicators */}
                             <div className="absolute bottom-2 left-0 right-0 flex justify-center gap-1.5">
                                 {food.images.map((_, i) => (
                                     <div key={i} className="w-1.5 h-1.5 rounded-full bg-white/60 shadow-sm" />
@@ -264,7 +362,6 @@ const FoodDetail = () => {
                 </div>
              )}
           </div>
-
         </div>
 
         {/* --- MAIN INPUT SECTION --- */}
@@ -290,15 +387,15 @@ const FoodDetail = () => {
                    const isActive = selectedUnit.value === unit.value;
                    return (
                      <button
-                        key={unit.value}
-                        onClick={() => scrollToItem(idx)}
-                        className={`
-                            w-full h-10 flex items-center justify-center snap-center transition-all duration-200
-                            ${isActive 
-                                ? "text-gray-900 font-bold text-sm scale-100" 
-                                : "text-gray-400 font-medium text-xs scale-90 opacity-60"
-                            }
-                        `}
+                       key={unit.value}
+                       onClick={() => scrollToItem(idx)}
+                       className={`
+                           w-full h-10 flex items-center justify-center snap-center transition-all duration-200
+                           ${isActive 
+                               ? "text-gray-900 font-bold text-sm scale-100" 
+                               : "text-gray-400 font-medium text-xs scale-90 opacity-60"
+                           }
+                       `}
                      >
                        {unit.label}
                      </button>

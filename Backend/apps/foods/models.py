@@ -59,3 +59,20 @@ class FoodItem(models.Model):
 class FoodImage(models.Model):
     food = models.ForeignKey(FoodItem, related_name='images', on_delete=models.CASCADE)
     image = models.ImageField(upload_to='food_images/')
+
+class FoodVote(models.Model):
+    VOTE_CHOICES = (
+        (1, 'Upvote'),
+        (-1, 'Downvote'),
+    )
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    food = models.ForeignKey(FoodItem, related_name='user_votes', on_delete=models.CASCADE)
+    value = models.SmallIntegerField(choices=VOTE_CHOICES)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        unique_together = ('user', 'food') 
+        indexes = [
+            models.Index(fields=['user', 'food']),
+        ]

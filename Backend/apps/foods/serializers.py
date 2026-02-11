@@ -1,6 +1,6 @@
 from rest_framework import serializers
 
-from .models import FoodItem,FoodImage
+from .models import FoodItem,FoodImage,FoodVote
 
 
 class FoodImageSerializer(serializers.ModelSerializer):
@@ -21,3 +21,6 @@ class FoodItemSerializer(serializers.ModelSerializer):
         user = self.context["request"].user
         validated_data["created_by"] = user
         return super().create(validated_data)
+    
+class VoteSerializer(serializers.Serializer):
+    vote_type = serializers.ChoiceField(choices=['upvote', 'downvote'])
