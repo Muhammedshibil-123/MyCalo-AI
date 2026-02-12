@@ -10,6 +10,8 @@ class Settings:
     VERSION: str = "1.0.0"
     GEMINI_API_KEY: str = os.getenv("GEMINI_API_KEY")
 
+    DATABASE_PASSWORD: str = os.getenv("DATABASE_PASSWORD")
+
     SECRET_KEY: str = os.getenv("SECRET_KEY")
     ALGORITHM: str = os.getenv("ALGORITHM", "HS256")
 
@@ -20,6 +22,8 @@ class Settings:
             raise ValueError(
                 "SECRET_KEY not found. Please copy it from Django Backend .env"
             )
+        if not self.DATABASE_PASSWORD: 
+             print("Warning: DATABASE_PASSWORD not set. SQL Tool will fail.")
 
 
 settings = Settings()

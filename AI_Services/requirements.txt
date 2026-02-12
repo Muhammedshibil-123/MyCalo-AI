@@ -8,3 +8,11 @@ pyjwt==2.8.0
 black
 isort
 flake8
+
+langchain==0.1.16
+langchain-google-genai==1.0.2
+langchain-community==0.0.34
+langchain-experimental==0.0.57
+psycopg2-binary==2.9.9
+faiss-cpu==1.8.0
+tiktoken==0.6.0
