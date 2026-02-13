@@ -1,0 +1,7 @@
+django>=5.0
+channels[daphne]>=4.0
+channels-redis>=4.1
+boto3
+python-dotenv
+djangorestframework
+djangorestframework-simplejwt
