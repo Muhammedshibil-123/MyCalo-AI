@@ -10,6 +10,8 @@ class Settings:
     VERSION: str = "1.0.0"
     GEMINI_API_KEY: str = os.getenv("GEMINI_API_KEY")
 
+    BACKUP_GEMINI_KEY: str = os.getenv("BACKUP_GEMINI_KEY")
+
     DATABASE_PASSWORD: str = os.getenv("DATABASE_PASSWORD")
 
     SECRET_KEY: str = os.getenv("SECRET_KEY")
@@ -18,6 +20,10 @@ class Settings:
     def validate(self):
         if not self.GEMINI_API_KEY:
             self.GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
+
+        if not self.BACKUP_GEMINI_KEY:
+            self.BACKUP_GEMINI_KEY = self.BACKUP_GEMINI_KEY
+
         if not self.SECRET_KEY:
             raise ValueError(
                 "SECRET_KEY not found. Please copy it from Django Backend .env"

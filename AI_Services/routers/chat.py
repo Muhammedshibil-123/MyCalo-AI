@@ -11,21 +11,25 @@ class ChatRequest(BaseModel):
 @router.post("/ask")
 async def ask_assistant(request: ChatRequest):
     """
-    Hybrid RAG Chat Endpoint with Failover.
+    Hybrid AI Chat Endpoint with SQL Query, Vector DB, and General Knowledge Support.
+    
+    Routes queries to:
+    - SQL Database for diet/nutrition tracking questions
+    - Vector DB for app navigation questions  
+    - Direct LLM for general knowledge questions
     """
     try:
-        # The agent now handles its own initialization and failover loops
         agent = HybridAgent()
         
         print(f"[API] Processing query for User {request.user_id}: {request.query}")
         
         response = await agent.process_query(request.query, request.user_id)
         
-        return {"response": response}
+        return {"response": response, "success": True}
         
     except Exception as e:
         print(f"[CRITICAL API ERROR] {str(e)}")
-        # Return a soft error to the frontend instead of 500 crash
         return {
-            "response": "I'm encountering a temporary system error. Please try again shortly."
+            "response": "I'm encountering a temporary system error. Please try again shortly.",
+            "success": False
         }
