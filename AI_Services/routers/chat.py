@@ -6,24 +6,26 @@ router = APIRouter(prefix="/chat", tags=["AI Chat"])
 
 class ChatRequest(BaseModel):
     query: str
-    user_id: int  # In production, you would extract this from the JWT token
+    user_id: int 
 
 @router.post("/ask")
 async def ask_assistant(request: ChatRequest):
     """
-    Hybrid RAG Chat Endpoint.
-    - Routes to SQL for personal data (weight, logs, etc.).
-    - Routes to VectorDB for app help (how to change password, etc.).
-    - Uses LLM for general chat.
+    Hybrid RAG Chat Endpoint with Failover.
     """
     try:
-        # Initialize the agent
+        # The agent now handles its own initialization and failover loops
         agent = HybridAgent()
         
-        # Process the query using the logic defined in services/chat_agent.py
+        print(f"[API] Processing query for User {request.user_id}: {request.query}")
+        
         response = await agent.process_query(request.query, request.user_id)
         
         return {"response": response}
+        
     except Exception as e:
-        print(f"Chat Error: {e}")
-        raise HTTPException(status_code=500, detail=f"AI Service Error: {str(e)}")
+        print(f"[CRITICAL API ERROR] {str(e)}")
+        # Return a soft error to the frontend instead of 500 crash
+        return {
+            "response": "I'm encountering a temporary system error. Please try again shortly."
+        }

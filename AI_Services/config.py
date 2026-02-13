@@ -17,7 +17,7 @@ class Settings:
 
     def validate(self):
         if not self.GEMINI_API_KEY:
-            raise ValueError("GEMINI_API_KEY not found in .env file")
+            self.GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
         if not self.SECRET_KEY:
             raise ValueError(
                 "SECRET_KEY not found. Please copy it from Django Backend .env"

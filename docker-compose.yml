@@ -39,6 +39,19 @@ services:
       - ./AI_Services/.env
     ports:
       - "8001:8001"  
+    environment:
+      - CHROMA_DB_HOST=chromadb
+    depends_on:
+      - db
+      - chromadb
+  
+  chromadb:
+    image: chromadb/chroma:latest
+    container_name: mycalo_chromadb
+    ports:
+      - "8002:8000"
+    volumes:
+      - chroma_data:/chroma/chroma
 
   # --- API GATEWAY (Nginx) ---
   gateway:
@@ -55,3 +68,4 @@ services:
 
 volumes:
   postgres_data:
+  chroma_data:
