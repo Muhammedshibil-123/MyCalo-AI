@@ -44,9 +44,13 @@ const Chat = () => {
     ws.onmessage = (event) => {
       try {
         const data = JSON.parse(event.data);
+        console.log('📨 WebSocket message received:', data);
+        
         if (data.type === 'chat_history') {
+          console.log('📜 Chat history loaded:', data.messages);
           setMessages(data.messages);
         } else if (data.type === 'new_message') {
+          console.log('💬 New message:', data);
           setMessages((prev) => [...prev, data]);
         }
       } catch (e) {
@@ -175,7 +179,12 @@ const Chat = () => {
           </div>
         ) : (
           messages.map((msg, index) => {
-            const isMe = msg.SenderID === user.id || msg.sender_id === user.id;
+            // Check if message is from current user
+            // Backend sends: SenderID (capitalized) or sender_id
+            const senderId = msg.SenderID || msg.sender_id;
+            const isMe = senderId === user.id;
+            
+            console.log('Message:', { senderId, userId: user.id, isMe, msg }); // Debug log
             
             return (
               <div key={index} className={`flex ${isMe ? 'justify-end' : 'justify-start'} animate-fade-in`}>
