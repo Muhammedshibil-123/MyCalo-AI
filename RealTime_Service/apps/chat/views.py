@@ -4,6 +4,8 @@ from rest_framework.response import Response
 from rest_framework.parsers import MultiPartParser
 from rest_framework.permissions import IsAuthenticated
 from .authentication import StatelessTokenAuthentication  
+from django.conf import settings
+
 
 class ChatMediaUploadView(APIView):
     authentication_classes = [StatelessTokenAuthentication]
@@ -22,3 +24,4 @@ class ChatMediaUploadView(APIView):
             "format": upload_data.get("format"),
             "resource_type": upload_data.get("resource_type")
         })
+    

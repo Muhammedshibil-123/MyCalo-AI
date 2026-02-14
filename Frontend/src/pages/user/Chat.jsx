@@ -47,10 +47,10 @@ const Chat = () => {
         console.log('📨 WebSocket message received:', data);
         
         if (data.type === 'chat_history') {
-          console.log('📜 Chat history loaded:', data.messages);
           setMessages(data.messages);
         } else if (data.type === 'new_message') {
-          console.log('💬 New message:', data);
+          // Add the message to the list. 
+          // The isMe check in the render will handle the alignment.
           setMessages((prev) => [...prev, data]);
         }
       } catch (e) {
@@ -83,10 +83,12 @@ const Chat = () => {
   const handleSendMessage = () => {
     if (!inputText.trim() || !socketRef.current) return;
     
+    // Send to backend
     socketRef.current.send(JSON.stringify({ 
       message: inputText, 
       sender_id: user.id 
     }));
+    
     setInputText('');
   };
 
@@ -149,7 +151,6 @@ const Chat = () => {
           <p className="text-xs text-green-600 font-medium">● Active now</p>
         </div>
 
-        {/* Call Icons */}
         <div className="flex gap-3 text-gray-600">
           <button className="w-9 h-9 flex items-center justify-center rounded-full hover:bg-gray-100">
             <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -179,12 +180,10 @@ const Chat = () => {
           </div>
         ) : (
           messages.map((msg, index) => {
-            // Check if message is from current user
-            // Backend sends: SenderID (capitalized) or sender_id
-            const senderId = msg.SenderID || msg.sender_id;
-            const isMe = senderId === user.id;
-            
-            console.log('Message:', { senderId, userId: user.id, isMe, msg }); // Debug log
+            // FIX: Check both 'SenderID' (history) and 'sender_id' (real-time broadcast)
+            // Also force both to Number to avoid string/integer comparison issues
+            const msgSenderId = msg.SenderID || msg.sender_id;
+            const isMe = Number(msgSenderId) === Number(user.id);
             
             return (
               <div key={index} className={`flex ${isMe ? 'justify-end' : 'justify-start'} animate-fade-in`}>
@@ -239,7 +238,6 @@ const Chat = () => {
       <div className="bg-white border-t border-gray-200 p-4 safe-area-pb">
         <div className="flex items-center gap-3 max-w-4xl mx-auto">
           
-          {/* File Upload Button */}
           <button
             onClick={() => fileInputRef.current?.click()}
             disabled={isUploading}
@@ -261,7 +259,6 @@ const Chat = () => {
             disabled={isUploading}
           />
 
-          {/* Text Input */}
           <div className="flex-1 bg-gray-100 rounded-full flex items-center px-4 py-2.5 border border-gray-200 focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-100 transition-all">
             <input 
               type="text"
@@ -273,7 +270,6 @@ const Chat = () => {
             />
           </div>
 
-          {/* Send Button */}
           <button
             onClick={handleSendMessage}
             disabled={!inputText.trim()}

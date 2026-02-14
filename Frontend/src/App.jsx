@@ -27,11 +27,13 @@ import AnalyzeImageResult from './pages/user/AnalyzeImageResult';
 import ManualEntry from './pages/user/ManualEntry';
 import Chat from './pages/user/Chat';
 import Consult from './pages/user/Consult';
+import DoctorConsultList from './pages/doctor/DoctorConsultList';
+import DoctorChatPage from './pages/doctor/DoctorChatPage';
 
 const getHomeRouteForRole = (role) => {
     if (role === 'admin' || role === 'employee') return '/admin/dashboard';
-    if (role === 'doctor') return '/doctor/dashboard';
-    return '/'; 
+    if (role === 'doctor') return '/doctor/consult';
+    return '/';
 };
 
 const DelayedLoader = ({ isLoading }) => {
@@ -142,6 +144,8 @@ function App() {
 
                 <Route element={<RoleRoute allowedRoles={['doctor']} />}>
                     <Route path="/doctor/dashboard" element={<DoctorDashboard />} />
+                    <Route path="/doctor/consult" element={<DoctorConsultList />} />
+                    <Route path="/doctor/chat/:roomId" element={<DoctorChatPage />} />
                 </Route>
 
                 <Route path="*" element={<NotFound />} />
