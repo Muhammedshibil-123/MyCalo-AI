@@ -6,3 +6,4 @@ python-dotenv
 djangorestframework
 djangorestframework-simplejwt
 python-dotenv
+cloudinary

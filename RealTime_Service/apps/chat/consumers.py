@@ -5,7 +5,6 @@ from datetime import datetime
 from channels.db import database_sync_to_async
 from .services import get_dynamodb_resource
 
-# --- HELPER: Handles DynamoDB Decimals for JSON ---
 class DecimalEncoder(json.JSONEncoder):
     def default(self, obj):
         if isinstance(obj, decimal.Decimal):
@@ -25,7 +24,6 @@ class ChatConsumer(AsyncWebsocketConsumer):
         await self.channel_layer.group_add(self.room_group_name, self.channel_name)
         await self.accept()
 
-        # Load history and use the custom DecimalEncoder
         history = await self.get_chat_history()
         await self.send(text_data=json.dumps({
             'type': 'chat_history',
@@ -37,32 +35,35 @@ class ChatConsumer(AsyncWebsocketConsumer):
 
     async def receive(self, text_data):
         data = json.loads(text_data)
-        message = data.get('message')
+        message_text = data.get('message', '')
+        file_url = data.get('file_url', None)
+        file_type = data.get('file_type', 'text')
 
-        await self.save_message_to_dynamo(self.user_id, message)
+        await self.save_message_to_dynamo(self.user_id, message_text, file_url, file_type)
 
         await self.channel_layer.group_send(
             self.room_group_name,
             {
                 'type': 'chat_message',
-                'message': message,
+                'message': message_text,
+                'file_url': file_url,
+                'file_type': file_type,
                 'sender_id': self.user_id
             }
         )
 
     async def chat_message(self, event):
-        # Broadcasted messages use the custom DecimalEncoder
         await self.send(text_data=json.dumps({
             'type': 'new_message',
             'message': event['message'],
+            'file_url': event.get('file_url'),
+            'file_type': event.get('file_type'),
             'sender_id': event['sender_id'],
             'timestamp': datetime.now().isoformat()
         }, cls=DecimalEncoder))
 
-    # --- Sync to Async Helpers ---
-
     @database_sync_to_async
-    def save_message_to_dynamo(self, sender_id, message):
+    def save_message_to_dynamo(self, sender_id, message, file_url=None, file_type='text'):
         try:
             dynamodb = get_dynamodb_resource()
             table = dynamodb.Table('ChatHistory')
@@ -71,7 +72,9 @@ class ChatConsumer(AsyncWebsocketConsumer):
                     'RoomID': self.room_name,
                     'Timestamp': datetime.now().isoformat(),
                     'SenderID': int(sender_id),
-                    'Message': message
+                    'Message': message,
+                    'FileUrl': file_url,
+                    'FileType': file_type
                 }
             )
         except Exception as e:

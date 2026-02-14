@@ -94,6 +94,25 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 STATIC_URL = 'static/'
 
+import os
+from datetime import timedelta
+
+REST_FRAMEWORK = {
+    'DEFAULT_AUTHENTICATION_CLASSES': (
+        'rest_framework_simplejwt.authentication.JWTAuthentication',
+    ),
+    'DEFAULT_PERMISSION_CLASSES': (
+        'rest_framework.permissions.IsAuthenticated',
+    ),
+}
+
+SIMPLE_JWT = {
+    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=60),
+    'SIGNING_KEY': SECRET_KEY, 
+    'ALGORITHM': 'HS256',
+    'AUTH_HEADER_TYPES': ('Bearer',),
+}
+
 # --- CHANNEL LAYERS (Redis Config) ---
 CHANNEL_LAYERS = {
     'default': {
@@ -114,3 +133,4 @@ AWS_REGION = os.getenv('AWS_REGION', 'us-east-1')
 DYNAMODB_ENDPOINT = os.getenv('DYNAMODB_ENDPOINT', 'http://dynamodb-local:8000')
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
