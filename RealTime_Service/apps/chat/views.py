@@ -3,10 +3,10 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.parsers import MultiPartParser
 from rest_framework.permissions import IsAuthenticated
-from rest_framework_simplejwt.authentication import JWTAuthentication
+from .authentication import StatelessTokenAuthentication  
 
 class ChatMediaUploadView(APIView):
-    authentication_classes = [JWTAuthentication]
+    authentication_classes = [StatelessTokenAuthentication]
     permission_classes = [IsAuthenticated]
     parser_classes = [MultiPartParser]
 
