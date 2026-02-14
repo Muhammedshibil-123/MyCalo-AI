@@ -14,6 +14,7 @@ from .views import (
     UserDetailView,
     UserListView,
     VerifyOTPView,
+    DoctorListView
 )
 
 urlpatterns = [
@@ -38,4 +39,5 @@ urlpatterns = [
     ),
     path("logout/", LogoutView.as_view(), name="auth_logout"),
     path("change-password/", ChangePasswordView.as_view(), name="change-password"),
+    path('doctors/', DoctorListView.as_view(), name='doctor-list'),
 ]

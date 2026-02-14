@@ -22,7 +22,18 @@ class ChatConsumer(AsyncWebsocketConsumer):
             return
 
         await self.channel_layer.group_add(self.room_group_name, self.channel_name)
-        await self.accept()
+
+        # --- FIX STARTS HERE ---
+        # We must echo back the subprotocol (token) to satisfy the browser/client
+        headers = dict(self.scope.get('headers', []))
+        subprotocol = None
+        if b'sec-websocket-protocol' in headers:
+            # Extract the token exactly as the middleware did
+            subprotocol = headers[b'sec-websocket-protocol'].decode('utf-8').split(',')[0].strip()
+
+        # Accept the connection AND the protocol
+        await self.accept(subprotocol=subprotocol)
+        # --- FIX ENDS HERE ---
 
         history = await self.get_chat_history()
         await self.send(text_data=json.dumps({

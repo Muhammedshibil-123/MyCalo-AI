@@ -25,6 +25,7 @@ import FoodDetail from './pages/user/FoodDetail';
 import CreateWithAI from './pages/user/CreateWithAI';
 import AnalyzeImageResult from './pages/user/AnalyzeImageResult';
 import ManualEntry from './pages/user/ManualEntry';
+import Chat from './pages/user/Chat';
 
 const getHomeRouteForRole = (role) => {
     if (role === 'admin' || role === 'employee') return '/admin/dashboard';
@@ -124,6 +125,7 @@ function App() {
                         <Route path="/profile" element={<Profile />} />
                         <Route path="/profile/change-password" element={<ChangePassword />} />
                         <Route path="/analytics" element={<Dashboard />} />
+                        <Route path="/chat" element={<Chat />} />
                     </Route>
                     <Route path="/search" element={<SearchPage />} />
                     <Route path="/food/:id" element={<FoodDetail />} />

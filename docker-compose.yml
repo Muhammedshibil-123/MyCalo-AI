@@ -28,6 +28,20 @@ services:
     command: "-jar DynamoDBLocal.jar -sharedDb -dbPath ./data"
     volumes:
       - ./dynamodb_data:/home/dynamodblocal/data
+  
+  # --- DYNAMODB ADMIN GUI (New) ---
+  dynamodb-admin:
+    image: aaronshaf/dynamodb-admin
+    container_name: mycalo_dynamodb_admin
+    ports:
+      - "8005:8001" 
+    environment:
+      DYNAMO_ENDPOINT: "http://mycalo_dynamodb:8000"
+      AWS_REGION: "us-east-1"
+      AWS_ACCESS_KEY_ID: local
+      AWS_SECRET_ACCESS_KEY: local
+    depends_on:
+      - dynamodb-local
       
   # --- BACKEND (Django) ---
   backend:

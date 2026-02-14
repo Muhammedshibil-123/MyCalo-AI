@@ -49,11 +49,11 @@ const UserLayout = () => {
             </button>
 
             <button
-              onClick={() => navigate("/consult")}
+              onClick={() => navigate("/chat")}
               className="flex flex-col items-center gap-1 px-3 text-sm"
               style={{ color: isActive("/consult") ? activeColor : inactiveColor }}
             >
-              {isActive("/consult") ? (
+              {isActive("/chat") ? (
                 <IoMedical className="text-[30px]" />
               ) : (
                 <TbMedicalCross className="text-[30px]" />
