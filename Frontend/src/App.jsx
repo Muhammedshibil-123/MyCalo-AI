@@ -26,6 +26,7 @@ import CreateWithAI from './pages/user/CreateWithAI';
 import AnalyzeImageResult from './pages/user/AnalyzeImageResult';
 import ManualEntry from './pages/user/ManualEntry';
 import Chat from './pages/user/Chat';
+import Consult from './pages/user/Consult';
 
 const getHomeRouteForRole = (role) => {
     if (role === 'admin' || role === 'employee') return '/admin/dashboard';
@@ -125,13 +126,14 @@ function App() {
                         <Route path="/profile" element={<Profile />} />
                         <Route path="/profile/change-password" element={<ChangePassword />} />
                         <Route path="/analytics" element={<Dashboard />} />
-                        <Route path="/chat" element={<Chat />} />
+                        <Route path="/consult" element={<Consult />} />
                     </Route>
                     <Route path="/search" element={<SearchPage />} />
                     <Route path="/food/:id" element={<FoodDetail />} />
                     <Route path="/create-ai" element={<CreateWithAI />} />
                     <Route path="/analyze-image-result" element={<AnalyzeImageResult />} />
-                    <Route path="/manual-entry" element={<ManualEntry />} />
+                    <Route path="/manual-entry" element={<ManualEntry />} />\
+                    <Route path="/chat" element={<Chat />} />
                 </Route>
 
                 <Route element={<RoleRoute allowedRoles={['admin', 'employee']} />}>
