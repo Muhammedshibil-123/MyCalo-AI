@@ -1,11 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useSelector } from 'react-redux';
-import { IoMdArrowBack, IoMdSend, IoMdClose, IoMdPlay, IoMdMic, IoMdSquare, IoMdTrash } from 'react-icons/io';
+import { IoMdArrowBack, IoMdSend, IoMdClose, IoMdPlay, IoMdMic, IoMdSquare, IoMdTrash, IoMdVideocam, IoMdCall } from 'react-icons/io';
 import { RiImageAddLine } from 'react-icons/ri';
 import api from '../../lib/axios';
 import { useUpload } from '../../context/UploadContext';
 import CustomAudioPlayer from '../../components/CustomAudioPlayer';
+import VideoCall from '../../components/VideoCall';
 
 const Chat = () => {
   const navigate = useNavigate();
@@ -16,22 +17,22 @@ const Chat = () => {
   const [messages, setMessages] = useState([]);
   const [inputText, setInputText] = useState('');
   
-  // Persistent Uploads
+  const [showVideoCall, setShowVideoCall] = useState(false);
+  const [isInitiator, setIsInitiator] = useState(false);
+  const [incomingCallData, setIncomingCallData] = useState(null);
+  const [isReceivingCall, setIsReceivingCall] = useState(false);
+
   const { roomUploads, uploadFile, removeUpload } = useUpload();
   const roomId = doctor ? `user_${user.id}_doc_${doctor.id}` : null;
   
-  // Combine History + Pending Uploads
-  // We sort by timestamp to ensure correct order
   const pendingMessages = roomId ? (roomUploads[roomId] || []) : [];
   
-  // Merge and sort
   const displayMessages = [...messages, ...pendingMessages].sort((a, b) => {
       const t1 = new Date(a.Timestamp || a.timestamp || 0).getTime();
       const t2 = new Date(b.Timestamp || b.timestamp || 0).getTime();
       return t1 - t2;
   });
 
-  // Recording
   const [isRecording, setIsRecording] = useState(false);
   const [recordingTime, setRecordingTime] = useState(0);
   const mediaRecorderRef = useRef(null);
@@ -45,26 +46,28 @@ const Chat = () => {
 
   useEffect(() => { if (!doctor) navigate('/consult'); }, [doctor, navigate]);
 
-  // WebSocket
   useEffect(() => {
     if (!roomId || !accessToken) return;
     const wsUrl = `ws://localhost:8080/ws/chat/${roomId}/`;
     const ws = new WebSocket(wsUrl, [accessToken]);
 
-    ws.onopen = () => console.log("✅ WS Connected");
-
     ws.onmessage = (event) => {
       try {
         const data = JSON.parse(event.data);
         
-        if (data.type === 'chat_history') {
-          console.log("📜 History received:", data.messages);
+        if (data.type === 'call_user') {
+            setIsReceivingCall(true);
+            setIncomingCallData(data.data);
+        }
+        else if (data.type === 'call_ended') {
+            setIsReceivingCall(false);
+            setShowVideoCall(false);
+            setIncomingCallData(null);
+        }
+        else if (data.type === 'chat_history') {
           setMessages(data.messages);
         } else if (data.type === 'new_message') {
-          console.log("💬 New message:", data);
-          
           setMessages((prev) => {
-            // Check for duplicates based on Timestamp + Sender
             const exists = prev.some(m => 
                 (m.Timestamp || m.timestamp) === data.timestamp && 
                 String(m.SenderID || m.sender_id) === String(data.sender_id)
@@ -73,21 +76,19 @@ const Chat = () => {
             return [...prev, data];
           });
           
-          // If this was a file upload from ME, remove the pending state from Context
           if (String(data.sender_id) === String(user.id) && data.file_url) {
              const pending = roomUploads[roomId] || [];
              if (pending.length > 0) {
-                 // Remove the oldest pending message (FIFO)
                  removeUpload(roomId, pending[0].tempId);
              }
           }
         }
-      } catch (e) { console.error("WS Error:", e); }
+      } catch (e) { console.error("WebSocket error:", e); }
     };
 
     socketRef.current = ws;
     return () => { if (socketRef.current) socketRef.current.close(); };
-  }, [roomId, accessToken, roomUploads]); // Added roomUploads dependency to access latest state
+  }, [roomId, accessToken, roomUploads]);
 
   useEffect(() => { messagesEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, [displayMessages]);
 
@@ -103,6 +104,17 @@ const Chat = () => {
     setInputText('');
   };
 
+  const startCall = () => {
+      setIsInitiator(true);
+      setShowVideoCall(true);
+  };
+
+  const answerCall = () => {
+      setIsInitiator(false);
+      setShowVideoCall(true);
+      setIsReceivingCall(false);
+  };
+
   const handleFileSelect = (e) => {
     const file = e.target.files[0];
     if (file) {
@@ -111,7 +123,6 @@ const Chat = () => {
     }
   };
 
-  // --- AUDIO ---
   const formatTime = (seconds) => {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
@@ -148,6 +159,7 @@ const Chat = () => {
 
   const sendRecording = () => {
       if (!mediaRecorderRef.current) return;
+      
       mediaRecorderRef.current.stop();
       mediaRecorderRef.current.stream.getTracks().forEach(t => t.stop());
       setIsRecording(false);
@@ -165,7 +177,6 @@ const Chat = () => {
   return (
     <div className="flex flex-col h-screen bg-gray-50">
       
-      {/* Header */}
       <div className="bg-white border-b border-gray-200 px-4 py-3 flex items-center gap-3 shadow-sm z-10">
         <button onClick={() => navigate('/consult')} className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-gray-100 transition-colors">
           <IoMdArrowBack className="text-xl text-gray-700" />
@@ -177,16 +188,47 @@ const Chat = () => {
           <h3 className="font-bold text-gray-900 truncate">Dr. {doctor.first_name || doctor.username}</h3>
           <p className="text-xs text-green-600 font-medium">Active now</p>
         </div>
+        
+        <button onClick={startCall} className="w-10 h-10 flex items-center justify-center rounded-full bg-blue-50 text-blue-600 hover:bg-blue-100 transition-all">
+            <IoMdVideocam className="text-xl" />
+        </button>
       </div>
 
-      {/* Messages */}
+      {isReceivingCall && !showVideoCall && (
+          <div className="absolute top-20 left-1/2 transform -translate-x-1/2 bg-black/80 text-white px-6 py-4 rounded-xl shadow-2xl z-50 flex items-center gap-4 animate-bounce">
+              <div className="flex flex-col">
+                  <span className="font-bold text-lg">Incoming Video Call...</span>
+                  <span className="text-sm text-gray-300">Dr. {doctor.username} is calling</span>
+              </div>
+              <button onClick={answerCall} className="p-3 bg-green-500 rounded-full hover:bg-green-600 transition-colors animate-pulse">
+                  <IoMdCall className="text-xl" />
+              </button>
+              <button onClick={() => setIsReceivingCall(false)} className="p-3 bg-red-500 rounded-full hover:bg-red-600 transition-colors">
+                  <IoMdClose className="text-xl" />
+              </button>
+          </div>
+      )}
+
+      {showVideoCall && (
+          <VideoCall 
+            socket={socketRef} 
+            user={user} 
+            roomId={roomId} 
+            isInitiator={isInitiator}
+            signalData={incomingCallData}
+            onClose={() => {
+                setShowVideoCall(false);
+                setIsReceivingCall(false);
+            }} 
+          />
+      )}
+
       <div className="flex-1 overflow-y-auto p-4 space-y-3">
         {displayMessages.map((msg, index) => {
-          // Normalize Keys (History uses PascalCase, Realtime uses snake_case)
           const senderId = msg.SenderID || msg.sender_id;
           const timestamp = msg.Timestamp || msg.timestamp;
-          const messageText = msg.Message || msg.message; // Could be empty string
-          const fileType = msg.FileType || msg.file_type; // 'image', 'video', 'audio', or null
+          const messageText = msg.Message || msg.message;
+          const fileType = msg.FileType || msg.file_type;
           const fileUrl = msg.FileUrl || msg.file_url;
           
           const isMe = Number(senderId) === Number(user.id);
@@ -198,10 +240,8 @@ const Chat = () => {
               
               <div className={`relative max-w-[75%] rounded-2xl p-1 shadow-sm ${isMe ? 'bg-blue-600 text-white rounded-br-none' : 'bg-white text-gray-800 border border-gray-200 rounded-bl-none'}`}>
                 
-                {/* --- MEDIA RENDERING --- */}
                 {fileUrl && (
                     <div className="relative rounded-xl overflow-hidden mb-1">
-                        {/* Image */}
                         {fileType === 'image' && (
                             <img 
                                 src={fileUrl} 
@@ -210,7 +250,6 @@ const Chat = () => {
                             />
                         )}
                         
-                        {/* Video */}
                         {fileType === 'video' && (
                             <div className="relative cursor-pointer bg-black" onClick={() => !isUploading && setSelectedMedia({ url: fileUrl, type: 'video' })}>
                                 <video src={fileUrl} className={`max-h-64 w-full object-contain ${isUploading ? 'opacity-75' : ''}`} preload="metadata" />
@@ -218,14 +257,12 @@ const Chat = () => {
                             </div>
                         )}
 
-                        {/* Audio */}
                         {fileType === 'audio' && (
                             <div className="p-1">
                                 <CustomAudioPlayer src={fileUrl} isMe={isMe} />
                             </div>
                         )}
 
-                        {/* Spinner Overlay for Uploads */}
                         {isUploading && (
                             <div className="absolute bottom-2 right-2 flex items-center justify-center bg-black/60 rounded-full w-8 h-8 p-1 backdrop-blur-md shadow-md z-20">
                                 <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
@@ -234,13 +271,10 @@ const Chat = () => {
                     </div>
                 )}
 
-                {/* --- TEXT MESSAGE --- */}
-                {/* Only render if messageText exists AND is not empty string */}
                 {messageText && String(messageText).trim() !== "" && (
                   <p className="text-sm px-3 py-2 leading-relaxed whitespace-pre-wrap break-words">{messageText}</p>
                 )}
                 
-                {/* Timestamp */}
                 <div className={`text-[10px] text-right px-2 pb-1 ${isMe ? 'text-blue-100' : 'text-gray-400'}`}>
                     {timestamp ? new Date(timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : "Just now"}
                 </div>
@@ -251,7 +285,6 @@ const Chat = () => {
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Input Area */}
       <div className="bg-white border-t border-gray-200 p-4 safe-area-pb">
         <div className="flex items-center gap-3 max-w-4xl mx-auto">
           
@@ -300,7 +333,6 @@ const Chat = () => {
         </div>
       </div>
 
-      {/* Viewer */}
       {selectedMedia && (
         <div className="fixed inset-0 z-50 bg-black/95 backdrop-blur-sm flex items-center justify-center p-4 animate-fade-in">
           <button onClick={() => setSelectedMedia(null)} className="absolute top-4 right-4 w-10 h-10 bg-white/10 hover:bg-white/20 rounded-full flex items-center justify-center text-white transition-colors z-50">

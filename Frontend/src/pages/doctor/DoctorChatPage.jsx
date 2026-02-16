@@ -1,11 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useLocation, useNavigate } from 'react-router-dom';
 import { useSelector } from 'react-redux';
-import { IoMdArrowBack, IoMdSend, IoMdCheckmarkCircle, IoMdClose, IoMdPlay, IoMdMic, IoMdSquare, IoMdTrash } from 'react-icons/io';
+import { IoMdArrowBack, IoMdSend, IoMdCheckmarkCircle, IoMdClose, IoMdPlay, IoMdMic, IoMdSquare, IoMdTrash, IoMdVideocam, IoMdCall } from 'react-icons/io';
 import { RiImageAddLine } from 'react-icons/ri';
 import api from '../../lib/axios';
 import { useUpload } from '../../context/UploadContext';
 import CustomAudioPlayer from '../../components/CustomAudioPlayer';
+import VideoCall from '../../components/VideoCall';
 
 const DoctorChatPage = () => {
   const { roomId } = useParams();
@@ -21,14 +22,17 @@ const DoctorChatPage = () => {
   const [isResolving, setIsResolving] = useState(false);
   const [isResolved, setIsResolved] = useState(initialStatus === 'resolved');
   
-  // Recording
+  const [showVideoCall, setShowVideoCall] = useState(false);
+  const [isInitiator, setIsInitiator] = useState(false);
+  const [incomingCallData, setIncomingCallData] = useState(null);
+  const [isReceivingCall, setIsReceivingCall] = useState(false);
+
   const [isRecording, setIsRecording] = useState(false);
   const [recordingTime, setRecordingTime] = useState(0);
   const mediaRecorderRef = useRef(null);
   const audioChunksRef = useRef([]);
   const timerRef = useRef(null);
   
-  // Context & Viewer
   const { roomUploads, uploadFile, removeUpload } = useUpload();
   const pendingMessages = roomUploads[roomId] || [];
   
@@ -43,18 +47,25 @@ const DoctorChatPage = () => {
   const messagesEndRef = useRef(null);
   const fileInputRef = useRef(null);
 
-  // WebSocket
   useEffect(() => {
     if (!roomId || !accessToken || isResolved) return;
     const wsUrl = `ws://localhost:8080/ws/chat/${roomId}/`;
     const ws = new WebSocket(wsUrl, [accessToken]);
 
-    ws.onopen = () => console.log("✅ Connected");
-
     ws.onmessage = (event) => {
       try {
         const data = JSON.parse(event.data);
-        if (data.type === 'chat_history') {
+        
+        if (data.type === 'call_user') {
+            setIsReceivingCall(true);
+            setIncomingCallData(data.data);
+        }
+        else if (data.type === 'call_ended') {
+            setIsReceivingCall(false);
+            setShowVideoCall(false);
+            setIncomingCallData(null);
+        }
+        else if (data.type === 'chat_history') {
           setMessages(data.messages);
         } else if (data.type === 'new_message') {
           setMessages((prev) => {
@@ -82,8 +93,25 @@ const DoctorChatPage = () => {
 
   const sendMessage = () => {
     if (!inputText.trim() || !socketRef.current || isResolved) return;
-    socketRef.current.send(JSON.stringify({ message: inputText, sender_id: user.id }));
+    
+    const payload = { 
+        message: inputText, 
+        sender_id: user.id 
+    };
+
+    socketRef.current.send(JSON.stringify(payload));
     setInputText('');
+  };
+
+  const startCall = () => {
+      setIsInitiator(true);
+      setShowVideoCall(true);
+  };
+
+  const answerCall = () => {
+      setIsInitiator(false);
+      setShowVideoCall(true);
+      setIsReceivingCall(false);
   };
 
   const handleFileSelect = (e) => {
@@ -99,12 +127,16 @@ const DoctorChatPage = () => {
       const mediaRecorder = new MediaRecorder(stream);
       mediaRecorderRef.current = mediaRecorder;
       audioChunksRef.current = [];
-      mediaRecorder.ondataavailable = (e) => { if(e.data.size > 0) audioChunksRef.current.push(e.data); };
+
+      mediaRecorder.ondataavailable = (e) => { 
+          if(e.data.size > 0) audioChunksRef.current.push(e.data); 
+      };
+      
       mediaRecorder.start();
       setIsRecording(true);
       setRecordingTime(0);
       timerRef.current = setInterval(() => setRecordingTime(t => t + 1), 1000);
-    } catch (err) { alert("Mic denied"); }
+    } catch (err) { alert("Microphone access denied."); }
   };
 
   const cancelRecording = () => {
@@ -119,6 +151,7 @@ const DoctorChatPage = () => {
 
   const sendRecording = () => {
       if (!mediaRecorderRef.current) return;
+      
       mediaRecorderRef.current.stop();
       mediaRecorderRef.current.stream.getTracks().forEach(t => t.stop());
       setIsRecording(false);
@@ -146,7 +179,6 @@ const DoctorChatPage = () => {
   return (
     <div className="flex flex-col h-screen bg-gray-50">
       
-      {/* Header */}
       <div className="bg-white border-b border-gray-200 px-4 py-3 shadow-sm z-10 flex items-center gap-3">
         <button onClick={() => navigate('/doctor/consult')} className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-gray-100 transition-colors">
           <IoMdArrowBack className="text-xl text-gray-700" />
@@ -162,17 +194,51 @@ const DoctorChatPage = () => {
             {isResolved ? <span className="text-green-600 flex items-center gap-1"><IoMdCheckmarkCircle /> Resolved</span> : <span className="text-blue-600">Active Consultation</span>}
           </div>
         </div>
+        
         {!isResolved && (
-          <button onClick={handleResolve} disabled={isResolving} className="flex items-center gap-2 px-4 py-2 rounded-xl bg-green-600 text-white font-bold text-sm hover:bg-green-700 transition-all shadow-md">
-            {isResolving ? "..." : <> <IoMdCheckmarkCircle className="text-lg" /> Resolve </>}
-          </button>
+            <>
+                <button onClick={startCall} className="w-10 h-10 flex items-center justify-center rounded-full bg-blue-50 text-blue-600 hover:bg-blue-100 transition-all">
+                    <IoMdVideocam className="text-xl" />
+                </button>
+                
+                <button onClick={handleResolve} disabled={isResolving} className="flex items-center gap-2 px-4 py-2 rounded-xl bg-green-600 text-white font-bold text-sm hover:bg-green-700 transition-all shadow-md">
+                    {isResolving ? "..." : <> <IoMdCheckmarkCircle className="text-lg" /> Resolve </>}
+                </button>
+            </>
         )}
       </div>
 
-      {/* Messages */}
+      {isReceivingCall && !showVideoCall && (
+          <div className="absolute top-20 left-1/2 transform -translate-x-1/2 bg-black/80 text-white px-6 py-4 rounded-xl shadow-2xl z-50 flex items-center gap-4 animate-bounce">
+              <div className="flex flex-col">
+                  <span className="font-bold text-lg">Incoming Video Call...</span>
+                  <span className="text-sm text-gray-300">{patient?.username || "Patient"} is calling</span>
+              </div>
+              <button onClick={answerCall} className="p-3 bg-green-500 rounded-full hover:bg-green-600 transition-colors animate-pulse">
+                  <IoMdCall className="text-xl" />
+              </button>
+              <button onClick={() => setIsReceivingCall(false)} className="p-3 bg-red-500 rounded-full hover:bg-red-600 transition-colors">
+                  <IoMdClose className="text-xl" />
+              </button>
+          </div>
+      )}
+
+      {showVideoCall && (
+          <VideoCall 
+            socket={socketRef} 
+            user={user} 
+            roomId={roomId} 
+            isInitiator={isInitiator}
+            signalData={incomingCallData}
+            onClose={() => {
+                setShowVideoCall(false);
+                setIsReceivingCall(false);
+            }} 
+          />
+      )}
+
       <div className="flex-1 overflow-y-auto p-4 space-y-3 bg-gradient-to-b from-gray-50 to-white">
         {displayMessages.map((msg, i) => {
-          // Normalize Keys
           const senderId = msg.SenderID || msg.sender_id;
           const timestamp = msg.Timestamp || msg.timestamp;
           const messageText = msg.Message || msg.message;
@@ -188,10 +254,15 @@ const DoctorChatPage = () => {
               
               <div className={`relative max-w-[75%] rounded-2xl p-1 shadow-sm ${isMe ? 'bg-blue-600 text-white rounded-br-none' : 'bg-white border border-gray-200 text-gray-800 rounded-bl-none'}`}>
                 
-                {/* Media Content */}
                 {fileUrl && (
                     <div className="relative rounded-xl overflow-hidden mb-1">
-                        {fileType === 'image' && <img src={fileUrl} className={`max-h-64 w-full object-cover cursor-pointer ${isUploading ? 'opacity-75' : ''}`} onClick={() => !isUploading && setSelectedMedia({ url: fileUrl, type: 'image' })} />}
+                        {fileType === 'image' && (
+                            <img 
+                                src={fileUrl} 
+                                className={`max-h-64 w-full object-cover cursor-pointer ${isUploading ? 'opacity-75' : ''}`} 
+                                onClick={() => !isUploading && setSelectedMedia({ url: fileUrl, type: 'image' })} 
+                            />
+                        )}
                         
                         {fileType === 'video' && (
                             <div className="relative cursor-pointer bg-black" onClick={() => !isUploading && setSelectedMedia({ url: fileUrl, type: 'video' })}>
@@ -206,7 +277,6 @@ const DoctorChatPage = () => {
                             </div>
                         )}
 
-                        {/* Spinner */}
                         {isUploading && (
                             <div className="absolute bottom-2 right-2 flex items-center justify-center bg-black/60 rounded-full w-8 h-8 p-1 backdrop-blur-md shadow-md z-20">
                                 <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
@@ -215,12 +285,10 @@ const DoctorChatPage = () => {
                     </div>
                 )}
 
-                {/* Text */}
                 {messageText && String(messageText).trim() !== "" && (
                   <p className="text-sm px-3 py-2 leading-relaxed whitespace-pre-wrap break-words">{messageText}</p>
                 )}
                 
-                {/* Timestamp */}
                 <div className={`text-[10px] text-right px-2 pb-1 ${isMe ? 'text-blue-100' : 'text-gray-400'}`}>
                   {new Date(timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
                 </div>
@@ -231,28 +299,49 @@ const DoctorChatPage = () => {
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Input */}
       <div className="bg-white border-t border-gray-200 p-4 safe-area-pb">
         {!isResolved ? (
           <div className="flex items-center gap-3 max-w-4xl mx-auto">
             {isRecording ? (
               <div className="flex-1 bg-gray-100 rounded-full flex items-center px-4 py-2 border border-red-200 animate-pulse-soft transition-all">
-                  <div className="w-3 h-3 bg-red-500 rounded-full animate-bounce mr-3"></div>
+                  <div className="w-8 h-8 flex items-center justify-center bg-red-100 rounded-full mr-2">
+                    <div className="w-3 h-3 bg-red-500 rounded-full animate-bounce"></div>
+                  </div>
                   <span className="text-red-600 font-mono font-medium flex-1">{formatTime(recordingTime)}</span>
-                  <button onClick={cancelRecording} className="text-gray-500 font-medium text-sm hover:text-gray-700 mr-4 px-2">Cancel</button>
-                  <button onClick={sendRecording} className="w-9 h-9 bg-blue-600 rounded-full flex items-center justify-center text-white hover:bg-blue-700 transition-colors shadow-sm"><IoMdSend className="text-lg" /></button>
+                  <button onClick={cancelRecording} className="w-9 h-9 flex items-center justify-center text-gray-500 hover:text-red-500 hover:bg-red-50 rounded-full transition-colors mr-1">
+                    <IoMdTrash className="text-xl" />
+                  </button>
+                  <button onClick={sendRecording} className="w-10 h-10 bg-blue-600 rounded-full flex items-center justify-center text-white hover:bg-blue-700 transition-all shadow-md active:scale-95">
+                      <IoMdSend className="text-lg" />
+                  </button>
               </div>
             ) : (
               <>
-                <button onClick={() => fileInputRef.current?.click()} className="w-10 h-10 flex items-center justify-center rounded-full bg-gray-100 text-gray-600 hover:bg-gray-200 transition-all"><RiImageAddLine className="text-xl" /></button>
+                <button onClick={() => fileInputRef.current?.click()} className="w-10 h-10 flex items-center justify-center rounded-full bg-gray-100 text-gray-600 hover:bg-gray-200 transition-all active:scale-95">
+                    <RiImageAddLine className="text-xl" />
+                </button>
                 <input type="file" ref={fileInputRef} hidden accept="image/*,video/*,audio/*" onChange={handleFileSelect} />
+                
                 <div className="flex-1 bg-gray-100 rounded-full flex items-center px-4 py-2.5 border border-transparent focus-within:border-blue-500 focus-within:bg-white focus-within:ring-2 focus-within:ring-blue-100 transition-all">
-                  <input className="flex-1 bg-transparent outline-none text-sm text-gray-800 placeholder-gray-400" placeholder="Type your advice..." value={inputText} onChange={(e) => setInputText(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && sendMessage()} />
+                    <input 
+                        type="text" 
+                        value={inputText} 
+                        onChange={(e) => setInputText(e.target.value)} 
+                        onKeyDown={(e) => e.key === 'Enter' && sendMessage()} 
+                        placeholder="Type your advice..." 
+                        className="bg-transparent flex-1 outline-none text-sm text-gray-800 placeholder-gray-400" 
+                    />
                 </div>
-                {inputText.trim() ? 
-                  <button onClick={sendMessage} className="w-11 h-11 bg-blue-600 hover:bg-blue-700 text-white rounded-full flex items-center justify-center transition-all shadow-md"><IoMdSend className="text-xl" /></button> : 
-                  <button onClick={startRecording} className="w-11 h-11 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-full flex items-center justify-center transition-all shadow-sm"><IoMdMic className="text-xl" /></button>
-                }
+
+                {inputText.trim() ? (
+                    <button onClick={sendMessage} className="w-11 h-11 bg-blue-600 hover:bg-blue-700 text-white rounded-full flex items-center justify-center transition-all shadow-md active:scale-95">
+                        <IoMdSend className="text-xl" />
+                    </button>
+                ) : (
+                    <button onClick={startRecording} className="w-11 h-11 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-full flex items-center justify-center transition-all shadow-sm active:scale-95 hover:text-blue-600">
+                        <IoMdMic className="text-xl" />
+                    </button>
+                )}
               </>
             )}
           </div>
@@ -261,7 +350,6 @@ const DoctorChatPage = () => {
         )}
       </div>
 
-      {/* Viewer */}
       {selectedMedia && (
         <div className="fixed inset-0 z-50 bg-black/95 backdrop-blur-sm flex items-center justify-center p-4 animate-fade-in">
           <button onClick={() => setSelectedMedia(null)} className="absolute top-4 right-4 w-10 h-10 bg-white/10 hover:bg-white/20 rounded-full flex items-center justify-center text-white transition-colors z-50">
