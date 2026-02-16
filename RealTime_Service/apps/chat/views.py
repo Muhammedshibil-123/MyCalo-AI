@@ -3,12 +3,9 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.parsers import MultiPartParser
 from rest_framework.permissions import IsAuthenticated
-from .authentication import StatelessTokenAuthentication  
-from django.conf import settings
-import boto3
-from collections import defaultdict
+from .authentication import StatelessTokenAuthentication
+from .services import get_dynamodb_resource
 from datetime import datetime
-
 
 class ChatMediaUploadView(APIView):
     authentication_classes = [StatelessTokenAuthentication]
@@ -30,63 +27,46 @@ class ChatMediaUploadView(APIView):
     
 class DoctorConsultationListView(APIView):
     """
-    Get all unique patient conversations for a doctor with latest message
+    Get all consultations for a doctor with filtering
     """
     authentication_classes = [StatelessTokenAuthentication]
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
         doctor_id = request.user.id
+        status_filter = request.query_params.get('status', 'active')  # 'active' or 'resolved'
         
         try:
-            dynamodb = boto3.resource(
-                'dynamodb',
-                region_name='us-east-1',
-                endpoint_url='http://localhost:8004',  
-                aws_access_key_id='local',
-                aws_secret_access_key='local'
-            )
-            
-            table = dynamodb.Table('ChatHistory')
+            dynamodb = get_dynamodb_resource()
+            consultations_table = dynamodb.Table('DoctorConsultations')
 
-            response = table.scan(
-                FilterExpression="contains(RoomID, :doc_pattern)",
+            # Query using the GSI (Global Secondary Index)
+            response = consultations_table.query(
+                IndexName='DoctorStatusIndex',
+                KeyConditionExpression='DoctorID = :doc_id AND #status = :status',
+                ExpressionAttributeNames={
+                    '#status': 'Status'
+                },
                 ExpressionAttributeValues={
-                    ":doc_pattern": f"_doc_{doctor_id}"
+                    ':doc_id': doctor_id,
+                    ':status': status_filter
                 }
             )
             
-            items = response.get('Items', [])
+            consultations = response.get('Items', [])
             
-            rooms = defaultdict(list)
-            for item in items:
-                room_id = item['RoomID']
-                rooms[room_id].append(item)
-        
-            consultations = []
-            for room_id, messages in rooms.items():
-                messages.sort(key=lambda x: x['Timestamp'], reverse=True)
-                latest = messages[0]
-
-                parts = room_id.split('_')
-                patient_id = int(parts[1])
-                
-                consultations.append({
-                    'room_id': room_id,
-                    'patient_id': patient_id,
-                    'last_message': latest.get('Message', ''),
-                    'last_timestamp': latest['Timestamp'],
-                    'sender_id': latest.get('SenderID')
-                })
+            # Sort by latest message time
+            consultations.sort(
+                key=lambda x: x.get('LastMessageTime', ''), 
+                reverse=True
+            )
             
-
-            consultations.sort(key=lambda x: x['last_timestamp'], reverse=True)
-
+            # Add patient data (mock for now, you can fetch from main backend)
             for consult in consultations:
                 consult['patient_data'] = {
-                    'id': consult['patient_id'],
-                    'username': f"User {consult['patient_id']}",
-                    'first_name': f"Patient {consult['patient_id']}"
+                    'id': int(consult['PatientID']),
+                    'username': f"User {consult['PatientID']}",
+                    'first_name': f"Patient {consult['PatientID']}"
                 }
             
             return Response(consultations)
@@ -96,9 +76,48 @@ class DoctorConsultationListView(APIView):
             return Response({"error": str(e)}, status=500)
 
 
+class ResolveConsultationView(APIView):
+    """
+    Mark a consultation as resolved
+    """
+    authentication_classes = [StatelessTokenAuthentication]
+    permission_classes = [IsAuthenticated]
 
-
-
-
-
-    
+    def post(self, request, room_id):
+        doctor_id = request.user.id
+        
+        try:
+            dynamodb = get_dynamodb_resource()
+            consultations_table = dynamodb.Table('DoctorConsultations')
+            
+            # Verify this consultation belongs to this doctor
+            response = consultations_table.get_item(
+                Key={'ConsultationID': room_id}
+            )
+            
+            consultation = response.get('Item')
+            
+            if not consultation:
+                return Response({"error": "Consultation not found"}, status=404)
+            
+            if int(consultation['DoctorID']) != doctor_id:
+                return Response({"error": "Unauthorized"}, status=403)
+            
+            # Update status to resolved
+            consultations_table.update_item(
+                Key={'ConsultationID': room_id},
+                UpdateExpression='SET #status = :status, ResolvedAt = :resolved_at',
+                ExpressionAttributeNames={
+                    '#status': 'Status'
+                },
+                ExpressionAttributeValues={
+                    ':status': 'resolved',
+                    ':resolved_at': datetime.now().isoformat()
+                }
+            )
+            
+            return Response({"message": "Consultation resolved successfully"})
+            
+        except Exception as e:
+            print(f"Error resolving consultation: {e}")
+            return Response({"error": str(e)}, status=500)
