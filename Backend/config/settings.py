@@ -31,7 +31,8 @@ SECRET_KEY = "django-insecure-u_9gx+4eh31u4y3c8+)47h(#px#xdx-glqbe=!^&6_#(x$0h__
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ["*"]
+ALLOWED_HOSTS = ["*", ".ngrok-free.app", ".ngrok-free.dev", "localhost", "127.0.0.1"]
+
 
 
 # Application definition
@@ -182,9 +183,13 @@ EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD")
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 
-CORS_ALLOWED_ORIGINS = [
-    "http://localhost:5173",
+CSRF_TRUSTED_ORIGINS = [
+    "https://*.ngrok-free.app",
+    "https://*.ngrok-free.dev",
+    "http://localhost:8080",
+    "http://127.0.0.1:8080",
 ]
+CORS_ALLOW_ALL_ORIGINS = True
 CORS_ALLOW_CREDENTIALS = True
 
 SWAGGER_SETTINGS = {

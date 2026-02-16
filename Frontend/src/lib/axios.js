@@ -3,9 +3,10 @@ import { store } from "../redux/store";
 import { startFetching, stopFetching } from "../redux/authslice";
 
 let access_token_in_memory = null;
+const isDevelopment = import.meta.env.MODE === 'development';
 
 const api = axios.create({
-  baseURL: "http://localhost:8080",
+  baseURL: isDevelopment ? "http://localhost:8080" : "",
   withCredentials: true,
 });
 

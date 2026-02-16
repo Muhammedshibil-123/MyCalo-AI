@@ -4,6 +4,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from config import settings
 from routers import nutrition, vision_nutrition, chat
 
+
 app = FastAPI(title=settings.PROJECT_NAME, version=settings.VERSION)
 
 # CORS Middleware (Allowing Django to connect)
