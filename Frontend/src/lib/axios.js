@@ -13,25 +13,34 @@ export const setAccessToken = (token) => {
   access_token_in_memory = token;
 };
 
+// --- REQUEST INTERCEPTOR ---
 api.interceptors.request.use((config) => {
-  store.dispatch(startFetching()); // Increment counter
+  // FIX: Only show global loader if 'skipLoading' is NOT true
+  if (!config.skipLoading) {
+    store.dispatch(startFetching());
+  }
+  
   if (access_token_in_memory) {
     config.headers.Authorization = `Bearer ${access_token_in_memory}`;
   }
   return config;
 });
 
+// --- RESPONSE INTERCEPTOR ---
 api.interceptors.response.use(
   (response) => {
-    store.dispatch(stopFetching()); // Decrement counter
+    // FIX: Only stop global loader if we started it
+    if (!response.config.skipLoading) {
+      store.dispatch(stopFetching());
+    }
     return response;
   },
   async (error) => {
     const originalRequest = error.config;
 
-    // Handle case where error happens on login or if refresh fails
+    // Handle login/retry cases
     if (originalRequest.url.includes("/login/") || originalRequest._retry) {
-        store.dispatch(stopFetching());
+        if (!originalRequest.skipLoading) store.dispatch(stopFetching());
         return Promise.reject(error);
     }
 
@@ -39,21 +48,25 @@ api.interceptors.response.use(
       originalRequest._retry = true;
 
       try {
-        const rs = await api.post("/api/users/token/refresh/");
+        const rs = await api.post("/api/users/token/refresh/", {}, { skipLoading: true }); // Skip loader for refresh too
         const new_access = rs.data.access;
         setAccessToken(new_access);
         originalRequest.headers.Authorization = `Bearer ${new_access}`;
         
-        // Decrement the failed request's count before retrying
-        store.dispatch(stopFetching()); 
+        // Decrement ONLY if we incremented initially
+        if (!originalRequest.skipLoading) store.dispatch(stopFetching());
+        
         return api(originalRequest);
       } catch (refreshError) {
-        store.dispatch(stopFetching());
+        if (!originalRequest.skipLoading) store.dispatch(stopFetching());
         return Promise.reject(refreshError);
       }
     }
 
-    store.dispatch(stopFetching()); // Ensure counter stops even on error
+    // Standard error cleanup
+    if (!originalRequest.skipLoading) {
+        store.dispatch(stopFetching());
+    }
     return Promise.reject(error);
   },
 );

@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useRef } from 'react';
+import React, { createContext, useContext, useState } from 'react';
 import api from '../lib/axios';
 
 const UploadContext = createContext();
@@ -42,7 +42,7 @@ export const UploadProvider = ({ children }) => {
         else if (file.type.startsWith('audio')) type = 'audio';
     }
 
-    // 1. Add Optimistic Message
+    // 1. Add Optimistic Message to Context
     const tempMsg = {
         tempId,
         file_url: previewUrl,
@@ -61,19 +61,21 @@ export const UploadProvider = ({ children }) => {
     formData.append('room_id', roomId);
 
     try {
+      // 2. Upload to Backend
       await api.post('/chat/upload/', formData, {
+        skipLoading: true, // <--- PREVENTS GLOBAL LOADING SCREEN
         onUploadProgress: (progressEvent) => {
           const percent = Math.round((progressEvent.loaded * 100) / progressEvent.total);
-          // Only go up to 90% via axios, leave rest for "processing"
+          // Only go up to 90% via axios, leave rest for "processing" state
           const visualPercent = Math.min(percent, 90);
           updateUploadProgress(roomId, tempId, visualPercent);
         }
       });
 
-      // 2. Upload Done, now "Processing" in Celery
+      // 3. Upload Done, now "Processing" in Celery
       updateUploadProgress(roomId, tempId, 92, 'processing');
 
-      // 3. Fake crawl from 92% to 99%
+      // 4. Fake crawl from 92% to 99% while waiting for WebSocket
       const interval = setInterval(() => {
         setRoomUploads(current => {
             const roomMsgs = current[roomId] || [];
