@@ -17,6 +17,7 @@ const DoctorConsultList = () => {
   const fetchConsultations = async () => {
     try {
       setLoading(true);
+      // The backend now correctly returns the list based on the doctor's ID from the token
       const response = await api.get(`/chat/doctor-consultations/?status=${statusFilter}`);
       setConsultations(response.data);
     } catch (err) {
@@ -29,6 +30,7 @@ const DoctorConsultList = () => {
 
   const formatTime = (timestamp) => {
     try {
+      if (!timestamp) return '';
       const date = new Date(timestamp);
       const now = new Date();
       const diffMs = now - date;
@@ -134,8 +136,10 @@ const DoctorConsultList = () => {
                 {/* Avatar */}
                 <div className="relative">
                   <div className="w-14 h-14 bg-gradient-to-br from-blue-100 to-blue-50 rounded-full flex items-center justify-center font-bold text-blue-600 text-xl border-2 border-white shadow-sm">
+                    {/* Fallback to '?' if username is missing */}
                     {(consult.patient_data?.username || "?")[0].toUpperCase()}
                   </div>
+                  {/* Online/Active indicator logic */}
                   {statusFilter === 'active' && (
                     <div className="absolute bottom-0 right-0 w-4 h-4 bg-green-500 border-2 border-white rounded-full"></div>
                   )}
@@ -145,6 +149,7 @@ const DoctorConsultList = () => {
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center justify-between mb-1">
                     <h4 className="font-bold text-gray-900 text-base truncate">
+                       {/* Prioritize First Name, then Username, then ID */}
                       {consult.patient_data?.first_name || consult.patient_data?.username || `Patient ${consult.PatientID}`}
                     </h4>
                     <span className="text-xs text-gray-400 font-medium ml-2 shrink-0">
@@ -156,7 +161,8 @@ const DoctorConsultList = () => {
                     {consult.LastMessage || "No messages yet"}
                   </p>
                   
-                  {/* Status Badge */}
+                  {/* New Message Badge Logic */}
+                  {/* Compares numbers safely (e.g. 6.0 == 6) */}
                   {statusFilter === 'active' && Number(consult.LastSenderID) === Number(consult.PatientID) && (
                     <div className="flex items-center gap-1 mt-1">
                       <span className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></span>
@@ -172,7 +178,7 @@ const DoctorConsultList = () => {
                   )}
                 </div>
 
-                {/* Arrow */}
+                {/* Arrow Icon */}
                 <svg 
                   xmlns="http://www.w3.org/2000/svg" 
                   width="20" 

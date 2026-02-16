@@ -27,13 +27,14 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    
+    'corsheaders',
     'channels',
     'rest_framework',
     'apps.chat',
 ]
 
 MIDDLEWARE = [
+    'corsheaders.middleware.CorsMiddleware',
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
@@ -107,7 +108,6 @@ CHANNEL_LAYERS = {
 }
 
 # --- DYNAMODB CONFIGURATION ---
-# These values are pulled from your .env file
 AWS_ACCESS_KEY_ID = os.getenv('AWS_ACCESS_KEY_ID', 'local')
 AWS_SECRET_ACCESS_KEY = os.getenv('AWS_SECRET_ACCESS_KEY', 'local')
 AWS_REGION = os.getenv('AWS_REGION', 'us-east-1')
@@ -116,4 +116,9 @@ AWS_REGION = os.getenv('AWS_REGION', 'us-east-1')
 DYNAMODB_ENDPOINT = os.getenv('DYNAMODB_ENDPOINT', 'http://dynamodb-local:8000')
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+CORS_ALLOW_ALL_ORIGINS = True # For development only
+CORS_ALLOW_CREDENTIALS = True
+
+ALLOWED_HOSTS = ["*"]
 

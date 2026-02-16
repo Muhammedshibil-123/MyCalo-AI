@@ -33,7 +33,12 @@ class DoctorConsultationListView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        doctor_id = request.user.id
+        # Cast to int because DynamoDB stores DoctorID as a Number
+        try:
+            doctor_id = int(request.user.id)
+        except (ValueError, TypeError):
+            return Response({"error": "Invalid user ID format"}, status=400)
+
         status_filter = request.query_params.get('status', 'active')  # 'active' or 'resolved'
         
         try:
@@ -48,7 +53,7 @@ class DoctorConsultationListView(APIView):
                     '#status': 'Status'
                 },
                 ExpressionAttributeValues={
-                    ':doc_id': doctor_id,
+                    ':doc_id': doctor_id, # Now explicitly an int
                     ':status': status_filter
                 }
             )
@@ -61,7 +66,7 @@ class DoctorConsultationListView(APIView):
                 reverse=True
             )
             
-            # Add patient data (mock for now, you can fetch from main backend)
+            # Add patient data (mock for now)
             for consult in consultations:
                 consult['patient_data'] = {
                     'id': int(consult['PatientID']),
