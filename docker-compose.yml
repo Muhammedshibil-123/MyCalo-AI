@@ -73,6 +73,19 @@ services:
       - dynamodb-local
       - db
 
+  # --- NEW: CELERY WORKER (Background Tasks) ---
+  celery_worker:
+    build: ./RealTime_Service
+    container_name: mycalo_celery
+    volumes:
+      - ./RealTime_Service:/app  
+    command: celery -A config.celery worker --loglevel=info 
+    env_file:
+      - ./RealTime_Service/.env
+    depends_on:
+      - redis
+      - realtime_service
+
   # --- AI SERVICE ---
   ai_service:
     build: ./AI_Services

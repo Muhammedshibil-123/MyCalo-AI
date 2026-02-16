@@ -29,6 +29,7 @@ import Chat from './pages/user/Chat';
 import Consult from './pages/user/Consult';
 import DoctorConsultList from './pages/doctor/DoctorConsultList';
 import DoctorChatPage from './pages/doctor/DoctorChatPage';
+import { UploadProvider } from './context/UploadContext';
 
 const getHomeRouteForRole = (role) => {
     if (role === 'admin' || role === 'employee') return '/admin/dashboard';
@@ -108,49 +109,51 @@ function App() {
     if (loading) return <LoadingScreen />;
 
     return (
-        <Router>
-            <DelayedLoader isLoading={loadingCount > 0} />
-            <Routes>
-                <Route element={<PublicRoute />}>
-                    <Route path="/login" element={<Login />} />
-                    <Route path="/register" element={<Register />} />
-                    <Route path="/otp-verfiy" element={<VerfiyOtp />} />
-                    <Route path="/corporate/register" element={<CorporateRegister />} />
-                    <Route path="/corporate/verify-otp" element={<CorporateVerifyOtp />} />
-                    <Route path="/forgot-password" element={<ForgotPassword />} />
-                    <Route path="/reset-password" element={<ResetPassword />} />
-                    <Route path="/welcome" element={<Welcome />} />
-                </Route>
-
-                <Route element={<RoleRoute allowedRoles={['user', undefined, null]} />}>
-                    <Route element={<UserNavbar />}>
-                        <Route path="/" element={<Home />} />
-                        <Route path="/profile" element={<Profile />} />
-                        <Route path="/profile/change-password" element={<ChangePassword />} />
-                        <Route path="/analytics" element={<Dashboard />} />
-                        <Route path="/consult" element={<Consult />} />
+        <UploadProvider>
+            <Router>
+                <DelayedLoader isLoading={loadingCount > 0} />
+                <Routes>
+                    <Route element={<PublicRoute />}>
+                        <Route path="/login" element={<Login />} />
+                        <Route path="/register" element={<Register />} />
+                        <Route path="/otp-verfiy" element={<VerfiyOtp />} />
+                        <Route path="/corporate/register" element={<CorporateRegister />} />
+                        <Route path="/corporate/verify-otp" element={<CorporateVerifyOtp />} />
+                        <Route path="/forgot-password" element={<ForgotPassword />} />
+                        <Route path="/reset-password" element={<ResetPassword />} />
+                        <Route path="/welcome" element={<Welcome />} />
                     </Route>
-                    <Route path="/search" element={<SearchPage />} />
-                    <Route path="/food/:id" element={<FoodDetail />} />
-                    <Route path="/create-ai" element={<CreateWithAI />} />
-                    <Route path="/analyze-image-result" element={<AnalyzeImageResult />} />
-                    <Route path="/manual-entry" element={<ManualEntry />} />\
-                    <Route path="/chat" element={<Chat />} />
-                </Route>
 
-                <Route element={<RoleRoute allowedRoles={['admin', 'employee']} />}>
-                    <Route path="/admin/dashboard" element={<AdminDashboard />} />
-                </Route>
+                    <Route element={<RoleRoute allowedRoles={['user', undefined, null]} />}>
+                        <Route element={<UserNavbar />}>
+                            <Route path="/" element={<Home />} />
+                            <Route path="/profile" element={<Profile />} />
+                            <Route path="/profile/change-password" element={<ChangePassword />} />
+                            <Route path="/analytics" element={<Dashboard />} />
+                            <Route path="/consult" element={<Consult />} />
+                        </Route>
+                        <Route path="/search" element={<SearchPage />} />
+                        <Route path="/food/:id" element={<FoodDetail />} />
+                        <Route path="/create-ai" element={<CreateWithAI />} />
+                        <Route path="/analyze-image-result" element={<AnalyzeImageResult />} />
+                        <Route path="/manual-entry" element={<ManualEntry />} />\
+                        <Route path="/chat" element={<Chat />} />
+                    </Route>
 
-                <Route element={<RoleRoute allowedRoles={['doctor']} />}>
-                    <Route path="/doctor/dashboard" element={<DoctorDashboard />} />
-                    <Route path="/doctor/consult" element={<DoctorConsultList />} />
-                    <Route path="/doctor/chat/:roomId" element={<DoctorChatPage />} />
-                </Route>
+                    <Route element={<RoleRoute allowedRoles={['admin', 'employee']} />}>
+                        <Route path="/admin/dashboard" element={<AdminDashboard />} />
+                    </Route>
 
-                <Route path="*" element={<NotFound />} />
-            </Routes>
-        </Router>
+                    <Route element={<RoleRoute allowedRoles={['doctor']} />}>
+                        <Route path="/doctor/dashboard" element={<DoctorDashboard />} />
+                        <Route path="/doctor/consult" element={<DoctorConsultList />} />
+                        <Route path="/doctor/chat/:roomId" element={<DoctorChatPage />} />
+                    </Route>
+
+                    <Route path="*" element={<NotFound />} />
+                </Routes>
+            </Router>
+        </UploadProvider>
     );
 }
 

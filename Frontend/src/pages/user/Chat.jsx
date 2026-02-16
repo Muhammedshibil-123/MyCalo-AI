@@ -3,7 +3,8 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { useSelector } from 'react-redux';
 import { IoMdArrowBack, IoMdSend, IoMdClose, IoMdPlay } from 'react-icons/io';
 import { RiImageAddLine } from 'react-icons/ri';
-import api from '../../lib/axios';
+// Import the Context hook
+import { useUpload } from '../../context/UploadContext';
 
 const Chat = () => {
   const navigate = useNavigate();
@@ -13,7 +14,9 @@ const Chat = () => {
   
   const [messages, setMessages] = useState([]);
   const [inputText, setInputText] = useState('');
-  const [isUploading, setIsUploading] = useState(false);
+  
+  // Use global upload function
+  const { uploadFile } = useUpload();
   
   // State for Full Screen Media Viewer
   const [selectedMedia, setSelectedMedia] = useState(null);
@@ -28,7 +31,9 @@ const Chat = () => {
   useEffect(() => {
     if (!doctor || !user?.id) return;
     const roomId = `user_${user.id}_doc_${doctor.id}`;
-    const ws = new WebSocket(`ws://localhost:8080/ws/chat/${roomId}/`, [accessToken]);
+    const wsUrl = `ws://localhost:8080/ws/chat/${roomId}/`;
+    
+    const ws = new WebSocket(wsUrl, [accessToken]);
 
     ws.onmessage = (event) => {
       try {
@@ -54,33 +59,18 @@ const Chat = () => {
     setInputText('');
   };
 
-  const handleFileUpload = async (e) => {
+  // --- CHANGED: Use Global Upload Context ---
+  const handleFileUpload = (e) => {
     const file = e.target.files[0];
     if (!file) return;
 
-    setIsUploading(true);
-    const formData = new FormData();
-    formData.append('file', file);
+    const roomId = `user_${user.id}_doc_${doctor.id}`;
+    
+    // Call the global context function (background upload)
+    uploadFile(file, roomId);
 
-    try {
-      const response = await api.post('/chat/upload/', formData);
-      const { url, resource_type } = response.data;
-      
-      if (socketRef.current) {
-        socketRef.current.send(JSON.stringify({
-          message: resource_type === 'video' ? 'Sent a video' : 'Sent an image',
-          file_url: url,
-          file_type: resource_type,
-          sender_id: user.id
-        }));
-      }
-    } catch (error) {
-      console.error("Upload failed:", error);
-      alert("Failed to upload media. Please try again.");
-    } finally {
-      setIsUploading(false);
-      if(fileInputRef.current) fileInputRef.current.value = '';
-    }
+    // Reset input immediately so user can select another file
+    if(fileInputRef.current) fileInputRef.current.value = '';
   };
 
   if (!doctor) return null;
@@ -152,13 +142,17 @@ const Chat = () => {
       {/* --- Input Area --- */}
       <div className="bg-white border-t border-gray-200 p-4 safe-area-pb">
         <div className="flex items-center gap-3 max-w-4xl mx-auto">
-          <button onClick={() => fileInputRef.current?.click()} disabled={isUploading} className="w-11 h-11 flex items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-blue-600 text-white hover:from-blue-600 hover:to-blue-700 transition-all shadow-md">
-            {isUploading ? <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div> : <RiImageAddLine className="text-xl" />}
+          {/* Button triggers file input */}
+          <button onClick={() => fileInputRef.current?.click()} className="w-11 h-11 flex items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-blue-600 text-white hover:from-blue-600 hover:to-blue-700 transition-all shadow-md">
+             <RiImageAddLine className="text-xl" />
           </button>
-          <input type="file" ref={fileInputRef} hidden accept="image/*,video/*" onChange={handleFileUpload} disabled={isUploading} />
+          
+          <input type="file" ref={fileInputRef} hidden accept="image/*,video/*" onChange={handleFileUpload} />
+          
           <div className="flex-1 bg-gray-100 rounded-full flex items-center px-4 py-2.5 border border-gray-200 focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-100 transition-all">
             <input type="text" value={inputText} onChange={(e) => setInputText(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handleSendMessage()} placeholder="Type a message..." className="bg-transparent flex-1 outline-none text-sm text-gray-800 placeholder-gray-400" />
           </div>
+          
           <button onClick={handleSendMessage} disabled={!inputText.trim()} className="w-11 h-11 flex items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-blue-600 text-white hover:from-blue-600 hover:to-blue-700 transition-all shadow-md">
             <IoMdSend className="text-xl" />
           </button>

@@ -4,6 +4,8 @@ import { useSelector } from 'react-redux';
 import { IoMdArrowBack, IoMdSend, IoMdCheckmarkCircle, IoMdClose, IoMdPlay } from 'react-icons/io';
 import { RiImageAddLine } from 'react-icons/ri';
 import api from '../../lib/axios';
+// Import Context
+import { useUpload } from '../../context/UploadContext';
 
 const DoctorChatPage = () => {
   const { roomId } = useParams();
@@ -16,12 +18,14 @@ const DoctorChatPage = () => {
   
   const [messages, setMessages] = useState([]);
   const [inputText, setInputText] = useState('');
-  const [isUploading, setIsUploading] = useState(false);
   const [isResolving, setIsResolving] = useState(false);
   const [isResolved, setIsResolved] = useState(initialStatus === 'resolved');
   
+  // Use Global Upload
+  const { uploadFile } = useUpload();
+  
   // State for Full Screen Media Viewer
-  const [selectedMedia, setSelectedMedia] = useState(null); // { url: string, type: 'image' | 'video' }
+  const [selectedMedia, setSelectedMedia] = useState(null); 
 
   const socketRef = useRef(null);
   const messagesEndRef = useRef(null);
@@ -30,7 +34,6 @@ const DoctorChatPage = () => {
   // WebSocket Connection
   useEffect(() => {
     if (!roomId || !accessToken || isResolved) return;
-
     const wsUrl = `ws://localhost:8080/ws/chat/${roomId}/`;
     const ws = new WebSocket(wsUrl, [accessToken]);
 
@@ -70,33 +73,15 @@ const DoctorChatPage = () => {
     setInputText('');
   };
 
-  const handleFileUpload = async (e) => {
+  // --- CHANGED: Use Global Upload Context ---
+  const handleFileUpload = (e) => {
     const file = e.target.files[0];
     if (!file || isResolved) return;
 
-    setIsUploading(true);
-    const formData = new FormData();
-    formData.append('file', file);
+    // Call global context (background upload)
+    uploadFile(file, roomId);
 
-    try {
-      const response = await api.post('/chat/upload/', formData);
-      const { url, resource_type } = response.data;
-      
-      if (socketRef.current) {
-        socketRef.current.send(JSON.stringify({
-          message: resource_type === 'video' ? 'Sent a video' : 'Sent an image',
-          file_url: url,
-          file_type: resource_type, // 'image' or 'video'
-          sender_id: user.id
-        }));
-      }
-    } catch (error) {
-      console.error("Upload failed:", error);
-      alert("Failed to upload media. Please try again.");
-    } finally {
-      setIsUploading(false);
-      if(fileInputRef.current) fileInputRef.current.value = '';
-    }
+    if(fileInputRef.current) fileInputRef.current.value = '';
   };
 
   const handleResolve = async () => {
@@ -191,10 +176,10 @@ const DoctorChatPage = () => {
       <div className="bg-white border-t border-gray-200 p-4 safe-area-pb">
         {!isResolved ? (
           <div className="flex items-center gap-3 max-w-4xl mx-auto">
-            <button onClick={() => fileInputRef.current?.click()} disabled={isUploading} className="w-11 h-11 flex items-center justify-center rounded-full bg-gray-100 text-gray-600 hover:bg-gray-200 transition-all">
-              {isUploading ? <div className="w-5 h-5 border-2 border-gray-400 border-t-transparent rounded-full animate-spin"></div> : <RiImageAddLine className="text-xl" />}
+            <button onClick={() => fileInputRef.current?.click()} className="w-11 h-11 flex items-center justify-center rounded-full bg-gray-100 text-gray-600 hover:bg-gray-200 transition-all">
+               <RiImageAddLine className="text-xl" />
             </button>
-            <input type="file" ref={fileInputRef} hidden accept="image/*,video/*" onChange={handleFileUpload} disabled={isUploading} />
+            <input type="file" ref={fileInputRef} hidden accept="image/*,video/*" onChange={handleFileUpload} />
             <div className="flex-1 bg-gray-100 rounded-full flex items-center px-4 py-2.5 border border-transparent focus-within:border-blue-500 focus-within:bg-white focus-within:ring-2 focus-within:ring-blue-100 transition-all">
               <input className="flex-1 bg-transparent outline-none text-sm text-gray-800 placeholder-gray-400" placeholder="Type your advice..." value={inputText} onChange={(e) => setInputText(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && sendMessage()} />
             </div>
