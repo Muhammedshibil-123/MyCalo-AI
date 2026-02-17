@@ -21,6 +21,10 @@ const Chat = () => {
   const [incomingCallData, setIncomingCallData] = useState(null);
   const [isReceivingCall, setIsReceivingCall] = useState(false);
 
+  // Reconnection state
+  const [reconnectAttempt, setReconnectAttempt] = useState(0);
+  const [isInitialLoad, setIsInitialLoad] = useState(true);
+
   const { roomUploads, uploadFile, removeUpload } = useUpload();
   const roomUploadsRef = useRef(roomUploads); 
   
@@ -46,6 +50,19 @@ const Chat = () => {
   useEffect(() => { roomUploadsRef.current = roomUploads; }, [roomUploads]);
   useEffect(() => { if (!doctor) navigate('/consult'); }, [doctor, navigate]);
 
+  // Reconnect when app comes to foreground
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        if (socketRef.current && (socketRef.current.readyState === WebSocket.CLOSED || socketRef.current.readyState === WebSocket.CLOSING)) {
+          setReconnectAttempt(prev => prev + 1);
+        }
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+  }, []);
+
   useEffect(() => {
     if (!roomId || !accessToken) return;
 
@@ -69,6 +86,15 @@ const Chat = () => {
             setIncomingCallData(null);
         } else if (data.type === 'chat_history') {
           setMessages(data.messages);
+          // Sync Logic: Check if pending uploads are already in history
+          const pending = roomUploadsRef.current[roomId] || [];
+          if (pending.length > 0) {
+             const lastMsg = data.messages[data.messages.length - 1];
+             // If the last message in history is from me and has a file, assume it matches the pending one
+             if (lastMsg && String(lastMsg.sender_id) === String(user.id) && lastMsg.file_url) {
+                 removeUpload(roomId, pending[0].tempId);
+             }
+          }
         } else if (data.type === 'new_message') {
           if (String(data.sender_id) === String(user.id) && data.file_url) {
              const pending = roomUploadsRef.current[roomId] || [];
@@ -96,9 +122,19 @@ const Chat = () => {
 
     socketRef.current = ws;
     return () => { if (ws.readyState === 1) ws.close(); };
-  }, [roomId, accessToken]); 
+  }, [roomId, accessToken, reconnectAttempt]); 
 
-  useEffect(() => { messagesEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, [displayMessages]);
+  // Smart Scroll: Instant on first load, Smooth on new messages
+  useEffect(() => { 
+    if (messagesEndRef.current) {
+      if (isInitialLoad) {
+        messagesEndRef.current.scrollIntoView({ behavior: "auto" });
+        if (displayMessages.length > 0) setIsInitialLoad(false);
+      } else {
+        messagesEndRef.current.scrollIntoView({ behavior: "smooth" });
+      }
+    }
+  }, [displayMessages, isInitialLoad]);
 
   const handleSendMessage = () => {
     if (!inputText.trim() || !socketRef.current) return;
@@ -164,7 +200,6 @@ const Chat = () => {
   if (!doctor) return null;
 
   return (
-    // Fixed: h-screen to h-[100dvh] for mobile support
     <div className="flex flex-col h-[100dvh] bg-gray-50">
       <div className="bg-white border-b border-gray-200 px-4 py-3 flex items-center gap-3 shadow-sm z-20 shrink-0">
         <button onClick={() => navigate('/consult')} className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-gray-100 transition-colors">
@@ -219,7 +254,7 @@ const Chat = () => {
 
           if (fileType === 'call_request') {
               return (
-                <div key={index} className={`flex w-full ${isMe ? 'justify-end' : 'justify-start'} animate-fade-in`}>
+                <div key={index} className={`flex w-full ${isMe ? 'justify-end' : 'justify-start'}`}>
                    <div className={`p-3 rounded-2xl max-w-[80%] ${isMe ? 'bg-blue-100 text-blue-800' : 'bg-gray-100 text-gray-800'}`}>
                       <div className="flex items-center gap-2">
                           <IoMdVideocam size={20} />
@@ -231,7 +266,7 @@ const Chat = () => {
           }
 
           return (
-            <div key={msg.tempId || index} className={`flex w-full ${isMe ? 'justify-end' : 'justify-start'} animate-fade-in`}>
+            <div key={msg.tempId || index} className={`flex w-full ${isMe ? 'justify-end' : 'justify-start'}`}>
               <div className={`relative max-w-[85%] sm:max-w-[70%] rounded-2xl p-1 shadow-sm overflow-hidden ${isMe ? 'bg-blue-600 text-white rounded-br-none' : 'bg-white text-gray-800 border border-gray-200 rounded-bl-none'}`}>
                 {fileUrl ? (
                     <div className="relative rounded-xl overflow-hidden mb-1">

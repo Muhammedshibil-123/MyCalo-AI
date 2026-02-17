@@ -26,6 +26,10 @@ const DoctorChatPage = () => {
   const [incomingCallData, setIncomingCallData] = useState(null);
   const [isReceivingCall, setIsReceivingCall] = useState(false);
 
+  // Reconnection and Scroll state
+  const [reconnectAttempt, setReconnectAttempt] = useState(0);
+  const [isInitialLoad, setIsInitialLoad] = useState(true);
+
   const [isRecording, setIsRecording] = useState(false);
   const [recordingTime, setRecordingTime] = useState(0);
   const mediaRecorderRef = useRef(null);
@@ -50,6 +54,19 @@ const DoctorChatPage = () => {
 
   useEffect(() => { roomUploadsRef.current = roomUploads; }, [roomUploads]);
 
+  // Reconnect on visibility change
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        if (socketRef.current && (socketRef.current.readyState === WebSocket.CLOSED || socketRef.current.readyState === WebSocket.CLOSING)) {
+          setReconnectAttempt(prev => prev + 1);
+        }
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+  }, []);
+
   useEffect(() => {
     if (!roomId || !accessToken) return;
 
@@ -73,6 +90,14 @@ const DoctorChatPage = () => {
             setIncomingCallData(null);
         } else if (data.type === 'chat_history') {
           setMessages(data.messages);
+           // Sync Logic: Check if pending uploads are already in history
+           const pending = roomUploadsRef.current[roomId] || [];
+           if (pending.length > 0) {
+              const lastMsg = data.messages[data.messages.length - 1];
+              if (lastMsg && String(lastMsg.sender_id) === String(user.id) && lastMsg.file_url) {
+                  removeUpload(roomId, pending[0].tempId);
+              }
+           }
         } else if (data.type === 'new_message') {
           if (String(data.sender_id) === String(user.id) && data.file_url) {
              const pending = roomUploadsRef.current[roomId] || [];
@@ -98,9 +123,19 @@ const DoctorChatPage = () => {
 
     socketRef.current = ws;
     return () => { if (ws.readyState === 1) ws.close(); };
-  }, [roomId, accessToken, isResolved]);
+  }, [roomId, accessToken, isResolved, reconnectAttempt]);
 
-  useEffect(() => { messagesEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, [displayMessages]);
+  // Smart Scroll
+  useEffect(() => { 
+    if (messagesEndRef.current) {
+        if (isInitialLoad) {
+            messagesEndRef.current.scrollIntoView({ behavior: "auto" });
+            if (displayMessages.length > 0) setIsInitialLoad(false);
+        } else {
+            messagesEndRef.current.scrollIntoView({ behavior: "smooth" });
+        }
+    }
+  }, [displayMessages, isInitialLoad]);
 
   const sendMessage = () => {
     if (!inputText.trim() || !socketRef.current || isResolved) return;
@@ -164,7 +199,6 @@ const DoctorChatPage = () => {
 
   const formatTime = (s) => `${Math.floor(s/60)}:${(s%60).toString().padStart(2,'0')}`;
 
-  // Helper to check if a request has been accepted (i.e., a system 'started' message appears later)
   const isRequestAccepted = (index) => {
       for (let j = index + 1; j < displayMessages.length; j++) {
           if (displayMessages[j].FileType === 'system' && (displayMessages[j].Message || '').includes("Video call started")) {
@@ -175,7 +209,6 @@ const DoctorChatPage = () => {
   };
 
   return (
-    // Fixed: h-screen to h-[100dvh] for mobile browsers
     <div className="flex flex-col h-[100dvh] bg-gray-50">
       <div className="bg-white border-b border-gray-200 px-4 py-3 flex items-center gap-3 shadow-sm z-20 shrink-0">
         <button onClick={() => navigate('/doctor/consult')} className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-gray-100 transition-colors">
@@ -240,7 +273,7 @@ const DoctorChatPage = () => {
           if (fileType === 'call_request') {
               const requestDone = isRequestAccepted(i);
               return (
-                <div key={i} className={`flex w-full ${isMe ? 'justify-end' : 'justify-start'} animate-fade-in`}>
+                <div key={i} className={`flex w-full ${isMe ? 'justify-end' : 'justify-start'}`}>
                    <div className={`p-4 rounded-2xl max-w-[80%] ${isMe ? 'bg-blue-100 text-blue-800' : 'bg-white border border-gray-200 shadow-sm'}`}>
                       <div className="flex flex-col gap-3">
                           <div className="flex items-center gap-2">
@@ -263,7 +296,7 @@ const DoctorChatPage = () => {
           }
 
           return (
-            <div key={msg.tempId || i} className={`flex w-full ${isMe ? 'justify-end' : 'justify-start'} animate-fade-in`}>
+            <div key={msg.tempId || i} className={`flex w-full ${isMe ? 'justify-end' : 'justify-start'}`}>
               <div className={`relative max-w-[85%] sm:max-w-[70%] rounded-2xl p-1 shadow-sm overflow-hidden ${isMe ? 'bg-blue-600 text-white rounded-br-none' : 'bg-white text-gray-800 border border-gray-200 rounded-bl-none'}`}>
                 {fileUrl ? (
                     <div className="relative rounded-xl overflow-hidden">
