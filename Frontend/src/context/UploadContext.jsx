@@ -63,20 +63,28 @@ export const UploadProvider = ({ children }) => {
     try {
       // 2. Upload to Backend
       await api.post('/chat/upload/', formData, {
-        skipLoading: true, // <--- PREVENTS GLOBAL LOADING SCREEN
+        skipLoading: true,
         onUploadProgress: (progressEvent) => {
           const percent = Math.round((progressEvent.loaded * 100) / progressEvent.total);
           // Only go up to 90% via axios, leave rest for "processing" state
           const visualPercent = Math.min(percent, 90);
-          updateUploadProgress(roomId, tempId, visualPercent);
+          updateUploadProgress(roomId, tempId, visualPercent, 'uploading');
         }
       });
 
       // 3. Upload Done, now "Processing" in Celery
       updateUploadProgress(roomId, tempId, 92, 'processing');
 
-      // 4. Fake crawl from 92% to 99% while waiting for WebSocket
+      // 4. Fake progress crawl from 92% to 99% while waiting for WebSocket message
+      let currentProgress = 92;
       const interval = setInterval(() => {
+        currentProgress += Math.random() * 3;
+        
+        if (currentProgress >= 99) {
+          clearInterval(interval);
+          return;
+        }
+
         setRoomUploads(current => {
             const roomMsgs = current[roomId] || [];
             const target = roomMsgs.find(m => m.tempId === tempId);
@@ -87,25 +95,39 @@ export const UploadProvider = ({ children }) => {
                 return current;
             }
 
-            // Cap at 99%
-            if (target.progress >= 99) {
-                clearInterval(interval);
-                return current;
-            }
-
             return {
                 ...current,
                 [roomId]: roomMsgs.map(m => 
-                    m.tempId === tempId ? { ...m, progress: m.progress + 1 } : m
+                    m.tempId === tempId 
+                      ? { ...m, progress: Math.min(currentProgress, 99) } 
+                      : m
                 )
             };
         });
       }, 500);
 
+      // 5. Wait a bit longer for WebSocket to deliver the actual message
+      // This timeout handles the case where WebSocket takes time to deliver
+      setTimeout(() => {
+        setRoomUploads(current => {
+          const roomMsgs = current[roomId] || [];
+          // If temp message still exists after 15 seconds, remove it
+          // (assume it was delivered but UI didn't sync properly)
+          if (roomMsgs.some(m => m.tempId === tempId)) {
+            return {
+              ...current,
+              [roomId]: roomMsgs.filter(m => m.tempId !== tempId)
+            };
+          }
+          return current;
+        });
+        clearInterval(interval);
+      }, 15000);
+
     } catch (error) {
       console.error("Upload failed", error);
       removeUpload(roomId, tempId);
-      alert("Failed to send media.");
+      alert("Failed to send media. Please try again.");
     }
   };
 

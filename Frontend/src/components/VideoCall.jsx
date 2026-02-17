@@ -1,7 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import SimplePeer from 'simple-peer';
 import { IoMdMic, IoMdMicOff, IoMdCall } from 'react-icons/io';
-// FIX: Switched to RiCameraOffFill as RiVidiconOffFill was missing
 import { RiVidiconFill, RiCameraOffFill } from 'react-icons/ri'; 
 
 const VideoCall = ({ socket, user, roomId, onClose, isInitiator, signalData }) => {
@@ -13,11 +12,13 @@ const VideoCall = ({ socket, user, roomId, onClose, isInitiator, signalData }) =
   const myVideo = useRef();
   const userVideo = useRef();
   const connectionRef = useRef();
+  const streamRef = useRef(); // Added ref to track stream for cleanup
 
   useEffect(() => {
     navigator.mediaDevices.getUserMedia({ video: true, audio: true })
       .then((currentStream) => {
         setStream(currentStream);
+        streamRef.current = currentStream; // Store in ref
         if (myVideo.current) {
           myVideo.current.srcObject = currentStream;
         }
@@ -52,10 +53,17 @@ const VideoCall = ({ socket, user, roomId, onClose, isInitiator, signalData }) =
           if (message.type === 'answer_call' && isInitiator) {
             setCallAccepted(true);
             peer.signal(message.data);
+            
+            // Send system message when call connects
+            socket.current.send(JSON.stringify({
+                message: "Video call started",
+                sender_id: user.id,
+                file_type: 'system'
+            }));
           } 
           
           if (message.type === 'call_ended') {
-             endCall();
+             endCall(false); // End without sending another signal
           }
         };
 
@@ -63,7 +71,7 @@ const VideoCall = ({ socket, user, roomId, onClose, isInitiator, signalData }) =
         connectionRef.current = peer;
 
         return () => {
-            socket.current.removeEventListener('message', handleSignal);
+            if(socket.current) socket.current.removeEventListener('message', handleSignal);
         };
       })
       .catch(err => {
@@ -72,15 +80,25 @@ const VideoCall = ({ socket, user, roomId, onClose, isInitiator, signalData }) =
           onClose();
       });
 
+      // Cleanup function
       return () => {
           if(connectionRef.current) connectionRef.current.destroy();
-          if(stream) stream.getTracks().forEach(track => track.stop());
+          // Stop all tracks using the ref to ensure they are closed
+          if(streamRef.current) {
+              streamRef.current.getTracks().forEach(track => track.stop());
+          }
       };
   }, []);
 
-  const endCall = () => {
-    if (socket.current.readyState === WebSocket.OPEN) {
+  const endCall = (emitSignal = true) => {
+    if (emitSignal && socket.current.readyState === WebSocket.OPEN) {
         socket.current.send(JSON.stringify({ type: 'call_ended' }));
+        // Send system message
+        socket.current.send(JSON.stringify({
+            message: "Video call ended",
+            sender_id: user.id,
+            file_type: 'system'
+        }));
     }
     onClose();
   };
@@ -107,11 +125,10 @@ const VideoCall = ({ socket, user, roomId, onClose, isInitiator, signalData }) =
 
   return (
     <div className="fixed inset-0 z-[100] bg-gray-900 flex flex-col items-center justify-center p-4">
-      
       {/* Video Grid */}
       <div className="relative w-full max-w-4xl flex-1 flex flex-col md:flex-row gap-4 items-center justify-center">
         
-        {/* Remote Video (Full Screen-ish) */}
+        {/* Remote Video */}
         <div className="relative w-full h-full flex items-center justify-center bg-black rounded-2xl overflow-hidden shadow-2xl">
             {callAccepted || !isInitiator ? (
                 <video playsInline ref={userVideo} autoPlay className="w-full h-full object-cover" />
@@ -127,7 +144,6 @@ const VideoCall = ({ socket, user, roomId, onClose, isInitiator, signalData }) =
                 <video playsInline ref={myVideo} autoPlay muted className="w-full h-full object-cover transform scale-x-[-1]" />
             </div>
         </div>
-
       </div>
 
       {/* Controls */}
@@ -136,7 +152,7 @@ const VideoCall = ({ socket, user, roomId, onClose, isInitiator, signalData }) =
             {micOn ? <IoMdMic className="text-2xl" /> : <IoMdMicOff className="text-2xl" />}
         </button>
 
-        <button onClick={endCall} className="p-5 rounded-full bg-red-600 text-white hover:bg-red-700 transition-all shadow-lg scale-110 active:scale-95">
+        <button onClick={() => endCall(true)} className="p-5 rounded-full bg-red-600 text-white hover:bg-red-700 transition-all shadow-lg scale-110 active:scale-95">
             <IoMdCall className="text-3xl" />
         </button>
 

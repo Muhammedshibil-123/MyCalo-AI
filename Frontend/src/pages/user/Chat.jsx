@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useSelector } from 'react-redux';
-import { IoMdArrowBack, IoMdSend, IoMdClose, IoMdPlay, IoMdMic, IoMdSquare, IoMdTrash, IoMdVideocam, IoMdCall } from 'react-icons/io';
+import { IoMdArrowBack, IoMdSend, IoMdClose, IoMdPlay, IoMdMic, IoMdTrash, IoMdVideocam, IoMdCall } from 'react-icons/io';
 import { RiImageAddLine } from 'react-icons/ri';
 import api from '../../lib/axios';
 import { useUpload } from '../../context/UploadContext';
@@ -22,10 +22,12 @@ const Chat = () => {
   const [isReceivingCall, setIsReceivingCall] = useState(false);
 
   const { roomUploads, uploadFile, removeUpload } = useUpload();
+  // Use ref to access latest uploads inside socket callback without re-triggering useEffect
+  const roomUploadsRef = useRef(roomUploads); 
+  
   const roomId = doctor ? `user_${user.id}_doc_${doctor.id}` : null;
   const pendingMessages = roomId ? (roomUploads[roomId] || []) : [];
   
-  // Combine and sort messages
   const displayMessages = [...messages, ...pendingMessages].sort((a, b) => {
       const t1 = new Date(a.Timestamp || a.timestamp || 0).getTime();
       const t2 = new Date(b.Timestamp || b.timestamp || 0).getTime();
@@ -42,6 +44,7 @@ const Chat = () => {
   const fileInputRef = useRef(null);
   const [selectedMedia, setSelectedMedia] = useState(null);
 
+  useEffect(() => { roomUploadsRef.current = roomUploads; }, [roomUploads]);
   useEffect(() => { if (!doctor) navigate('/consult'); }, [doctor, navigate]);
 
   useEffect(() => {
@@ -70,7 +73,7 @@ const Chat = () => {
         } else if (data.type === 'new_message') {
           // 1. Remove pending upload if it's my message
           if (String(data.sender_id) === String(user.id) && data.file_url) {
-             const pending = roomUploads[roomId] || [];
+             const pending = roomUploadsRef.current[roomId] || [];
              if (pending.length > 0) removeUpload(roomId, pending[0].tempId);
           }
 
@@ -84,7 +87,6 @@ const Chat = () => {
           };
 
           setMessages((prev) => {
-            // Simple duplicate check: only check the very last message to avoid performance hit or false positives
             const lastMsg = prev[prev.length - 1];
             if (lastMsg && lastMsg.Timestamp === normalizedMsg.Timestamp && String(lastMsg.SenderID) === String(normalizedMsg.SenderID)) {
                 return prev;
@@ -97,7 +99,7 @@ const Chat = () => {
 
     socketRef.current = ws;
     return () => { if (ws.readyState === 1) ws.close(); };
-  }, [roomId, accessToken, roomUploads]);
+  }, [roomId, accessToken]); // Removed roomUploads from dependency to prevent socket reconnect loops
 
   useEffect(() => { messagesEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, [displayMessages]);
 
@@ -107,7 +109,16 @@ const Chat = () => {
     setInputText('');
   };
 
-  const startCall = () => { setIsInitiator(true); setShowVideoCall(true); };
+  // User requests a call, doesn't start it immediately
+  const requestCall = () => {
+    if (!socketRef.current) return;
+    socketRef.current.send(JSON.stringify({ 
+        message: "Requesting video call...", 
+        sender_id: user.id,
+        file_type: 'call_request' 
+    }));
+  };
+
   const answerCall = () => { setIsInitiator(false); setShowVideoCall(true); setIsReceivingCall(false); };
 
   const handleFileSelect = (e) => {
@@ -131,15 +142,24 @@ const Chat = () => {
     } catch (err) { alert("Mic access denied."); }
   };
 
+  const cleanupRecording = () => {
+      if (mediaRecorderRef.current && mediaRecorderRef.current.stream) { 
+          mediaRecorderRef.current.stream.getTracks().forEach(t => t.stop()); 
+      }
+      setIsRecording(false); 
+      clearInterval(timerRef.current);
+  };
+
   const cancelRecording = () => {
-      if (mediaRecorderRef.current) { mediaRecorderRef.current.stop(); mediaRecorderRef.current.stream.getTracks().forEach(t => t.stop()); }
-      setIsRecording(false); clearInterval(timerRef.current);
+      if (mediaRecorderRef.current) { mediaRecorderRef.current.stop(); }
+      cleanupRecording();
   };
 
   const sendRecording = () => {
       if (!mediaRecorderRef.current) return;
-      mediaRecorderRef.current.stop(); mediaRecorderRef.current.stream.getTracks().forEach(t => t.stop());
-      setIsRecording(false); clearInterval(timerRef.current);
+      mediaRecorderRef.current.stop();
+      cleanupRecording();
+      
       setTimeout(() => {
           uploadFile(new File([new Blob(audioChunksRef.current, { type: 'audio/webm' })], `voice_${Date.now()}.webm`, { type: 'audio/webm' }), roomId, 'audio', user.id);
       }, 200);
@@ -160,7 +180,8 @@ const Chat = () => {
           <h3 className="font-bold text-gray-900 truncate">Dr. {doctor.first_name || doctor.username}</h3>
           <p className="text-[10px] text-green-600 font-medium">● Online</p>
         </div>
-        <button onClick={startCall} className="w-10 h-10 flex items-center justify-center rounded-full bg-blue-50 text-blue-600 hover:bg-blue-100 transition-all shrink-0">
+        {/* Changed to request call */}
+        <button onClick={requestCall} className="w-10 h-10 flex items-center justify-center rounded-full bg-blue-50 text-blue-600 hover:bg-blue-100 transition-all shrink-0">
             <IoMdVideocam className="text-xl" />
         </button>
       </div>
@@ -190,6 +211,29 @@ const Chat = () => {
           const fileUrl = msg.FileUrl || msg.file_url;
           const fileType = msg.FileType || msg.file_type;
           
+          if (fileType === 'system') {
+              return (
+                  <div key={index} className="flex justify-center my-4">
+                      <span className="text-xs text-gray-500 font-medium bg-gray-100 px-3 py-1 rounded-full border border-gray-200">
+                          {msg.Message || msg.message}
+                      </span>
+                  </div>
+              );
+          }
+
+          if (fileType === 'call_request') {
+              return (
+                <div key={index} className={`flex w-full ${isMe ? 'justify-end' : 'justify-start'} animate-fade-in`}>
+                   <div className={`p-3 rounded-2xl max-w-[80%] ${isMe ? 'bg-blue-100 text-blue-800' : 'bg-gray-100 text-gray-800'}`}>
+                      <div className="flex items-center gap-2">
+                          <IoMdVideocam size={20} />
+                          <span className="text-sm font-semibold">{isMe ? "You requested a video call" : "Requested a video call"}</span>
+                      </div>
+                   </div>
+                </div>
+              );
+          }
+
           return (
             <div key={msg.tempId || index} className={`flex w-full ${isMe ? 'justify-end' : 'justify-start'} animate-fade-in`}>
               <div className={`relative max-w-[85%] sm:max-w-[70%] rounded-2xl p-1 shadow-sm overflow-hidden ${isMe ? 'bg-blue-600 text-white rounded-br-none' : 'bg-white text-gray-800 border border-gray-200 rounded-bl-none'}`}>

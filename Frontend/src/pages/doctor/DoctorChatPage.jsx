@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useLocation, useNavigate } from 'react-router-dom';
 import { useSelector } from 'react-redux';
-import { IoMdArrowBack, IoMdSend, IoMdCheckmarkCircle, IoMdClose, IoMdPlay, IoMdMic, IoMdSquare, IoMdTrash, IoMdVideocam, IoMdCall } from 'react-icons/io';
+import { IoMdArrowBack, IoMdSend, IoMdCheckmarkCircle, IoMdClose, IoMdPlay, IoMdMic, IoMdTrash, IoMdVideocam, IoMdCall } from 'react-icons/io';
 import { RiImageAddLine } from 'react-icons/ri';
 import api from '../../lib/axios';
 import { useUpload } from '../../context/UploadContext';
@@ -33,6 +33,9 @@ const DoctorChatPage = () => {
   const timerRef = useRef(null);
   
   const { roomUploads, uploadFile, removeUpload } = useUpload();
+  // Ref to track uploads without re-triggering socket useEffect
+  const roomUploadsRef = useRef(roomUploads);
+
   const pendingMessages = roomUploads[roomId] || [];
   
   const displayMessages = [...messages, ...pendingMessages].sort((a, b) => {
@@ -45,6 +48,8 @@ const DoctorChatPage = () => {
   const socketRef = useRef(null);
   const messagesEndRef = useRef(null);
   const fileInputRef = useRef(null);
+
+  useEffect(() => { roomUploadsRef.current = roomUploads; }, [roomUploads]);
 
   useEffect(() => {
     if (!roomId || !accessToken) return;
@@ -72,7 +77,7 @@ const DoctorChatPage = () => {
         } else if (data.type === 'new_message') {
           // 1. Remove pending upload
           if (String(data.sender_id) === String(user.id) && data.file_url) {
-             const pending = roomUploads[roomId] || [];
+             const pending = roomUploadsRef.current[roomId] || [];
              if (pending.length > 0) removeUpload(roomId, pending[0].tempId);
           }
 
@@ -98,7 +103,7 @@ const DoctorChatPage = () => {
 
     socketRef.current = ws;
     return () => { if (ws.readyState === 1) ws.close(); };
-  }, [roomId, accessToken, isResolved, roomUploads]);
+  }, [roomId, accessToken, isResolved]); // Removed roomUploads from dependency
 
   useEffect(() => { messagesEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, [displayMessages]);
 
@@ -129,15 +134,24 @@ const DoctorChatPage = () => {
     } catch (err) { alert("Mic access denied."); }
   };
 
+  const cleanupRecording = () => {
+      if (mediaRecorderRef.current && mediaRecorderRef.current.stream) { 
+          mediaRecorderRef.current.stream.getTracks().forEach(t => t.stop()); 
+      }
+      setIsRecording(false); 
+      clearInterval(timerRef.current);
+  };
+
   const cancelRecording = () => {
-      if (mediaRecorderRef.current) { mediaRecorderRef.current.stop(); mediaRecorderRef.current.stream.getTracks().forEach(t => t.stop()); }
-      setIsRecording(false); clearInterval(timerRef.current);
+      if (mediaRecorderRef.current) { mediaRecorderRef.current.stop(); }
+      cleanupRecording();
   };
 
   const sendRecording = () => {
       if (!mediaRecorderRef.current) return;
-      mediaRecorderRef.current.stop(); mediaRecorderRef.current.stream.getTracks().forEach(t => t.stop());
-      setIsRecording(false); clearInterval(timerRef.current);
+      mediaRecorderRef.current.stop();
+      cleanupRecording();
+
       setTimeout(() => {
           uploadFile(new File([new Blob(audioChunksRef.current, { type: 'audio/webm' })], `voice_${Date.now()}.webm`, { type: 'audio/webm' }), roomId, 'audio', user.id);
       }, 200);
@@ -208,6 +222,36 @@ const DoctorChatPage = () => {
           const fileUrl = msg.FileUrl || msg.file_url;
           const fileType = msg.FileType || msg.file_type;
           
+          if (fileType === 'system') {
+              return (
+                  <div key={i} className="flex justify-center my-4">
+                      <span className="text-xs text-gray-500 font-medium bg-gray-100 px-3 py-1 rounded-full border border-gray-200">
+                          {msg.Message || msg.message}
+                      </span>
+                  </div>
+              );
+          }
+
+          if (fileType === 'call_request') {
+              return (
+                <div key={i} className={`flex w-full ${isMe ? 'justify-end' : 'justify-start'} animate-fade-in`}>
+                   <div className={`p-4 rounded-2xl max-w-[80%] ${isMe ? 'bg-blue-100 text-blue-800' : 'bg-white border border-gray-200 shadow-sm'}`}>
+                      <div className="flex flex-col gap-3">
+                          <div className="flex items-center gap-2">
+                              <IoMdVideocam size={24} className={isMe ? "text-blue-600" : "text-green-600"} />
+                              <span className="font-semibold">{isMe ? "You requested a video call" : "Patient requesting video call"}</span>
+                          </div>
+                          {!isMe && (
+                              <button onClick={startCall} className="w-full py-2 bg-green-600 text-white rounded-xl font-medium text-sm hover:bg-green-700 transition-colors shadow-sm">
+                                  Accept Call
+                              </button>
+                          )}
+                      </div>
+                   </div>
+                </div>
+              );
+          }
+
           return (
             <div key={msg.tempId || i} className={`flex w-full ${isMe ? 'justify-end' : 'justify-start'} animate-fade-in`}>
               <div className={`relative max-w-[85%] sm:max-w-[70%] rounded-2xl p-1 shadow-sm overflow-hidden ${isMe ? 'bg-blue-600 text-white rounded-br-none' : 'bg-white text-gray-800 border border-gray-200 rounded-bl-none'}`}>
