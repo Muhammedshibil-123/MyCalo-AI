@@ -12,13 +12,19 @@ const VideoCall = ({ socket, user, roomId, onClose, isInitiator, signalData }) =
   const myVideo = useRef();
   const userVideo = useRef();
   const connectionRef = useRef();
-  const streamRef = useRef(); // Added ref to track stream for cleanup
+  const streamRef = useRef();
+  const connectionStarted = useRef(false); // Fix for StrictMode/Double Init
 
   useEffect(() => {
+    // Prevent double initialization
+    if (connectionStarted.current) return;
+    connectionStarted.current = true;
+
     navigator.mediaDevices.getUserMedia({ video: true, audio: true })
       .then((currentStream) => {
         setStream(currentStream);
-        streamRef.current = currentStream; // Store in ref
+        streamRef.current = currentStream;
+        
         if (myVideo.current) {
           myVideo.current.srcObject = currentStream;
         }
@@ -30,11 +36,13 @@ const VideoCall = ({ socket, user, roomId, onClose, isInitiator, signalData }) =
         });
 
         peer.on('signal', (data) => {
-          socket.current.send(JSON.stringify({
-            type: isInitiator ? 'call_user' : 'answer_call',
-            data: data,
-            sender_id: user.id
-          }));
+          if (socket.current && socket.current.readyState === WebSocket.OPEN) {
+            socket.current.send(JSON.stringify({
+              type: isInitiator ? 'call_user' : 'answer_call',
+              data: data,
+              sender_id: user.id
+            }));
+          }
         });
 
         peer.on('stream', (remoteStream) => {
@@ -43,6 +51,11 @@ const VideoCall = ({ socket, user, roomId, onClose, isInitiator, signalData }) =
           }
         });
 
+        peer.on('close', () => {
+            endCall(false);
+        });
+
+        // Handle incoming answer if we are the initiator
         if (!isInitiator && signalData) {
           peer.signal(signalData);
         }
@@ -54,16 +67,18 @@ const VideoCall = ({ socket, user, roomId, onClose, isInitiator, signalData }) =
             setCallAccepted(true);
             peer.signal(message.data);
             
-            // Send system message when call connects
-            socket.current.send(JSON.stringify({
-                message: "Video call started",
-                sender_id: user.id,
-                file_type: 'system'
-            }));
+            // Only send "started" system message once when connection is established
+            if (socket.current && socket.current.readyState === WebSocket.OPEN) {
+                socket.current.send(JSON.stringify({
+                    message: "Video call started",
+                    sender_id: user.id,
+                    file_type: 'system'
+                }));
+            }
           } 
           
           if (message.type === 'call_ended') {
-             endCall(false); // End without sending another signal
+             endCall(false);
           }
         };
 
@@ -76,36 +91,54 @@ const VideoCall = ({ socket, user, roomId, onClose, isInitiator, signalData }) =
       })
       .catch(err => {
           console.error("Media Error:", err);
-          alert("Could not access camera/microphone");
+          alert("Could not access camera/microphone. Please allow permissions.");
           onClose();
       });
 
-      // Cleanup function
+      // Cleanup on unmount
       return () => {
-          if(connectionRef.current) connectionRef.current.destroy();
-          // Stop all tracks using the ref to ensure they are closed
-          if(streamRef.current) {
-              streamRef.current.getTracks().forEach(track => track.stop());
+          stopMedia();
+          if(connectionRef.current) {
+              connectionRef.current.destroy();
           }
       };
   }, []);
 
+  const stopMedia = () => {
+    if (streamRef.current) {
+        streamRef.current.getTracks().forEach(track => {
+            track.stop();
+            track.enabled = false;
+        });
+        streamRef.current = null;
+    }
+    if (stream) {
+        stream.getTracks().forEach(track => track.stop());
+        setStream(null);
+    }
+  };
+
   const endCall = (emitSignal = true) => {
-    if (emitSignal && socket.current.readyState === WebSocket.OPEN) {
+    stopMedia(); // Immediately stop camera/mic
+    
+    if (emitSignal && socket.current && socket.current.readyState === WebSocket.OPEN) {
         socket.current.send(JSON.stringify({ type: 'call_ended' }));
-        // Send system message
         socket.current.send(JSON.stringify({
             message: "Video call ended",
             sender_id: user.id,
             file_type: 'system'
         }));
     }
+    
+    if (connectionRef.current) {
+        connectionRef.current.destroy();
+    }
     onClose();
   };
 
   const toggleMic = () => {
-    if(stream) {
-        const audioTrack = stream.getAudioTracks()[0];
+    if(streamRef.current) {
+        const audioTrack = streamRef.current.getAudioTracks()[0];
         if (audioTrack) {
             audioTrack.enabled = !micOn;
             setMicOn(!micOn);
@@ -114,8 +147,8 @@ const VideoCall = ({ socket, user, roomId, onClose, isInitiator, signalData }) =
   };
 
   const toggleVideo = () => {
-    if(stream) {
-        const videoTrack = stream.getVideoTracks()[0];
+    if(streamRef.current) {
+        const videoTrack = streamRef.current.getVideoTracks()[0];
         if (videoTrack) {
             videoTrack.enabled = !videoOn;
             setVideoOn(!videoOn);

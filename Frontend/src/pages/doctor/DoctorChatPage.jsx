@@ -33,7 +33,6 @@ const DoctorChatPage = () => {
   const timerRef = useRef(null);
   
   const { roomUploads, uploadFile, removeUpload } = useUpload();
-  // Ref to track uploads without re-triggering socket useEffect
   const roomUploadsRef = useRef(roomUploads);
 
   const pendingMessages = roomUploads[roomId] || [];
@@ -75,13 +74,10 @@ const DoctorChatPage = () => {
         } else if (data.type === 'chat_history') {
           setMessages(data.messages);
         } else if (data.type === 'new_message') {
-          // 1. Remove pending upload
           if (String(data.sender_id) === String(user.id) && data.file_url) {
              const pending = roomUploadsRef.current[roomId] || [];
              if (pending.length > 0) removeUpload(roomId, pending[0].tempId);
           }
-
-          // 2. Normalize and Append
           const normalizedMsg = {
               Timestamp: data.timestamp,
               SenderID: data.sender_id,
@@ -89,7 +85,6 @@ const DoctorChatPage = () => {
               FileUrl: data.file_url,
               FileType: data.file_type
           };
-
           setMessages((prev) => {
              const lastMsg = prev[prev.length - 1];
              if (lastMsg && lastMsg.Timestamp === normalizedMsg.Timestamp && String(lastMsg.SenderID) === String(normalizedMsg.SenderID)) {
@@ -103,7 +98,7 @@ const DoctorChatPage = () => {
 
     socketRef.current = ws;
     return () => { if (ws.readyState === 1) ws.close(); };
-  }, [roomId, accessToken, isResolved]); // Removed roomUploads from dependency
+  }, [roomId, accessToken, isResolved]);
 
   useEffect(() => { messagesEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, [displayMessages]);
 
@@ -151,7 +146,6 @@ const DoctorChatPage = () => {
       if (!mediaRecorderRef.current) return;
       mediaRecorderRef.current.stop();
       cleanupRecording();
-
       setTimeout(() => {
           uploadFile(new File([new Blob(audioChunksRef.current, { type: 'audio/webm' })], `voice_${Date.now()}.webm`, { type: 'audio/webm' }), roomId, 'audio', user.id);
       }, 200);
@@ -170,8 +164,19 @@ const DoctorChatPage = () => {
 
   const formatTime = (s) => `${Math.floor(s/60)}:${(s%60).toString().padStart(2,'0')}`;
 
+  // Helper to check if a request has been accepted (i.e., a system 'started' message appears later)
+  const isRequestAccepted = (index) => {
+      for (let j = index + 1; j < displayMessages.length; j++) {
+          if (displayMessages[j].FileType === 'system' && (displayMessages[j].Message || '').includes("Video call started")) {
+              return true;
+          }
+      }
+      return false;
+  };
+
   return (
-    <div className="flex flex-col h-screen max-h-screen overflow-hidden bg-gray-50">
+    // Fixed: h-screen to h-[100dvh] for mobile browsers
+    <div className="flex flex-col h-[100dvh] bg-gray-50">
       <div className="bg-white border-b border-gray-200 px-4 py-3 flex items-center gap-3 shadow-sm z-20 shrink-0">
         <button onClick={() => navigate('/doctor/consult')} className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-gray-100 transition-colors">
           <IoMdArrowBack className="text-xl text-gray-700" />
@@ -233,6 +238,7 @@ const DoctorChatPage = () => {
           }
 
           if (fileType === 'call_request') {
+              const requestDone = isRequestAccepted(i);
               return (
                 <div key={i} className={`flex w-full ${isMe ? 'justify-end' : 'justify-start'} animate-fade-in`}>
                    <div className={`p-4 rounded-2xl max-w-[80%] ${isMe ? 'bg-blue-100 text-blue-800' : 'bg-white border border-gray-200 shadow-sm'}`}>
@@ -242,8 +248,12 @@ const DoctorChatPage = () => {
                               <span className="font-semibold">{isMe ? "You requested a video call" : "Patient requesting video call"}</span>
                           </div>
                           {!isMe && (
-                              <button onClick={startCall} className="w-full py-2 bg-green-600 text-white rounded-xl font-medium text-sm hover:bg-green-700 transition-colors shadow-sm">
-                                  Accept Call
+                              <button 
+                                onClick={!requestDone ? startCall : undefined} 
+                                disabled={requestDone}
+                                className={`w-full py-2 rounded-xl font-medium text-sm transition-colors shadow-sm ${requestDone ? 'bg-gray-200 text-gray-500 cursor-not-allowed' : 'bg-green-600 text-white hover:bg-green-700'}`}
+                              >
+                                  {requestDone ? "Request Accepted" : "Accept Request"}
                               </button>
                           )}
                       </div>

@@ -22,7 +22,6 @@ const Chat = () => {
   const [isReceivingCall, setIsReceivingCall] = useState(false);
 
   const { roomUploads, uploadFile, removeUpload } = useUpload();
-  // Use ref to access latest uploads inside socket callback without re-triggering useEffect
   const roomUploadsRef = useRef(roomUploads); 
   
   const roomId = doctor ? `user_${user.id}_doc_${doctor.id}` : null;
@@ -71,13 +70,11 @@ const Chat = () => {
         } else if (data.type === 'chat_history') {
           setMessages(data.messages);
         } else if (data.type === 'new_message') {
-          // 1. Remove pending upload if it's my message
           if (String(data.sender_id) === String(user.id) && data.file_url) {
              const pending = roomUploadsRef.current[roomId] || [];
              if (pending.length > 0) removeUpload(roomId, pending[0].tempId);
           }
 
-          // 2. Normalize and Append Message
           const normalizedMsg = {
               Timestamp: data.timestamp,
               SenderID: data.sender_id,
@@ -99,7 +96,7 @@ const Chat = () => {
 
     socketRef.current = ws;
     return () => { if (ws.readyState === 1) ws.close(); };
-  }, [roomId, accessToken]); // Removed roomUploads from dependency to prevent socket reconnect loops
+  }, [roomId, accessToken]); 
 
   useEffect(() => { messagesEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, [displayMessages]);
 
@@ -109,7 +106,6 @@ const Chat = () => {
     setInputText('');
   };
 
-  // User requests a call, doesn't start it immediately
   const requestCall = () => {
     if (!socketRef.current) return;
     socketRef.current.send(JSON.stringify({ 
@@ -168,7 +164,8 @@ const Chat = () => {
   if (!doctor) return null;
 
   return (
-    <div className="flex flex-col h-screen max-h-screen overflow-hidden bg-gray-50">
+    // Fixed: h-screen to h-[100dvh] for mobile support
+    <div className="flex flex-col h-[100dvh] bg-gray-50">
       <div className="bg-white border-b border-gray-200 px-4 py-3 flex items-center gap-3 shadow-sm z-20 shrink-0">
         <button onClick={() => navigate('/consult')} className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-gray-100 transition-colors">
           <IoMdArrowBack className="text-xl text-gray-700" />
@@ -180,7 +177,6 @@ const Chat = () => {
           <h3 className="font-bold text-gray-900 truncate">Dr. {doctor.first_name || doctor.username}</h3>
           <p className="text-[10px] text-green-600 font-medium">● Online</p>
         </div>
-        {/* Changed to request call */}
         <button onClick={requestCall} className="w-10 h-10 flex items-center justify-center rounded-full bg-blue-50 text-blue-600 hover:bg-blue-100 transition-all shrink-0">
             <IoMdVideocam className="text-xl" />
         </button>
