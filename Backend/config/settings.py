@@ -54,7 +54,6 @@ INSTALLED_APPS = [
     "apps.profiles",
     "apps.foods",
     "apps.tracking",
-    "apps.consultations",
     "apps.notifications",
     "apps.search",
     "apps.analytics",

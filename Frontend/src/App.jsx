@@ -31,6 +31,8 @@ import DoctorLayout from './layout/DoctorLayout';
 import DoctorConsultList from './pages/doctor/DoctorConsultList';
 import DoctorChatPage from './pages/doctor/DoctorChatPage';
 import { UploadProvider } from './context/UploadContext';
+import Questionnaire from "./pages/user/Questionnaire";
+import DoctorFoods from './pages/doctor/DoctorFoods';
 
 const getHomeRouteForRole = (role) => {
     if (role === 'admin' || role === 'employee') return '/admin/dashboard';
@@ -139,6 +141,7 @@ function App() {
                         <Route path="/analyze-image-result" element={<AnalyzeImageResult />} />
                         <Route path="/manual-entry" element={<ManualEntry />} />\
                         <Route path="/chat" element={<Chat />} />
+                        <Route path="/questionnaire" element={<Questionnaire />} />
                     </Route>
 
                     <Route element={<RoleRoute allowedRoles={['admin', 'employee']} />}>
@@ -150,6 +153,7 @@ function App() {
                             <Route path="/doctor/dashboard" element={<DoctorDashboard />} />
                             <Route path="/doctor/consult" element={<DoctorConsultList />} />
                             <Route path="/doctor/chat/:roomId" element={<DoctorChatPage />} />
+                            <Route path="/doctor/foods" element={<DoctorFoods />} />
                         </Route>
                     </Route>
 
