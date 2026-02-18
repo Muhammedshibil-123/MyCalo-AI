@@ -2,6 +2,8 @@ from rest_framework import serializers
 from .models import Profile
 
 class ProfileUpdateSerializer(serializers.ModelSerializer):
+
+    photo = serializers.SerializerMethodField()
     class Meta:
         model = Profile
         fields = [
@@ -19,3 +21,18 @@ class ProfileUpdateSerializer(serializers.ModelSerializer):
             'fats_goal'
         ]
         read_only_fields = ['daily_calorie_goal', 'protein_goal', 'carbs_goal', 'fats_goal']
+
+        def get_photo(self, obj):
+            if not obj.photo:
+                return None
+            try:
+                return obj.photo.url
+            except Exception:
+                 return str(obj.photo)
+           
+            
+            
+        
+
+
+    

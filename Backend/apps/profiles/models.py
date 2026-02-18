@@ -1,5 +1,6 @@
 from django.db import models
 from django.conf import settings
+from cloudinary.models import CloudinaryField
 
 class Profile(models.Model):
     GENDER_CHOICES = (('M', 'Male'), ('F', 'Female'))
@@ -19,6 +20,8 @@ class Profile(models.Model):
     user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='profile')
     
     # Basic Stats
+    name = models.CharField(max_length=120, blank=True, default="")
+    photo = CloudinaryField("image", blank=True, null=True)
     age = models.IntegerField(null=True, blank=True)
     gender = models.CharField(max_length=1, choices=GENDER_CHOICES, null=True)
     height = models.FloatField(help_text="Height in CM", null=True)

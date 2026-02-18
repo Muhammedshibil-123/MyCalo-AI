@@ -3,6 +3,7 @@ from rest_framework.response import Response
 from rest_framework import status, permissions
 from .serializers import ProfileUpdateSerializer
 from .models import Profile
+from rest_framework.permissions import IsAuthenticated          
 
 class UpdateProfileView(APIView):
     permission_classes = [permissions.IsAuthenticated]
@@ -25,3 +26,11 @@ class UpdateProfileView(APIView):
             }, status=status.HTTP_200_OK)
         
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    
+class MyProfileView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        profile, _ = Profile.objects.get_or_create(user=request.user)
+        serializer = ProfileUpdateSerializer(profile)
+        return Response(serializer.data, status=status.HTTP_200_OK)

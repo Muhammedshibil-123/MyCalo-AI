@@ -33,6 +33,7 @@ import DoctorChatPage from './pages/doctor/DoctorChatPage';
 import { UploadProvider } from './context/UploadContext';
 import Questionnaire from "./pages/user/Questionnaire";
 import DoctorFoods from './pages/doctor/DoctorFoods';
+import ProfileEdit from './pages/user/profileEdit';
 
 const getHomeRouteForRole = (role) => {
     if (role === 'admin' || role === 'employee') return '/admin/dashboard';
@@ -146,6 +147,7 @@ function App() {
                         <Route path="/manual-entry" element={<ManualEntry />} />\
                         <Route path="/chat" element={<Chat />} />
                         <Route path="/questionnaire" element={<Questionnaire />} />
+                        <Route path="/profile/edit" element={<ProfileEdit />} />
                     </Route>
 
                     <Route element={<RoleRoute allowedRoles={['admin', 'employee']} />}>
