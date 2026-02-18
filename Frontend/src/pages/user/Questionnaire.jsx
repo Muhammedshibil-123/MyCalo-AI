@@ -111,9 +111,13 @@ const Questionnaire = () => {
   // 6 Goal
   // 7 Target Weight (new)
   // 8 Medical Conditions (new)
-  // 9 Final Calculating / Submit
+  // 9 Final Calculating (Animations)
   const [step, setStep] = useState(0);
   const [direction, setDirection] = useState(0);
+  
+  // Animation State
+  const [loadingMessage, setLoadingMessage] = useState("Setting up...");
+  const [isAnimating, setIsAnimating] = useState(false);
 
   const [formData, setFormData] = useState({
     gender: "",
@@ -179,15 +183,33 @@ const Questionnaire = () => {
   };
 
   const handleSubmit = async () => {
-    // final submit: you can add any final calculation (BMR/TDEE) here prior to patch
+    if (isAnimating) return; // Prevent double submit
+    setIsAnimating(true);
+
     try {
-      // small delay to show spinner
-      await new Promise((res) => setTimeout(res, 1200));
-      await api.patch("/profiles/update/", formData);
-      navigate("/dashboard");
+      // 1. Send Data to Backend
+      const response = await api.patch("/profiles/update/", formData);
+      console.log("Plan Generated:", response.data);
+
+      // 2. Start the 4-second animation sequence
+      setLoadingMessage("Setting up your profile...");
+      
+      setTimeout(() => {
+        setLoadingMessage("Calculating TDEE & Macros...");
+      }, 1500);
+
+      setTimeout(() => {
+        setLoadingMessage("Almost finished...");
+      }, 3000);
+
+      setTimeout(() => {
+        navigate("/dashboard");
+      }, 4500); // 4.5s total delay
+
     } catch (err) {
       console.error("submit error", err);
-      // you may want to show toast here
+      setIsAnimating(false);
+      // Optional: Show error toast here
     }
   };
 
@@ -419,12 +441,27 @@ const Questionnaire = () => {
                 </>
               )}
 
-              {/* 9 - Final Calculating */}
+              {/* 9 - Final Calculating (Animations) */}
               {step === 9 && (
-                <>
-                  <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 1 }} className="w-16 h-16 border-4 border-emerald-200 border-t-emerald-600 rounded-full" />
-                  <p className="font-semibold text-lg">Creating your personalized plan...</p>
-                </>
+                <div className="flex flex-col items-center justify-center space-y-6">
+                  <motion.div 
+                    animate={{ rotate: 360 }} 
+                    transition={{ repeat: Infinity, duration: 1, ease: "linear" }} 
+                    className="w-20 h-20 border-4 border-emerald-100 border-t-emerald-600 rounded-full" 
+                  />
+                  
+                  <motion.h3
+                    key={loadingMessage} // Triggers animation when text changes
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -10 }}
+                    className="text-xl font-bold text-gray-800"
+                  >
+                    {loadingMessage}
+                  </motion.h3>
+                  
+                  <p className="text-gray-400 text-sm">Please wait while our AI builds your nutrition profile.</p>
+                </div>
               )}
             </motion.div>
           </AnimatePresence>

@@ -7,7 +7,7 @@ from .models import Profile
 def create_user_profile(sender, instance, created, **kwargs):
     if created and instance.role == 'USER':  
         Profile.objects.create(user=instance)
-        
+
 @receiver(pre_save, sender=Profile)
 def calculate_nutrition_goals(sender, instance, **kwargs):
     if instance.weight and instance.height and instance.age and instance.gender:
@@ -23,9 +23,9 @@ def calculate_nutrition_goals(sender, instance, **kwargs):
 
         
         if instance.goal == 'LOSE':
-            target_calories = tdee - 500
+            target_calories = tdee - 200
         elif instance.goal == 'GAIN':
-            target_calories = tdee + 500
+            target_calories = tdee + 200
         else:
             target_calories = tdee
 

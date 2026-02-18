@@ -326,6 +326,13 @@ class GoogleLoginView(APIView):
         refresh["role"] = user.role
         refresh["username"] = user.username
 
+        daily_calorie_goal = 0
+        try:
+            if hasattr(user, 'profile'):
+                daily_calorie_goal = user.profile.daily_calorie_goal
+        except Exception:
+            pass
+
         response = Response(
             {
                 "access": str(refresh.access_token),
@@ -334,6 +341,7 @@ class GoogleLoginView(APIView):
                 "email": user.email,
                 "role": user.role,
                 "mobile": user.mobile,
+                "daily_calorie_goal": daily_calorie_goal,
             },
             status=status.HTTP_200_OK,
         )

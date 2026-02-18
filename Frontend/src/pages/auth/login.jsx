@@ -48,6 +48,7 @@ const Login = () => {
           email: data.email,
           role: data.role,
           mobile: data.mobile,
+          daily_calorie_goal: data.daily_calorie_goal,
         };
 
         dispatch(
@@ -57,7 +58,12 @@ const Login = () => {
           })
         );
 
-        navigate("/");
+        if (!data.daily_calorie_goal || data.daily_calorie_goal === 0) {
+          navigate("/questionnaire");
+        } else {
+          navigate("/");
+        }
+
       } catch (err) {
         setError(err.response?.data?.error || "Google Login Failed");
       } finally {
@@ -108,7 +114,12 @@ const Login = () => {
         })
       );
 
-      navigate("/");
+      if (!data.daily_calorie_goal || data.daily_calorie_goal === 0) {
+        navigate("/questionnaire");
+      } else {
+        navigate("/");
+      }
+      
     } catch (err) {
       if (err.response?.data?.detail) {
         setError(err.response.data.detail);

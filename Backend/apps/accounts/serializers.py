@@ -15,6 +15,13 @@ class CustomTokenJwtSerializer(TokenObtainPairSerializer):
                 "role": self.user.role,
                 "message": "OTP Verification Required",
             }
+        
+        daily_calorie_goal = 0
+        try:
+            if hasattr(self.user, 'profile'):
+                daily_calorie_goal = self.user.profile.daily_calorie_goal
+        except Exception:
+            pass
 
         data.update(
             {
@@ -23,6 +30,7 @@ class CustomTokenJwtSerializer(TokenObtainPairSerializer):
                 "email": self.user.email,
                 "role": self.user.role,
                 "mobile": self.user.mobile,
+                "daily_calorie_goal": daily_calorie_goal,
             }
         )
 
