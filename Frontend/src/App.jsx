@@ -27,6 +27,7 @@ import AnalyzeImageResult from './pages/user/AnalyzeImageResult';
 import ManualEntry from './pages/user/ManualEntry';
 import Chat from './pages/user/Chat';
 import Consult from './pages/user/Consult';
+import DoctorLayout from './layout/DoctorLayout';
 import DoctorConsultList from './pages/doctor/DoctorConsultList';
 import DoctorChatPage from './pages/doctor/DoctorChatPage';
 import { UploadProvider } from './context/UploadContext';
@@ -145,9 +146,11 @@ function App() {
                     </Route>
 
                     <Route element={<RoleRoute allowedRoles={['doctor']} />}>
-                        <Route path="/doctor/dashboard" element={<DoctorDashboard />} />
-                        <Route path="/doctor/consult" element={<DoctorConsultList />} />
-                        <Route path="/doctor/chat/:roomId" element={<DoctorChatPage />} />
+                        <Route element={<DoctorLayout />}>
+                            <Route path="/doctor/dashboard" element={<DoctorDashboard />} />
+                            <Route path="/doctor/consult" element={<DoctorConsultList />} />
+                            <Route path="/doctor/chat/:roomId" element={<DoctorChatPage />} />
+                        </Route>
                     </Route>
 
                     <Route path="*" element={<NotFound />} />

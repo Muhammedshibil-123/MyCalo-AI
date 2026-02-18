@@ -209,7 +209,7 @@ const DoctorChatPage = () => {
   };
 
   return (
-    <div className="flex flex-col h-[100dvh] bg-gray-50">
+    <div className="flex flex-col h-full bg-gray-50">
       <div className="bg-white border-b border-gray-200 px-4 py-3 flex items-center gap-3 shadow-sm z-20 shrink-0">
         <button onClick={() => navigate('/doctor/consult')} className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-gray-100 transition-colors">
           <IoMdArrowBack className="text-xl text-gray-700" />
