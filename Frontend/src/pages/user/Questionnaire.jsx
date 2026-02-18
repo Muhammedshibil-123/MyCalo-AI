@@ -187,8 +187,8 @@ const Questionnaire = () => {
     setIsAnimating(true);
 
     try {
-      // 1. Send Data to Backend
-      const response = await api.patch("/profiles/update/", formData);
+      // 1. Send Data to Backend (Matches your endpoint: /api/profiles/update/)
+      const response = await api.patch("/api/profiles/update/", formData);
       console.log("Plan Generated:", response.data);
 
       // 2. Start the 4-second animation sequence
@@ -203,7 +203,7 @@ const Questionnaire = () => {
       }, 3000);
 
       setTimeout(() => {
-        navigate("/dashboard");
+        navigate("/");
       }, 4500); // 4.5s total delay
 
     } catch (err) {
@@ -258,12 +258,14 @@ const Questionnaire = () => {
       {/* Card */}
       <div className="w-full max-w-md flex flex-col h-screen md:h-auto md:min-h-[600px] bg-white md:rounded-3xl md:shadow-2xl relative overflow-hidden">
 
-        {/* Progress (10 dots) */}
-        <div className="pt-6 pb-4 flex justify-center gap-2">
-          {[...Array(10)].map((_, i) => (
-            <div key={i} className={`h-2 w-6 rounded-full ${i <= step ? "bg-emerald-600" : "bg-gray-300"}`} />
-          ))}
-        </div>
+        {/* Progress (10 dots) - HIDDEN WHEN CALCULATING (Step 9) */}
+        {step < 9 && (
+          <div className="pt-6 pb-4 flex justify-center gap-2">
+            {[...Array(10)].map((_, i) => (
+              <div key={i} className={`h-2 w-6 rounded-full ${i <= step ? "bg-emerald-600" : "bg-gray-300"}`} />
+            ))}
+          </div>
+        )}
 
         {/* Content */}
         <div className="flex-1 flex items-center justify-center px-6 pb-24 overflow-y-auto">
@@ -282,8 +284,8 @@ const Questionnaire = () => {
               {step === 0 && (
                 <>
                   <div className="text-5xl">🥗</div>
-                  <h2 className="text-2xl font-bold">Let's Personalize Your Plan</h2>
-                  <p className="text-gray-500 max-w-xs">We need a few details to build your AI diet plan.</p>
+                  <h2 className="text-2xl font-bold">Let's Set Up Your Calorie Goals</h2>
+                  <p className="text-gray-500 max-w-xs">We need a few details to calculate your daily calorie target.</p>
                 </>
               )}
 

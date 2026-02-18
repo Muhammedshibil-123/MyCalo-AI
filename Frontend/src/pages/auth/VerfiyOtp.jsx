@@ -99,20 +99,26 @@ const VerifyEmailOtp = () => {
 
       if (response.status === 200) {
         const { access } = response.data;
+        const data = response.data;
         setAccessToken(access);
-        
+
         dispatch(setCredentials({
-            accessToken: access,
-            user: {
-                id: response.data.id,
-                username: response.data.username,
-                email: response.data.email,
-                role: response.data.role,
-                mobile: response.data.mobile
-            }
+          accessToken: access,
+          user: {
+            id: response.data.id,
+            username: response.data.username,
+            email: response.data.email,
+            role: response.data.role,
+            mobile: response.data.mobile,
+            daily_calorie_goal: data.daily_calorie_goal
+          }
         }));
 
-        navigate("/");
+        if (!data.daily_calorie_goal || data.daily_calorie_goal === 0) {
+          navigate("/questionnaire");
+        } else {
+          navigate("/");
+        }
       }
     } catch (err) {
       if (err.response?.data) {

@@ -37,6 +37,10 @@ import DoctorFoods from './pages/doctor/DoctorFoods';
 const getHomeRouteForRole = (role) => {
     if (role === 'admin' || role === 'employee') return '/admin/dashboard';
     if (role === 'doctor') return '/doctor/consult';
+    if (role === 'user') {
+        if (!goal || goal === 0) return '/questionnaire';
+        return '/';
+    }
     return '/';
 };
 

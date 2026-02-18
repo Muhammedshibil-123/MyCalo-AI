@@ -105,6 +105,7 @@ const Login = () => {
         email: data.email,
         role: data.role,
         mobile: data.mobile,
+        daily_calorie_goal: data.daily_calorie_goal,
       };
 
       dispatch(

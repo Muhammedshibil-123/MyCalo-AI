@@ -5,8 +5,9 @@ from .models import Profile
 
 @receiver(post_save, sender=settings.AUTH_USER_MODEL)
 def create_user_profile(sender, instance, created, **kwargs):
-    if created and instance.role == 'USER':  
+    if created and instance.role.lower() == "user":
         Profile.objects.create(user=instance)
+    
 
 @receiver(pre_save, sender=Profile)
 def calculate_nutrition_goals(sender, instance, **kwargs):
@@ -40,5 +41,5 @@ def calculate_nutrition_goals(sender, instance, **kwargs):
 
         
         instance.protein_goal = int((target_calories * 0.30) / 4)
-        instance.carbs_goal = int((target_calories * 0.35) / 4)
-        instance.fats_goal = int((target_calories * 0.35) / 9)
+        instance.carbs_goal = int((target_calories * 0.43) / 4)
+        instance.fats_goal = int((target_calories * 0.27) / 9)
