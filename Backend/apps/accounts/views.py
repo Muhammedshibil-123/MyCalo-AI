@@ -2,12 +2,14 @@ import random
 import secrets
 import string
 
+
 import pyotp
 import requests
 from django.conf import settings
 from django.core.mail import send_mail
 from drf_yasg import openapi
 from drf_yasg.utils import swagger_auto_schema
+from .aws_utils import send_to_email_queue
 from rest_framework import generics, permissions, status, views
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
@@ -451,12 +453,10 @@ class ForgotPasswordView(APIView):
                 user.otp = otp_code
                 user.save()
 
-                send_mail(
+                send_to_email_queue(
                     "Reset Your Password - Mycalo AI",
                     f"Your Password Reset OTP is: {otp_code}",
-                    settings.EMAIL_HOST_USER,
-                    [email],
-                    fail_silently=False,
+                    email
                 )
 
                 return Response(
