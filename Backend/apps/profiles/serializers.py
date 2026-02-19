@@ -3,12 +3,15 @@ from .models import Profile
 
 class ProfileUpdateSerializer(serializers.ModelSerializer):
 
-    photo = serializers.SerializerMethodField()
+    photo = serializers.ImageField(required=False, allow_null=True)
+    photo_url = serializers.SerializerMethodField(read_only=True)
+
     class Meta:
         model = Profile
         fields = [
             'name',
             "photo",
+            "photo_url",
             'age', 
             'gender', 
             'height', 
@@ -24,7 +27,7 @@ class ProfileUpdateSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = ['daily_calorie_goal', 'protein_goal', 'carbs_goal', 'fats_goal']
 
-    def get_photo(self, obj):
+    def get_photo_url(self, obj):
         if not obj.photo:
             return None
         try:

@@ -24,12 +24,12 @@ services:
     image: amazon/dynamodb-local:latest
     container_name: mycalo_dynamodb
     ports:
-      - "8004:8000" # Changed host port from 8000 to 8004
+      - "8004:8000" 
     command: "-jar DynamoDBLocal.jar -sharedDb -dbPath ./data"
     volumes:
       - ./dynamodb_data:/home/dynamodblocal/data
   
-  # --- DYNAMODB ADMIN GUI (New) ---
+  # --- DYNAMODB ADMIN GUI  ---
   dynamodb-admin:
     image: aaronshaf/dynamodb-admin
     container_name: mycalo_dynamodb_admin
@@ -56,6 +56,32 @@ services:
       - ./Backend/.env
     depends_on:
       - db
+  
+  # --- NEW: BACKEND CELERY WORKER 
+  backend_celery_worker:
+    build: ./Backend
+    container_name: mycalo_backend_celery_worker
+    volumes:
+      - ./Backend:/app
+    command: celery -A config worker --loglevel=info
+    env_file:
+      - ./Backend/.env
+    depends_on:
+      - redis
+      - backend
+
+  # --- NEW: BACKEND CELERY BEAT
+  backend_celery_beat:
+    build: ./Backend
+    container_name: mycalo_backend_celery_beat
+    volumes:
+      - ./Backend:/app
+    command: celery -A config beat --loglevel=info
+    env_file:
+      - ./Backend/.env
+    depends_on:
+      - redis
+      - backend
 
   # --- REAL-TIME SERVICE ---
   realtime_service:

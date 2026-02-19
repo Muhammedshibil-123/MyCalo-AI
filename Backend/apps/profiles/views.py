@@ -3,28 +3,20 @@ from rest_framework.response import Response
 from rest_framework import status, permissions
 from .serializers import ProfileUpdateSerializer
 from .models import Profile
-from rest_framework.permissions import IsAuthenticated          
+from rest_framework.permissions import IsAuthenticated  
+from rest_framework.parsers import MultiPartParser, FormParser        
 
 class UpdateProfileView(APIView):
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [IsAuthenticated]
+    parser_classes = [MultiPartParser, FormParser]  
 
     def patch(self, request, *args, **kwargs):
-        
-        try:
-            profile = request.user.profile
-        except Profile.DoesNotExist:
-            return Response({"error": "Profile not found"}, status=status.HTTP_404_NOT_FOUND)
+        profile, _ = Profile.objects.get_or_create(user=request.user)
 
         serializer = ProfileUpdateSerializer(profile, data=request.data, partial=True)
-
         if serializer.is_valid():
-            
             serializer.save()
-            return Response({
-                "message": "Profile updated and Plan generated successfully",
-                "data": serializer.data
-            }, status=status.HTTP_200_OK)
-        
+            return Response(serializer.data, status=status.HTTP_200_OK)  
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     
 class MyProfileView(APIView):

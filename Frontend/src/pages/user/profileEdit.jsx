@@ -9,6 +9,8 @@ import {
   RiArrowRightSLine,
   RiQuestionnaireLine,
   RiUser3Line,
+  RiShieldCheckLine,
+  RiHeartPulseLine,
 } from "react-icons/ri";
 
 export default function ProfileEdit() {
@@ -37,7 +39,6 @@ export default function ProfileEdit() {
     fats: 0,
   });
 
-  const [photoFile, setPhotoFile] = useState(null);
   const [photoPreview, setPhotoPreview] = useState(null);
 
   // Mobile bottom-sheet for photo picker
@@ -52,6 +53,7 @@ export default function ProfileEdit() {
     const data = res.data;
 
     setProfile(data);
+
     setName(data?.name ?? "");
     setAge(data?.age ?? "");
     setGender(data?.gender ?? "");
@@ -59,7 +61,9 @@ export default function ProfileEdit() {
     setWeight(data?.weight ?? "");
     setTargetWeight(data?.target_weight ?? "");
     setActivityLevel(data?.activity_level ?? "");
-    setPhotoPreview(data?.photo ?? null);
+
+    // Check for both photo_url and photo to ensure it loads from Cloudinary
+    setPhotoPreview(data?.photo_url || data?.photo || null);
 
     setMacros({
       calories: data?.daily_calorie_goal ?? 0,
@@ -81,7 +85,8 @@ export default function ProfileEdit() {
         console.log(e);
         if (!active) return;
         setError(
-          e?.response?.data?.detail || "Failed to load profile. Please try again."
+          e?.response?.data?.detail ||
+            "Failed to load profile. Please try again."
         );
       } finally {
         if (active) setLoading(false);
@@ -93,16 +98,49 @@ export default function ProfileEdit() {
     };
   }, [fetchProfile]);
 
-  const onPickPhoto = (file) => {
-    setPhotoFile(file || null);
-    if (file) {
-      const url = URL.createObjectURL(file);
-      setPhotoPreview(url);
+  // ✅ AUTO UPLOAD LOGIC: Instantly saves the photo (and current form data) without needing the save button
+  const onPickPhoto = async (file) => {
+    if (!file) return;
+
+    // Close the bottom sheet instantly for better UX
+    setPhotoSheetOpen(false);
+
+    // Show a quick local preview while it uploads
+    const localUrl = URL.createObjectURL(file);
+    setPhotoPreview(localUrl);
+
+    try {
+      setSaving(true);
+      setError("");
+
+      const fd = new FormData();
+      if (name) fd.append("name", name);
+      if (age !== "") fd.append("age", age);
+      if (gender !== "") fd.append("gender", gender);
+      if (height !== "") fd.append("height", height);
+      if (weight !== "") fd.append("weight", weight);
+      if (targetWeight !== "") fd.append("target_weight", targetWeight);
+      if (activityLevel !== "") fd.append("activity_level", activityLevel);
+      
+      // Append the actual image file
+      fd.append("photo", file);
+
+      await api.patch("/api/profiles/update/", fd, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
+
+      // Refetch from backend to get the real Cloudinary URL and fresh calculations
+      await fetchProfile();
+    } catch (e) {
+      console.log(e);
+      setError("Failed to upload photo automatically.");
+    } finally {
+      setSaving(false);
     }
   };
 
   const handleSave = async (e) => {
-    e.preventDefault();
+    e?.preventDefault?.();
     if (!canSave) return;
 
     try {
@@ -117,19 +155,13 @@ export default function ProfileEdit() {
       if (weight !== "") fd.append("weight", weight);
       if (targetWeight !== "") fd.append("target_weight", targetWeight);
       if (activityLevel !== "") fd.append("activity_level", activityLevel);
-      if (photoFile) fd.append("photo", photoFile);
 
       await api.patch("/api/profiles/update/", fd, {
         headers: { "Content-Type": "multipart/form-data" },
       });
 
-      // ✅ Best UX: refresh data instantly (no full page reload)
+      // Refetch data after save (instant update without full reload)
       await fetchProfile();
-      setPhotoFile(null);
-
-      // If you REALLY want a full reload instead, uncomment:
-      // window.location.reload();
-
     } catch (e2) {
       console.log(e2);
       const data = e2?.response?.data;
@@ -145,12 +177,23 @@ export default function ProfileEdit() {
 
   if (loading) {
     return (
-      <div className="min-h-[70vh] grid place-items-center px-4">
-        <div className="w-full max-w-md rounded-3xl bg-white shadow-xl p-5 border border-gray-100">
-          <div className="h-4 w-28 bg-gray-200 rounded-full animate-pulse" />
-          <div className="mt-5 h-14 w-full bg-gray-200 rounded-2xl animate-pulse" />
-          <div className="mt-3 h-14 w-5/6 bg-gray-200 rounded-2xl animate-pulse" />
-          <div className="mt-3 h-14 w-4/6 bg-gray-200 rounded-2xl animate-pulse" />
+      <div className="min-h-screen bg-gradient-to-b from-gray-50 via-white to-gray-50 px-4 pt-5">
+        <div className="mx-auto w-full max-w-md">
+          <div className="h-12 w-32 rounded-2xl bg-gray-200 animate-pulse" />
+          <div className="mt-5 rounded-3xl bg-white shadow-xl p-5 border border-gray-100">
+            <div className="h-16 rounded-2xl bg-gray-200 animate-pulse" />
+            <div className="mt-4 grid grid-cols-2 gap-3">
+              <div className="h-24 rounded-2xl bg-gray-200 animate-pulse" />
+              <div className="h-24 rounded-2xl bg-gray-200 animate-pulse" />
+              <div className="h-24 rounded-2xl bg-gray-200 animate-pulse" />
+              <div className="h-24 rounded-2xl bg-gray-200 animate-pulse" />
+            </div>
+          </div>
+          <div className="mt-4 rounded-3xl bg-white shadow-xl p-5 border border-gray-100">
+            <div className="h-12 rounded-2xl bg-gray-200 animate-pulse" />
+            <div className="mt-3 h-12 rounded-2xl bg-gray-200 animate-pulse" />
+            <div className="mt-3 h-12 rounded-2xl bg-gray-200 animate-pulse" />
+          </div>
         </div>
       </div>
     );
@@ -158,42 +201,43 @@ export default function ProfileEdit() {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-50 via-white to-gray-50 text-gray-900">
-      {/* soft blobs like your Home page vibe */}
+      {/* soft blobs */}
       <div className="pointer-events-none fixed inset-0 -z-10 overflow-hidden">
         <div className="absolute -top-24 left-1/2 h-72 w-72 -translate-x-1/2 rounded-full bg-indigo-200/50 blur-3xl" />
         <div className="absolute top-52 -right-24 h-72 w-72 rounded-full bg-emerald-200/45 blur-3xl" />
         <div className="absolute bottom-24 -left-24 h-72 w-72 rounded-full bg-amber-200/45 blur-3xl" />
       </div>
 
-      <div className="mx-auto w-full max-w-md px-4 pt-5 pb-28">
-        {/* Header */}
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-xl font-extrabold tracking-tight">Profile</h1>
-            <p className="text-xs text-gray-600 mt-0.5">
-              Keep your info updated for accurate goals
-            </p>
-          </div>
-
+      <div className="mx-auto w-full max-w-md px-4 pt-4 pb-28">
+        {/* Top bar (Back LEFT) */}
+        <div className="flex items-center gap-3">
           <button
             onClick={() => navigate(-1)}
-            className="rounded-2xl bg-white px-3.5 py-2 text-xs font-bold text-gray-800
-                       ring-1 ring-gray-200 shadow-sm active:scale-[0.98] transition inline-flex items-center gap-2"
+            className="h-11 w-11 rounded-2xl bg-white ring-1 ring-gray-200 shadow-sm grid place-items-center
+                       active:scale-[0.96] transition"
+            aria-label="Back"
           >
-            <RiArrowLeftLine className="text-base" />
-            Back
+            <RiArrowLeftLine className="text-xl text-gray-900" />
           </button>
+
+          <div className="flex-1">
+            <h1 className="text-lg font-extrabold tracking-tight leading-tight">
+              Edit Profile
+            </h1>
+            <p className="text-xs text-gray-600">
+              Better inputs = better calorie goals
+            </p>
+          </div>
         </div>
 
         {error && (
-          <div className="mt-4 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+          <div className="mt-4 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 animate-in fade-in duration-300">
             {error}
           </div>
         )}
 
         {/* Profile Card */}
-        <div className="mt-5 rounded-3xl bg-white/85 backdrop-blur border border-white shadow-[0_18px_60px_-35px_rgba(0,0,0,0.35)] overflow-hidden">
-          {/* colorful header */}
+        <div className="mt-5 rounded-3xl bg-white/85 backdrop-blur border border-white shadow-[0_18px_60px_-35px_rgba(0,0,0,0.35)] overflow-hidden animate-in fade-in slide-in-from-bottom-2 duration-300">
           <div className="h-20 bg-gradient-to-r from-indigo-500 via-sky-500 to-emerald-500" />
 
           <div className="-mt-10 px-5 pb-5">
@@ -203,7 +247,7 @@ export default function ProfileEdit() {
                 <button
                   type="button"
                   onClick={() => setPhotoSheetOpen(true)}
-                  className="relative"
+                  className="relative group"
                   aria-label="Change profile photo"
                 >
                   <div className="absolute -inset-1 rounded-full bg-white/70 blur" />
@@ -212,7 +256,7 @@ export default function ProfileEdit() {
                       <img
                         src={photoPreview}
                         alt="Profile"
-                        className="h-full w-full object-cover"
+                        className="h-full w-full object-cover transition-transform duration-300 group-active:scale-[0.98]"
                       />
                     ) : (
                       <div className="flex flex-col items-center justify-center">
@@ -239,16 +283,7 @@ export default function ProfileEdit() {
                 </div>
               </div>
 
-              {/* Quick save small */}
-              <button
-                type="button"
-                onClick={handleSave}
-                disabled={!canSave}
-                className="rounded-2xl bg-gray-900 px-4 py-2 text-xs font-extrabold text-white
-                           shadow-sm active:scale-[0.98] transition disabled:opacity-60"
-              >
-                {saving ? "Saving…" : "Save"}
-              </button>
+            
             </div>
 
             {/* Macro Grid */}
@@ -257,7 +292,10 @@ export default function ProfileEdit() {
                 <h3 className="text-sm font-extrabold text-gray-900">
                   Daily Targets
                 </h3>
-                <span className="text-[11px] text-gray-500">Auto calculated</span>
+                <div className="inline-flex items-center gap-1 text-[11px] text-gray-500">
+                  <RiShieldCheckLine className="text-sm" />
+                  Auto calculated
+                </div>
               </div>
 
               <div className="grid grid-cols-2 gap-3">
@@ -271,7 +309,7 @@ export default function ProfileEdit() {
         </div>
 
         {/* Form Card */}
-        <div className="mt-4 rounded-3xl bg-white/85 backdrop-blur border border-white shadow-[0_18px_60px_-35px_rgba(0,0,0,0.25)] p-5">
+        <div className="mt-4 rounded-3xl bg-white/85 backdrop-blur border border-white shadow-[0_18px_60px_-35px_rgba(0,0,0,0.25)] p-5 animate-in fade-in slide-in-from-bottom-2 duration-300 delay-75">
           <form onSubmit={handleSave} className="space-y-4">
             <Field label="Full Name" value={name} onChange={setName} placeholder="Enter your name" />
 
@@ -310,7 +348,7 @@ export default function ProfileEdit() {
               />
             </div>
 
-            {/* Main button */}
+            {/* Sticky-ish primary action */}
             <button
               type="submit"
               disabled={!canSave}
@@ -321,14 +359,15 @@ export default function ProfileEdit() {
               {saving ? "Saving changes..." : "Save Changes"}
             </button>
 
-            <p className="text-[11px] text-gray-500 text-center">
-              Saved changes will instantly reflect (we refetch profile after save).
-            </p>
+            <div className="flex items-center gap-2 justify-center text-[11px] text-gray-500">
+              <RiHeartPulseLine className="text-sm" />
+              Updates reflect instantly after save.
+            </div>
           </form>
         </div>
 
         {/* Questionnaire CTA */}
-        <div className="mt-4 rounded-3xl border border-gray-200 bg-white/90 backdrop-blur p-4 shadow-sm">
+        <div className="mt-4 rounded-3xl border border-gray-200 bg-white/90 backdrop-blur p-4 shadow-sm animate-in fade-in slide-in-from-bottom-2 duration-300 delay-150">
           <div className="flex items-start gap-3">
             <div className="h-10 w-10 rounded-2xl bg-indigo-50 grid place-items-center ring-1 ring-indigo-100">
               <RiQuestionnaireLine className="text-indigo-600 text-xl" />
@@ -363,10 +402,12 @@ export default function ProfileEdit() {
         >
           <div
             onClick={(e) => e.stopPropagation()}
-            className="w-full max-w-md rounded-3xl bg-white p-5 shadow-2xl animate-fade-in-up"
+            className="w-full max-w-md rounded-3xl bg-white p-5 shadow-2xl animate-[sheetUp_220ms_ease-out]"
           >
             <div className="flex items-center justify-between">
-              <h3 className="text-base font-extrabold text-gray-900">Change photo</h3>
+              <h3 className="text-base font-extrabold text-gray-900">
+                Change photo
+              </h3>
               <button
                 onClick={() => setPhotoSheetOpen(false)}
                 className="h-10 w-10 rounded-2xl bg-gray-100 grid place-items-center active:scale-95 transition"
@@ -383,7 +424,6 @@ export default function ProfileEdit() {
               <button
                 type="button"
                 onClick={() => {
-                  setPhotoSheetOpen(false);
                   cameraInputRef.current?.click();
                 }}
                 className="w-full rounded-2xl bg-gray-900 text-white py-3 font-extrabold text-sm
@@ -396,7 +436,6 @@ export default function ProfileEdit() {
               <button
                 type="button"
                 onClick={() => {
-                  setPhotoSheetOpen(false);
                   galleryInputRef.current?.click();
                 }}
                 className="w-full rounded-2xl bg-gray-100 text-gray-900 py-3 font-extrabold text-sm
@@ -416,7 +455,7 @@ export default function ProfileEdit() {
               onChange={(e) => onPickPhoto(e.target.files?.[0] || null)}
             />
 
-            {/* On mobile this opens camera directly */}
+            {/* Mobile camera capture */}
             <input
               ref={cameraInputRef}
               type="file"
@@ -436,6 +475,14 @@ export default function ProfileEdit() {
           </div>
         </div>
       )}
+
+      {/* Local keyframes for sheet */}
+      <style>{`
+        @keyframes sheetUp {
+          from { transform: translateY(14px); opacity: 0.6; }
+          to { transform: translateY(0); opacity: 1; }
+        }
+      `}</style>
     </div>
   );
 }
@@ -444,7 +491,9 @@ export default function ProfileEdit() {
 function Field({ label, value, onChange, placeholder, type = "text" }) {
   return (
     <div className="space-y-1.5">
-      <label className="text-xs font-extrabold text-gray-700 pl-1">{label}</label>
+      <label className="text-xs font-extrabold text-gray-700 pl-1">
+        {label}
+      </label>
       <input
         type={type}
         value={value ?? ""}
@@ -462,7 +511,9 @@ function Field({ label, value, onChange, placeholder, type = "text" }) {
 function SelectField({ label, value, onChange, options }) {
   return (
     <div className="space-y-1.5">
-      <label className="text-xs font-extrabold text-gray-700 pl-1">{label}</label>
+      <label className="text-xs font-extrabold text-gray-700 pl-1">
+        {label}
+      </label>
       <div className="relative">
         <select
           value={value ?? ""}
@@ -494,25 +545,25 @@ function SelectField({ label, value, onChange, options }) {
 function MacroCard({ label, value, unit, tone = "orange" }) {
   const tones = {
     orange: {
-      bg: "from-orange-500/15 to-orange-500/0",
+      bg: "from-orange-500/16 to-orange-500/0",
       ring: "ring-orange-200",
       dot: "bg-orange-500",
       text: "text-orange-700",
     },
     blue: {
-      bg: "from-sky-500/15 to-sky-500/0",
+      bg: "from-sky-500/16 to-sky-500/0",
       ring: "ring-sky-200",
       dot: "bg-sky-500",
       text: "text-sky-700",
     },
     green: {
-      bg: "from-emerald-500/15 to-emerald-500/0",
+      bg: "from-emerald-500/16 to-emerald-500/0",
       ring: "ring-emerald-200",
       dot: "bg-emerald-500",
       text: "text-emerald-700",
     },
     yellow: {
-      bg: "from-amber-500/15 to-amber-500/0",
+      bg: "from-amber-500/16 to-amber-500/0",
       ring: "ring-amber-200",
       dot: "bg-amber-500",
       text: "text-amber-700",
@@ -522,12 +573,14 @@ function MacroCard({ label, value, unit, tone = "orange" }) {
   const t = tones[tone] || tones.orange;
 
   return (
-    <div className="rounded-2xl bg-white border border-gray-100 shadow-sm overflow-hidden ring-1 ring-gray-100">
+    <div className="rounded-2xl bg-white border border-gray-100 shadow-sm overflow-hidden ring-1 ring-gray-100 active:scale-[0.99] transition">
       <div className={`h-full p-4 bg-gradient-to-br ${t.bg} ring-1 ${t.ring}`}>
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <span className={`h-2 w-2 rounded-full ${t.dot}`} />
-            <span className="text-xs font-extrabold text-gray-700">{label}</span>
+            <span className="text-xs font-extrabold text-gray-700">
+              {label}
+            </span>
           </div>
 
           <span className="text-[10px] px-2 py-1 rounded-full bg-white/80 text-gray-600 ring-1 ring-gray-200 font-bold">
