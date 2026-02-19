@@ -18,6 +18,8 @@ class Profile(models.Model):
     )
 
     user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='profile')
+    # aws_
+    fcm_token = models.TextField(null=True, blank=True)
     
     # Basic Stats
     name = models.CharField(max_length=120, blank=True, default="")
