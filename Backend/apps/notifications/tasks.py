@@ -1,4 +1,4 @@
-# Backend/apps/notifications/tasks.py
+
 import os
 import json
 import boto3
@@ -13,16 +13,16 @@ User = get_user_model()
 def check_missing_meals(meal_type):
     today = timezone.now().date()
     
-    # 1. Find users who have already logged this meal today
+    
     users_with_logs = DailyLog.objects.filter(
         date=today, 
         meal_type=meal_type
     ).values_list('user_id', flat=True)
     
-    # 2. Get active users who haven't logged yet
+    
     users_without_logs = User.objects.exclude(id__in=users_with_logs).filter(is_active=True)
     
-    # 3. Connect to AWS SQS using your .env values
+    
     sqs = boto3.client(
         'sqs', 
         region_name=os.getenv('AWS_REGION', 'ap-south-1'),
@@ -32,10 +32,10 @@ def check_missing_meals(meal_type):
     queue_url = os.getenv('SQS_QUEUE_URL')
     
     for user in users_without_logs:
-        # Now that you added the field to the Profile model, we can grab it
-        fcm_token = getattr(user.profile, 'fcm_token', None)
         
-        if fcm_token:
+        if hasattr(user, 'profile') and user.profile.fcm_token:
+            fcm_token = user.profile.fcm_token
+            
             payload = {
                 "user_id": user.id,
                 "fcm_token": fcm_token,
@@ -48,3 +48,6 @@ def check_missing_meals(meal_type):
                 MessageBody=json.dumps(payload)
             )
             print(f"Queued notification for User {user.id} regarding {meal_type}")
+        else:
+            
+            continue

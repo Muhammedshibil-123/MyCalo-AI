@@ -4,11 +4,11 @@ from rest_framework import status, permissions
 from .serializers import ProfileUpdateSerializer
 from .models import Profile
 from rest_framework.permissions import IsAuthenticated  
-from rest_framework.parsers import MultiPartParser, FormParser        
+from rest_framework.parsers import MultiPartParser, FormParser,JSONParser       
 
 class UpdateProfileView(APIView):
     permission_classes = [IsAuthenticated]
-    parser_classes = [MultiPartParser, FormParser]  
+    parser_classes = [MultiPartParser, FormParser,JSONParser]  
 
     def patch(self, request, *args, **kwargs):
         profile, _ = Profile.objects.get_or_create(user=request.user)
