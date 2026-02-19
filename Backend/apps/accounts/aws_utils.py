@@ -1,12 +1,10 @@
 import boto3
 import json
-import logging
 from django.conf import settings
-
-logger = logging.getLogger(__name__)
 
 def send_to_email_queue(subject, body, recipient_email):
     try:
+        print(f"--- ATTEMPTING TO SEND EMAIL TO {recipient_email} VIA SQS ---")
         
         sqs = boto3.client(
             'sqs',
@@ -22,12 +20,15 @@ def send_to_email_queue(subject, body, recipient_email):
             "source": "mycalo-auth-service"
         }
         
-        
         response = sqs.send_message(
             QueueUrl=settings.AWS_EMAIL_QUEUE_URL,
             MessageBody=json.dumps(payload)
         )
+        
+        print(f"✅ SUCCESS! Message pushed to SQS. ID: {response.get('MessageId')}")
         return response
+        
     except Exception as e:
-        logger.error(f"Failed to push email to SQS: {str(e)}")
-        return None
+        print(f"❌ CRITICAL ERROR SQS: {str(e)}")
+        # This will force the frontend to see a 500 error instead of a fake 200 OK
+        raise e
