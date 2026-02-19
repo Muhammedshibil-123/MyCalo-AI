@@ -16,14 +16,3 @@ const firebaseConfig = {
 firebase.initializeApp(firebaseConfig);
 const messaging = firebase.messaging();
 
-messaging.onBackgroundMessage((payload) => {
-  console.log('[firebase-messaging-sw.js] Received background message ', payload);
-
-  const notificationTitle = payload.notification.title || 'MyCalo AI';
-  const notificationOptions = {
-    body: payload.notification.body,
-    icon: '/logo.webp', 
-  };
-
-  self.registration.showNotification(notificationTitle, notificationOptions);
-});
