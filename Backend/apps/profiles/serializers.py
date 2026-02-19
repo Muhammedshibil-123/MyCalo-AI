@@ -23,7 +23,8 @@ class ProfileUpdateSerializer(serializers.ModelSerializer):
             'daily_calorie_goal',
             'protein_goal',
             'carbs_goal',
-            'fats_goal'
+            'fats_goal',
+            'fcm_token'
         ]
         read_only_fields = ['daily_calorie_goal', 'protein_goal', 'carbs_goal', 'fats_goal']
 

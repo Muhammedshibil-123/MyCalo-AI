@@ -3,6 +3,8 @@ import { BrowserRouter as Router, Routes, Route, Navigate, Outlet } from 'react-
 import { useDispatch, useSelector } from 'react-redux';
 import api, { setAccessToken } from './lib/axios';
 import { setCredentials, logout, finishInitialLoad } from './redux/authslice';
+import { requestForToken } from './firebase';
+
 import Login from './pages/auth/login';
 import Register from './pages/auth/register';
 import VerfiyOtp from './pages/auth/VerfiyOtp';
@@ -93,7 +95,7 @@ const RoleRoute = ({ allowedRoles }) => {
 
 function App() {
     const dispatch = useDispatch();
-    const { loading, loadingCount } = useSelector((state) => state.auth);
+    const { loading, loadingCount,isAuthenticated, user } = useSelector((state) => state.auth);
 
     useEffect(() => {
         const checkAuth = async () => {
@@ -113,6 +115,33 @@ function App() {
 
         checkAuth();
     }, [dispatch]);
+
+    useEffect(() => {
+        const setupNotifications = async () => {
+            if (isAuthenticated) {
+                try {
+                    const permission = await Notification.requestPermission();
+                    
+                    if (permission === 'granted') {
+                        const token = await requestForToken();
+                        
+                        if (token) {
+                            await api.patch('/api/profiles/update/', {
+                                fcm_token: token
+                            });
+                            console.log("✅ FCM Token successfully sent to Django!");
+                        }
+                    } else {
+                        console.log("❌ User denied notification permission.");
+                    }
+                } catch (error) {
+                    console.error("⚠️ Failed to setup notifications:", error);
+                }
+            }
+        };
+
+        setupNotifications();
+    }, [isAuthenticated]);
 
     if (loading) return <LoadingScreen />;
 
