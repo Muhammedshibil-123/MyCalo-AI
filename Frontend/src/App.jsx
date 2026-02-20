@@ -36,6 +36,7 @@ import { UploadProvider } from './context/UploadContext';
 import Questionnaire from "./pages/user/Questionnaire";
 import DoctorFoods from './pages/doctor/DoctorFoods';
 import ProfileEdit from './pages/user/profileEdit';
+import ChatAI from './pages/user/ChatAI';
 
 const getHomeRouteForRole = (role) => {
     if (role === 'admin' || role === 'employee') return '/admin/dashboard';
@@ -129,13 +130,13 @@ function App() {
                             await api.patch('/api/profiles/update/', {
                                 fcm_token: token
                             });
-                            console.log("✅ FCM Token successfully sent to Django!");
+                            console.log("FCM Token successfully sent to Django!");
                         }
                     } else {
-                        console.log("❌ User denied notification permission.");
+                        console.log(" User denied notification permission.");
                     }
                 } catch (error) {
-                    console.error("⚠️ Failed to setup notifications:", error);
+                    console.error(" Failed to setup notifications:", error);
                 }
             }
         };
@@ -177,6 +178,7 @@ function App() {
                         <Route path="/chat" element={<Chat />} />
                         <Route path="/questionnaire" element={<Questionnaire />} />
                         <Route path="/profile/edit" element={<ProfileEdit />} />
+                        <Route path="/ai-chat" element={<ChatAI />} />
                     </Route>
 
                     <Route element={<RoleRoute allowedRoles={['admin', 'employee']} />}>
