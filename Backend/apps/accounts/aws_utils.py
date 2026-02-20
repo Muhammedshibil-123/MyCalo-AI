@@ -30,5 +30,4 @@ def send_to_email_queue(subject, body, recipient_email):
         
     except Exception as e:
         print(f"❌ CRITICAL ERROR SQS: {str(e)}")
-        # This will force the frontend to see a 500 error instead of a fake 200 OK
         raise e
