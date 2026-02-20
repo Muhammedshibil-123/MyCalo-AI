@@ -37,6 +37,7 @@ import Questionnaire from "./pages/user/Questionnaire";
 import DoctorFoods from './pages/doctor/DoctorFoods';
 import ProfileEdit from './pages/user/profileEdit';
 import ChatAI from './pages/user/ChatAI';
+import AdminLayout from './layout/AdminSidebar';
 
 const getHomeRouteForRole = (role) => {
     if (role === 'admin' || role === 'employee') return '/admin/dashboard';
@@ -96,7 +97,7 @@ const RoleRoute = ({ allowedRoles }) => {
 
 function App() {
     const dispatch = useDispatch();
-    const { loading, loadingCount,isAuthenticated, user } = useSelector((state) => state.auth);
+    const { loading, loadingCount, isAuthenticated, user } = useSelector((state) => state.auth);
 
     useEffect(() => {
         const checkAuth = async () => {
@@ -122,10 +123,10 @@ function App() {
             if (isAuthenticated) {
                 try {
                     const permission = await Notification.requestPermission();
-                    
+
                     if (permission === 'granted') {
                         const token = await requestForToken();
-                        
+
                         if (token) {
                             await api.patch('/api/profiles/update/', {
                                 fcm_token: token
@@ -182,7 +183,13 @@ function App() {
                     </Route>
 
                     <Route element={<RoleRoute allowedRoles={['admin', 'employee']} />}>
-                        <Route path="/admin/dashboard" element={<AdminDashboard />} />
+                        <Route element={<AdminLayout />}>
+                            <Route path="/admin/dashboard" element={<AdminDashboard />} />
+                            <Route element={<RoleRoute allowedRoles={['admin']} />}>
+                                {/* <Route path="/admin/users" element={<div>User Management</div>} />
+                                <Route path="/admin/broadcast" element={<div>Broadcast Notification Center</div>} /> */}
+                            </Route>
+                        </Route>
                     </Route>
 
                     <Route element={<RoleRoute allowedRoles={['doctor']} />}>
