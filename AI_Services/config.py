@@ -9,6 +9,7 @@ class Settings:
     PROJECT_NAME: str = "MyCalo AI Service"
     VERSION: str = "1.0.0"
     GEMINI_API_KEY: str = os.getenv("GEMINI_API_KEY")
+    GROQ_API_KEY: str = os.getenv("GROQ_API_KEY")
 
     BACKUP_GEMINI_KEY: str = os.getenv("BACKUP_GEMINI_KEY")
 

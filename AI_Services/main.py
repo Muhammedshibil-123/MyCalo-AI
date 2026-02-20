@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from config import settings
-from routers import nutrition, vision_nutrition, chat
+from routers import nutrition, vision_nutrition, chat,chat_groq
 
 
 app = FastAPI(title=settings.PROJECT_NAME, version=settings.VERSION)
@@ -20,6 +20,7 @@ app.add_middleware(
 app.include_router(nutrition.router)
 app.include_router(vision_nutrition.router)
 app.include_router(chat.router)
+app.include_router(chat_groq.router)
 
 
 @app.get("/")
