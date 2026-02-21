@@ -32,7 +32,7 @@ export default function DoctorLayout() {
     { name: 'Profile', path: '/doctor/profile', icon: FiUser },
     { name: 'Consultations', path: '/doctor/consult', icon: FiMessageSquare },
     { name: 'Food Items', path: '/doctor/foods', icon: FiDatabase },
-    { name: 'Exercise Plans', path: '/doctor/exercise', icon: FiActivity },
+    { name: 'Exercise ', path: '/doctor/exercises', icon: FiActivity },
   ];
 
   // Specific tools for when a doctor is inside a patient consultation

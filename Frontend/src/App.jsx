@@ -39,6 +39,8 @@ import ProfileEdit from './pages/user/profileEdit';
 import ChatAI from './pages/user/ChatAI';
 import AdminLayout from './layout/AdminSidebar';
 import AdminFoods from './pages/admin/AdminFoods';
+import AdminExercises from './pages/admin/AdminExercises';
+import DoctorExercises from './pages/doctor/DoctorExercises';
 
 const getHomeRouteForRole = (role) => {
     if (role === 'admin' || role === 'employee') return '/admin/dashboard';
@@ -187,6 +189,7 @@ function App() {
                         <Route element={<AdminLayout />}>
                             <Route path="/admin/dashboard" element={<AdminDashboard />} />
                             <Route path="/admin/foods" element={<AdminFoods/>} />
+                            <Route path="/admin/exercises" element={<AdminExercises/>} />
                             <Route element={<RoleRoute allowedRoles={['admin']} />}>
                                 {/* <Route path="/admin/users" element={<div>User Management</div>} />
                                 <Route path="/admin/broadcast" element={<div>Broadcast Notification Center</div>} /> */}
@@ -200,6 +203,7 @@ function App() {
                             <Route path="/doctor/consult" element={<DoctorConsultList />} />
                             <Route path="/doctor/chat/:roomId" element={<DoctorChatPage />} />
                             <Route path="/doctor/foods" element={<DoctorFoods />} />
+                            <Route path="/doctor/exercises" element={<DoctorExercises />} />
                         </Route>
                     </Route>
 
