@@ -1,10 +1,10 @@
-from django.db.models import Count, Q
+from django.db.models import Count
 from django.db.models.functions import TruncDate
 from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.views import APIView
-from rest_framework.permissions import IsAuthenticated
-from datetime import datetime, timedelta
+from rest_framework.permissions import BasePermission  
+from datetime import timedelta
 from django.utils import timezone
 
 from apps.accounts.models import CustomUser
@@ -12,21 +12,22 @@ from apps.foods.models import FoodItem
 from apps.exercises.models import Exercise
 from apps.tracking.models import DailyLog
 
+from rest_framework.pagination import PageNumberPagination
+from .serializers import AdminFoodItemSerializer
 
-class IsAdminOrEmployee(IsAuthenticated):
-    """
-    Custom permission to only allow admins and employees to access these views.
-    """
+
+
+class IsAdminOrEmployee(BasePermission):
     def has_permission(self, request, view):
-        if not super().has_permission(request, view):
-            return False
-        return request.user.role in ['admin', 'employee']
+        
+        return (
+            request.user and 
+            request.user.is_authenticated and 
+            request.user.role in ['admin', 'employee']
+        )
 
 
 class UsersCountView(APIView):
-    """
-    Returns total users, doctors, and employees count.
-    """
     permission_classes = [IsAdminOrEmployee]
 
     def get(self, request):
@@ -42,9 +43,6 @@ class UsersCountView(APIView):
 
 
 class FoodsCountView(APIView):
-    """
-    Returns total food items count.
-    """
     permission_classes = [IsAdminOrEmployee]
 
     def get(self, request):
@@ -53,9 +51,6 @@ class FoodsCountView(APIView):
 
 
 class ExercisesCountView(APIView):
-    """
-    Returns total exercises count.
-    """
     permission_classes = [IsAdminOrEmployee]
 
     def get(self, request):
@@ -64,29 +59,21 @@ class ExercisesCountView(APIView):
 
 
 class ActiveChatsView(APIView):
-    """
-    Returns count of active consultations.
-    This is a placeholder - you'll need to implement based on your chat model.
-    """
     permission_classes = [IsAdminOrEmployee]
 
     def get(self, request):
-        # TODO: Replace with actual chat/consultation model query
-        # For now, returning a placeholder
+        
+        
         count = 0
         
-        # If you have a Consultation model, use something like:
-        # from apps.consultations.models import Consultation
-        # count = Consultation.objects.filter(status='active').count()
+        
+        
+        
         
         return Response({'count': count})
 
 
 class FoodSourceDistributionView(APIView):
-    """
-    Returns distribution of food items by source (AI, USER, ADMIN, UNKNOWN).
-    For doughnut chart.
-    """
     permission_classes = [IsAdminOrEmployee]
 
     def get(self, request):
@@ -94,7 +81,7 @@ class FoodSourceDistributionView(APIView):
             count=Count('id')
         ).order_by('-count')
         
-        # Format for frontend chart
+        
         data = [
             {
                 'source': item['source'],
@@ -107,18 +94,14 @@ class FoodSourceDistributionView(APIView):
 
 
 class PlatformGrowthView(APIView):
-    """
-    Returns daily signup data grouped by user role for the last 30 days.
-    For area chart showing platform growth.
-    """
     permission_classes = [IsAdminOrEmployee]
 
     def get(self, request):
-        # Get date range (last 30 days)
+        
         end_date = timezone.now().date()
         start_date = end_date - timedelta(days=30)
         
-        # Get daily signups grouped by role
+        
         signups = CustomUser.objects.filter(
             date_joined__date__gte=start_date,
             date_joined__date__lte=end_date
@@ -128,7 +111,7 @@ class PlatformGrowthView(APIView):
             count=Count('id')
         ).order_by('date')
         
-        # Create a dictionary to hold all dates
+        
         date_dict = {}
         current_date = start_date
         while current_date <= end_date:
@@ -142,28 +125,24 @@ class PlatformGrowthView(APIView):
             }
             current_date += timedelta(days=1)
         
-        # Fill in actual data
+        
         for signup in signups:
             date_str = signup['date'].strftime('%b %d')
             role = signup['role']
             if date_str in date_dict and role in date_dict[date_str]:
                 date_dict[date_str][role] = signup['count']
         
-        # Convert to list for chart
+        
         data = list(date_dict.values())
         
         return Response(data)
 
 
 class TopFoodsView(APIView):
-    """
-    Returns top 10 most consumed foods based on DailyLog entries.
-    For leaderboard.
-    """
     permission_classes = [IsAdminOrEmployee]
 
     def get(self, request):
-        # Get top consumed foods
+        
         top_foods = DailyLog.objects.values(
             'food_item__id',
             'food_item__name',
@@ -173,7 +152,7 @@ class TopFoodsView(APIView):
             consumption_count=Count('id')
         ).order_by('-consumption_count')[:10]
         
-        # Format for frontend
+        
         data = [
             {
                 'id': food['food_item__id'],
@@ -186,3 +165,5 @@ class TopFoodsView(APIView):
         ]
         
         return Response(data)
+
+

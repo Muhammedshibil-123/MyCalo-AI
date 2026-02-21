@@ -6,7 +6,8 @@ from .views import (
     ActiveChatsView,
     FoodSourceDistributionView,
     PlatformGrowthView,
-    TopFoodsView
+    TopFoodsView,
+    
 )
 
 urlpatterns = [
