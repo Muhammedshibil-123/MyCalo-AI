@@ -41,6 +41,7 @@ import AdminLayout from './layout/AdminSidebar';
 import AdminFoods from './pages/admin/AdminFoods';
 import AdminExercises from './pages/admin/AdminExercises';
 import DoctorExercises from './pages/doctor/DoctorExercises';
+import AdminUserManagement from './pages/admin/AdminUserManagement';
 
 const getHomeRouteForRole = (role) => {
     if (role === 'admin' || role === 'employee') return '/admin/dashboard';
@@ -191,8 +192,7 @@ function App() {
                             <Route path="/admin/foods" element={<AdminFoods/>} />
                             <Route path="/admin/exercises" element={<AdminExercises/>} />
                             <Route element={<RoleRoute allowedRoles={['admin']} />}>
-                                {/* <Route path="/admin/users" element={<div>User Management</div>} />
-                                <Route path="/admin/broadcast" element={<div>Broadcast Notification Center</div>} /> */}
+                                <Route path="/admin/usermanagement" element={<AdminUserManagement/>} />
                             </Route>
                         </Route>
                     </Route>

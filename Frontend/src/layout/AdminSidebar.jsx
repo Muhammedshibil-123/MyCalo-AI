@@ -28,7 +28,7 @@ export default function AdminLayout() {
     { name: 'Profile', path: '/admin/profile', icon: FiUser, adminOnly: false },
     { name: 'Food Items', path: '/admin/foods', icon: FiDatabase, adminOnly: false },
     { name: 'Exercises', path: '/admin/exercises', icon: FiActivity, adminOnly: false },
-    { name: 'User Management', path: '/admin/users', icon: FiUsers, adminOnly: true },
+    { name: 'User Management', path: '/admin/usermanagement', icon: FiUsers, adminOnly: true },
     { name: 'Broadcast', path: '/admin/broadcast', icon: FiRadio, adminOnly: true },
     { name: 'Chat Monitor', path: '/admin/chats', icon: FiMessageSquare, adminOnly: false },
     { name: 'Flagged Content', path: '/admin/flagged', icon: FiAlertTriangle, adminOnly: false },

@@ -11,9 +11,13 @@ from apps.accounts.models import CustomUser
 from apps.foods.models import FoodItem
 from apps.exercises.models import Exercise
 from apps.tracking.models import DailyLog
+from rest_framework.permissions import IsAuthenticated
 
 from rest_framework.pagination import PageNumberPagination
 from .serializers import AdminFoodItemSerializer
+from django.db import IntegrityError
+from django.shortcuts import get_object_or_404
+
 
 
 
@@ -25,6 +29,12 @@ class IsAdminOrEmployee(BasePermission):
             request.user.is_authenticated and 
             request.user.role in ['admin', 'employee']
         )
+    
+class IsAdmin(IsAuthenticated):
+    def has_permission(self, request, view):
+        if not super().has_permission(request, view):
+            return False
+        return request.user.role == 'admin'
 
 
 class UsersCountView(APIView):
@@ -167,3 +177,68 @@ class TopFoodsView(APIView):
         return Response(data)
 
 
+
+
+class UserManagementListView(APIView):
+    permission_classes = [IsAdmin]
+
+    def get(self, request):
+        role = request.query_params.get('role', 'user')
+        users = CustomUser.objects.filter(role=role).values(
+            'id', 'username', 'email', 'role', 'status', 'is_active', 'date_joined'
+        ).order_by('-date_joined')
+        
+        return Response(list(users), status=status.HTTP_200_OK)
+
+
+class UserManagementDetailView(APIView):
+    permission_classes = [IsAdmin]
+
+    def patch(self, request, pk):
+        user = get_object_or_404(CustomUser, pk=pk)
+        action = request.data.get('action')
+
+        if action == 'toggle_block':
+            
+            user.is_active = not user.is_active
+            user.status = 'active' if user.is_active else 'inactive'
+            user.save()
+            return Response({
+                "message": f"User {'unblocked' if user.is_active else 'blocked'} successfully",
+                "is_active": user.is_active,
+                "status": user.status
+            }, status=status.HTTP_200_OK)
+
+        elif action == 'change_role':
+            new_role = request.data.get('role')
+            valid_roles = dict(CustomUser.Role_Choices).keys()
+            
+            if new_role in valid_roles:
+                user.role = new_role
+                user.save()
+                return Response({
+                    "message": "Role updated successfully",
+                    "role": user.role
+                }, status=status.HTTP_200_OK)
+            return Response({"error": "Invalid role provided"}, status=status.HTTP_400_BAD_REQUEST)
+
+        return Response({"error": "Invalid action"}, status=status.HTTP_400_BAD_REQUEST)
+
+    def delete(self, request, pk):
+        user = get_object_or_404(CustomUser, pk=pk)
+        
+        if user == request.user:
+            return Response({"error": "You cannot delete your own account"}, status=status.HTTP_403_FORBIDDEN)
+            
+        try:
+            user.delete()
+            return Response({"message": "User deleted successfully"}, status=status.HTTP_204_NO_CONTENT)
+            
+        except IntegrityError:
+            
+            return Response(
+                {"error": "Cannot delete this user because they have associated records (logs, chats, etc.) that are protected. Try blocking them instead."}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        except Exception as e:
+            return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

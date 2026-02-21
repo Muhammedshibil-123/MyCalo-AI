@@ -7,6 +7,8 @@ from .views import (
     FoodSourceDistributionView,
     PlatformGrowthView,
     TopFoodsView,
+    UserManagementListView, 
+    UserManagementDetailView
     
 )
 
@@ -18,4 +20,6 @@ urlpatterns = [
     path('food-source-distribution/', FoodSourceDistributionView.as_view(), name='admin-food-source-distribution'),
     path('platform-growth/', PlatformGrowthView.as_view(), name='admin-platform-growth'),
     path('top-foods/', TopFoodsView.as_view(), name='admin-top-foods'),
+    path('users-management/', UserManagementListView.as_view(), name='admin-users-list'),
+    path('users-management/<int:pk>/', UserManagementDetailView.as_view(), name='admin-users-detail'),
 ]
