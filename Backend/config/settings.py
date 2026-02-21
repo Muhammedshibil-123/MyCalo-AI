@@ -59,6 +59,7 @@ INSTALLED_APPS = [
     "apps.analytics",
     "apps.exercises",
     'django_celery_beat',
+    'apps.admin_panel',
 ]
 
 MIDDLEWARE = [

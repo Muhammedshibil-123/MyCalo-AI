@@ -45,6 +45,7 @@ urlpatterns = [
     path("api/exercises/", include("apps.exercises.urls")),
     path("api/tracking/", include("apps.tracking.urls")),
     path("api/profiles/", include("apps.profiles.urls")),
+    path("api/admin/", include("apps.admin_panel.urls")),
     path(
         "swagger/",
         schema_view.with_ui("swagger", cache_timeout=0),
