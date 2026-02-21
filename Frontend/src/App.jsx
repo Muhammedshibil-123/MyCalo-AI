@@ -5,6 +5,7 @@ import api, { setAccessToken } from './lib/axios';
 import { setCredentials, logout, finishInitialLoad } from './redux/authslice';
 import { requestForToken } from './firebase';
 
+import AccountBlockedModal from './components/AccountBlockedModal';
 import Login from './pages/auth/login';
 import Register from './pages/auth/register';
 import VerfiyOtp from './pages/auth/VerfiyOtp';
@@ -154,6 +155,7 @@ function App() {
     return (
         <UploadProvider>
             <Router>
+                <AccountBlockedModal />
                 <DelayedLoader isLoading={loadingCount > 0} />
                 <Routes>
                     <Route element={<PublicRoute />}>

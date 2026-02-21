@@ -39,6 +39,16 @@ api.interceptors.response.use(
   async (error) => {
     const originalRequest = error.config;
 
+    if (error.response?.status === 403 && error.response.data?.code === 'account_blocked') {
+        // Dispatch the global event to trigger the modal
+        window.dispatchEvent(new CustomEvent('account-blocked'));
+        
+        // Stop the loader
+        if (!originalRequest?.skipLoading) store.dispatch(stopFetching());
+        
+        return Promise.reject(error);
+    }
+
     // Handle login/retry cases
     if (originalRequest.url.includes("/login/") || originalRequest._retry) {
         if (!originalRequest.skipLoading) store.dispatch(stopFetching());
