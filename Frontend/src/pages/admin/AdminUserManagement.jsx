@@ -1,6 +1,5 @@
-// Frontend/src/pages/admin/AdminUserManagement.jsx
 import React, { useState, useEffect } from 'react';
-import { FiTrash2, FiShield, FiAlertTriangle, FiUserCheck, FiUserX } from 'react-icons/fi';
+import { FiTrash2, FiShield, FiAlertTriangle, FiUserCheck, FiUserX, FiRefreshCcw, FiChevronLeft, FiChevronRight } from 'react-icons/fi';
 import api from '../../lib/axios';
 
 const AdminUserManagement = () => {
@@ -8,6 +7,12 @@ const AdminUserManagement = () => {
     const [users, setUsers] = useState([]);
     const [loading, setLoading] = useState(true);
     
+    // --- Pagination State ---
+    const [currentPage, setCurrentPage] = useState(1);
+    const [totalPages, setTotalPages] = useState(1);
+    const [totalItems, setTotalItems] = useState(0);
+    const pageSize = 10; // Must match backend page_size
+
     // Modal State
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [userToDelete, setUserToDelete] = useState(null);
@@ -16,19 +21,32 @@ const AdminUserManagement = () => {
         { id: 'user', label: 'Users' },
         { id: 'doctor', label: 'Doctors' },
         { id: 'employee', label: 'Employees' },
+        { id: 'deleted', label: 'Deleted Accounts' },
     ];
 
     const roles = ['user', 'doctor', 'employee', 'admin'];
 
+    // Reset to page 1 whenever the tab changes
+    useEffect(() => {
+        setCurrentPage(1);
+    }, [activeTab]);
+
+    // Fetch users when tab OR page changes
     useEffect(() => {
         fetchUsers();
-    }, [activeTab]);
+    }, [activeTab, currentPage]);
 
     const fetchUsers = async () => {
         setLoading(true);
         try {
-            const response = await api.get(`/api/admin/users-management/?role=${activeTab}`);
-            setUsers(response.data);
+            // Include the page query parameter
+            const response = await api.get(`/api/admin/users-management/?role=${activeTab}&page=${currentPage}`);
+            
+            // Backend now returns { count, next, previous, results }
+            setUsers(response.data.results);
+            setTotalItems(response.data.count);
+            setTotalPages(Math.ceil(response.data.count / pageSize));
+            
         } catch (error) {
             console.error('Error fetching users:', error);
         } finally {
@@ -36,17 +54,11 @@ const AdminUserManagement = () => {
         }
     };
 
+    // When modifying data, it's best to refetch to keep pagination accurate
     const handleToggleBlock = async (userId) => {
         try {
-            const response = await api.patch(`/api/admin/users-management/${userId}/`, {
-                action: 'toggle_block'
-            });
-            // Update local state to reflect changes
-            setUsers(users.map(u => 
-                u.id === userId 
-                    ? { ...u, is_active: response.data.is_active, status: response.data.status } 
-                    : u
-            ));
+            await api.patch(`/api/admin/users-management/${userId}/`, { action: 'toggle_block' });
+            fetchUsers(); // Refetch to keep page size and counts accurate
         } catch (error) {
             console.error('Error toggling user status:', error);
         }
@@ -54,16 +66,11 @@ const AdminUserManagement = () => {
 
     const handleRoleChange = async (userId, newRole) => {
         try {
-            const response = await api.patch(`/api/admin/users-management/${userId}/`, {
+            await api.patch(`/api/admin/users-management/${userId}/`, {
                 action: 'change_role',
                 role: newRole
             });
-            // Remove user from the current tab list if their role changed to something else
-            if (response.data.role !== activeTab) {
-                setUsers(users.filter(u => u.id !== userId));
-            } else {
-                setUsers(users.map(u => u.id === userId ? { ...u, role: response.data.role } : u));
-            }
+            fetchUsers(); // Refetch
         } catch (error) {
             console.error('Error updating role:', error);
         }
@@ -76,20 +83,13 @@ const AdminUserManagement = () => {
 
     const handleDelete = async () => {
         if (!userToDelete) return;
-        
         try {
             await api.delete(`/api/admin/users-management/${userToDelete.id}/`);
-            
-            // Remove user from the table successfully
-            setUsers(users.filter(u => u.id !== userToDelete.id));
-            
+            fetchUsers(); // Refetch to update pagination limits
         } catch (error) {
             console.error('Error deleting user:', error);
-            // Alert the user if there's a database constraint issue (from our new backend logic)
-            const errorMessage = error.response?.data?.error || "Failed to delete user.";
-            alert(errorMessage); 
+            alert(error.response?.data?.error || "Failed to delete user."); 
         } finally {
-            // ALWAYS close the modal and reset state, even if it fails
             setIsModalOpen(false);
             setUserToDelete(null);
         }
@@ -102,15 +102,15 @@ const AdminUserManagement = () => {
                 <p className="mt-1 text-sm text-zinc-400">Manage platform users, doctors, and employees.</p>
             </div>
 
-            {}
-            <div className="flex space-x-2 border-b border-zinc-800 mb-6 pb-2">
+            {/* Tabs */}
+            <div className="flex space-x-2 border-b border-zinc-800 mb-6 pb-2 overflow-x-auto">
                 {tabs.map((tab) => (
                     <button
                         key={tab.id}
                         onClick={() => setActiveTab(tab.id)}
-                        className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
+                        className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors whitespace-nowrap ${
                             activeTab === tab.id
-                                ? 'bg-zinc-800 text-white'
+                                ? tab.id === 'deleted' ? 'bg-red-500/10 text-red-400' : 'bg-zinc-800 text-white'
                                 : 'text-zinc-400 hover:text-white hover:bg-zinc-800/50'
                         }`}
                     >
@@ -119,8 +119,8 @@ const AdminUserManagement = () => {
                 ))}
             </div>
 
-            {}
-            <div className="bg-zinc-900 border border-zinc-800 rounded-xl overflow-hidden">
+            {/* Users Table */}
+            <div className="bg-zinc-900 border border-zinc-800 rounded-xl overflow-hidden flex flex-col">
                 <div className="overflow-x-auto">
                     <table className="w-full text-sm text-left text-zinc-300">
                         <thead className="text-xs text-zinc-400 uppercase bg-zinc-950/50 border-b border-zinc-800">
@@ -138,14 +138,14 @@ const AdminUserManagement = () => {
                                     <td colSpan="5" className="px-6 py-8 text-center text-zinc-500">
                                         <div className="animate-pulse flex justify-center items-center space-x-2">
                                             <div className="h-4 w-4 bg-zinc-700 rounded-full"></div>
-                                            <span>Loading users...</span>
+                                            <span>Loading...</span>
                                         </div>
                                     </td>
                                 </tr>
                             ) : users.length === 0 ? (
                                 <tr>
                                     <td colSpan="5" className="px-6 py-8 text-center text-zinc-500">
-                                        No {activeTab}s found.
+                                        No {activeTab === 'deleted' ? 'deleted accounts' : activeTab + 's'} found.
                                     </td>
                                 </tr>
                             ) : (
@@ -154,17 +154,19 @@ const AdminUserManagement = () => {
                                         <td className="px-6 py-4 font-medium text-white">{user.username}</td>
                                         <td className="px-6 py-4">{user.email}</td>
                                         <td className="px-6 py-4">
-                                            <button
-                                                onClick={() => handleToggleBlock(user.id)}
-                                                className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium transition-colors ${
-                                                    user.is_active 
-                                                        ? 'bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20' 
-                                                        : 'bg-red-500/10 text-red-400 hover:bg-red-500/20'
-                                                }`}
-                                            >
-                                                {user.is_active ? <FiUserCheck size={14} /> : <FiUserX size={14} />}
-                                                {user.is_active ? 'Active' : 'Blocked'}
-                                            </button>
+                                            {activeTab === 'deleted' ? (
+                                                <span className="flex items-center gap-1.5 px-2.5 py-1 w-fit rounded-full text-xs font-medium bg-red-500/10 text-red-400">
+                                                    <FiUserX size={14} /> Inactive
+                                                </span>
+                                            ) : (
+                                                <button
+                                                    onClick={() => handleToggleBlock(user.id)}
+                                                    title="Block User"
+                                                    className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-emerald-500/10 text-emerald-400 hover:bg-red-500/20 hover:text-red-400 transition-colors"
+                                                >
+                                                    <FiUserCheck size={14} /> Active
+                                                </button>
+                                            )}
                                         </td>
                                         <td className="px-6 py-4">
                                             <div className="relative flex items-center gap-2">
@@ -172,7 +174,8 @@ const AdminUserManagement = () => {
                                                 <select
                                                     value={user.role}
                                                     onChange={(e) => handleRoleChange(user.id, e.target.value)}
-                                                    className="bg-zinc-950 border border-zinc-800 text-zinc-300 text-xs rounded-lg focus:ring-blue-500 focus:border-blue-500 block p-2 outline-none"
+                                                    disabled={activeTab === 'deleted'}
+                                                    className={`bg-zinc-950 border border-zinc-800 text-zinc-300 text-xs rounded-lg focus:ring-blue-500 focus:border-blue-500 block p-2 outline-none ${activeTab === 'deleted' && 'opacity-50 cursor-not-allowed'}`}
                                                 >
                                                     {roles.map(r => (
                                                         <option key={r} value={r}>{r.charAt(0).toUpperCase() + r.slice(1)}</option>
@@ -181,13 +184,23 @@ const AdminUserManagement = () => {
                                             </div>
                                         </td>
                                         <td className="px-6 py-4 text-right">
-                                            <button
-                                                onClick={() => confirmDelete(user)}
-                                                className="text-zinc-500 hover:text-red-400 p-2 rounded-lg hover:bg-zinc-800 transition-colors"
-                                                title="Delete User"
-                                            >
-                                                <FiTrash2 size={18} />
-                                            </button>
+                                            {activeTab === 'deleted' ? (
+                                                <button
+                                                    onClick={() => handleToggleBlock(user.id)}
+                                                    className="text-emerald-500 hover:text-emerald-400 p-2 rounded-lg hover:bg-emerald-500/10 transition-colors flex items-center gap-2 ml-auto"
+                                                    title="Restore Account"
+                                                >
+                                                    <FiRefreshCcw size={16} /> <span className="text-xs font-medium">Restore</span>
+                                                </button>
+                                            ) : (
+                                                <button
+                                                    onClick={() => confirmDelete(user)}
+                                                    className="text-zinc-500 hover:text-red-400 p-2 rounded-lg hover:bg-red-500/10 transition-colors"
+                                                    title="Delete User"
+                                                >
+                                                    <FiTrash2 size={18} />
+                                                </button>
+                                            )}
                                         </td>
                                     </tr>
                                 ))
@@ -195,19 +208,45 @@ const AdminUserManagement = () => {
                         </tbody>
                     </table>
                 </div>
+
+                {/* --- Pagination Controls --- */}
+                {!loading && totalItems > 0 && (
+                    <div className="flex items-center justify-between px-6 py-4 border-t border-zinc-800 bg-zinc-950/30">
+                        
+                        <div className="flex items-center gap-2">
+                            <button
+                                onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                                disabled={currentPage === 1}
+                                className="p-2 rounded-lg border border-zinc-800 text-zinc-400 hover:text-white hover:bg-zinc-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                            >
+                                <FiChevronLeft size={16} />
+                            </button>
+                            <span className="text-sm text-zinc-400 px-2">
+                                Page <span className="font-medium text-white">{currentPage}</span> of {totalPages}
+                            </span>
+                            <button
+                                onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                                disabled={currentPage === totalPages}
+                                className="p-2 rounded-lg border border-zinc-800 text-zinc-400 hover:text-white hover:bg-zinc-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                            >
+                                <FiChevronRight size={16} />
+                            </button>
+                        </div>
+                    </div>
+                )}
             </div>
 
-            {}
+            {/* Delete Confirmation Modal */}
             {isModalOpen && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
                     <div className="bg-zinc-900 border border-zinc-800 rounded-xl shadow-2xl max-w-md w-full p-6 animate-in zoom-in-95 duration-200">
                         <div className="flex items-center justify-center w-12 h-12 rounded-full bg-red-500/10 mb-4 mx-auto">
                             <FiAlertTriangle className="text-red-500" size={24} />
                         </div>
-                        <h3 className="text-xl font-semibold text-white text-center mb-2">Delete {activeTab}?</h3>
+                        <h3 className="text-xl font-semibold text-white text-center mb-2">Suspend Account?</h3>
                         <p className="text-zinc-400 text-sm text-center mb-6">
-                            Are you sure you want to delete <span className="text-white font-medium">{userToDelete?.username}</span>? 
-                            This action cannot be undone and will permanently remove their data from the servers.
+                            Are you sure you want to deactivate <span className="text-white font-medium">{userToDelete?.username}</span>? 
+                            This will restrict their access, but their data will be kept in the deleted accounts tab.
                         </p>
                         <div className="flex gap-3 w-full">
                             <button
@@ -220,7 +259,7 @@ const AdminUserManagement = () => {
                                 onClick={handleDelete}
                                 className="flex-1 px-4 py-2.5 bg-red-600 hover:bg-red-700 text-white text-sm font-medium rounded-lg transition-colors"
                             >
-                                Yes, Delete
+                                Yes, Deactivate
                             </button>
                         </div>
                     </div>

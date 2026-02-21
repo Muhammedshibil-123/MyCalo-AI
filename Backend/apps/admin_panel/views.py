@@ -14,8 +14,6 @@ from apps.tracking.models import DailyLog
 from rest_framework.permissions import IsAuthenticated
 
 from rest_framework.pagination import PageNumberPagination
-from .serializers import AdminFoodItemSerializer
-from django.db import IntegrityError
 from django.shortcuts import get_object_or_404
 
 
@@ -35,6 +33,11 @@ class IsAdmin(IsAuthenticated):
         if not super().has_permission(request, view):
             return False
         return request.user.role == 'admin'
+    
+class StandardResultsSetPagination(PageNumberPagination):
+    page_size = 10  
+    page_size_query_param = 'page_size'
+    max_page_size = 50
 
 
 class UsersCountView(APIView):
@@ -181,14 +184,27 @@ class TopFoodsView(APIView):
 
 class UserManagementListView(APIView):
     permission_classes = [IsAdmin]
+    pagination_class = StandardResultsSetPagination
 
     def get(self, request):
-        role = request.query_params.get('role', 'user')
-        users = CustomUser.objects.filter(role=role).values(
-            'id', 'username', 'email', 'role', 'status', 'is_active', 'date_joined'
-        ).order_by('-date_joined')
+        role_param = request.query_params.get('role', 'user')
         
-        return Response(list(users), status=status.HTTP_200_OK)
+        
+        if role_param == 'deleted':
+            users = CustomUser.objects.filter(status='inactive').values(
+                'id', 'username', 'email', 'role', 'status', 'is_active', 'date_joined'
+            ).order_by('-date_joined')
+        else:
+            users = CustomUser.objects.filter(role=role_param, status='active').values(
+                'id', 'username', 'email', 'role', 'status', 'is_active', 'date_joined'
+            ).order_by('-date_joined')
+
+        
+        paginator = self.pagination_class()
+        paginated_queryset = paginator.paginate_queryset(users, request, view=self)
+        
+        
+        return paginator.get_paginated_response(paginated_queryset)
 
 
 class UserManagementDetailView(APIView):
@@ -199,7 +215,6 @@ class UserManagementDetailView(APIView):
         action = request.data.get('action')
 
         if action == 'toggle_block':
-            
             user.is_active = not user.is_active
             user.status = 'active' if user.is_active else 'inactive'
             user.save()
@@ -230,15 +245,9 @@ class UserManagementDetailView(APIView):
         if user == request.user:
             return Response({"error": "You cannot delete your own account"}, status=status.HTTP_403_FORBIDDEN)
             
-        try:
-            user.delete()
-            return Response({"message": "User deleted successfully"}, status=status.HTTP_204_NO_CONTENT)
-            
-        except IntegrityError:
-            
-            return Response(
-                {"error": "Cannot delete this user because they have associated records (logs, chats, etc.) that are protected. Try blocking them instead."}, 
-                status=status.HTTP_400_BAD_REQUEST
-            )
-        except Exception as e:
-            return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        
+        user.is_active = False
+        user.status = 'inactive'
+        user.save()
+        
+        return Response({"message": "User soft-deleted successfully"}, status=status.HTTP_200_OK)
