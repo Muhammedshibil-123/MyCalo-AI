@@ -1,7 +1,7 @@
 import loadingVideo from '../assets/animations/loading.webm';
 
 const LoadingScreen = () => (
-    <div className="flex items-center justify-center h-screen w-screen bg-white">
+    <div className="flex items-center justify-center h-screen w-screen bg-transparent">
         <video 
             src={loadingVideo} 
             autoPlay 

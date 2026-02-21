@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Profile
+from .models import Profile,WeightHistory
 
 class ProfileUpdateSerializer(serializers.ModelSerializer):
 
@@ -35,6 +35,12 @@ class ProfileUpdateSerializer(serializers.ModelSerializer):
             return obj.photo.url
         except Exception:
             return str(obj.photo)
+        
+
+class WeightHistorySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = WeightHistory
+        fields = ['id', 'weight', 'date']
            
             
             
