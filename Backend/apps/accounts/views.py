@@ -682,7 +682,7 @@ class CorporateVerifyOTPView(views.APIView):
 
 
 class LogoutView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [AllowAny]
 
     @swagger_auto_schema(
         operation_description="Logout user and clear auth cookie.",

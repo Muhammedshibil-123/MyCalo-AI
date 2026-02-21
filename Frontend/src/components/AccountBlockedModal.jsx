@@ -1,8 +1,9 @@
+// Frontend/src/components/AccountBlockedModal.jsx
 import React, { useEffect, useState } from 'react';
 import { FiLock } from 'react-icons/fi';
 import { useDispatch } from 'react-redux';
 import { logout } from '../redux/authslice'; 
-import { setAccessToken } from '../lib/axios';
+import api, { setAccessToken } from '../lib/axios';
 
 const AccountBlockedModal = () => {
     const [isOpen, setIsOpen] = useState(false);
@@ -10,15 +11,9 @@ const AccountBlockedModal = () => {
     const dispatch = useDispatch();
 
     useEffect(() => {
-        const handleBlockedEvent = () => {
-            setIsOpen(true);
-        };
-
+        const handleBlockedEvent = () => setIsOpen(true);
         window.addEventListener('account-blocked', handleBlockedEvent);
-
-        return () => {
-            window.removeEventListener('account-blocked', handleBlockedEvent);
-        };
+        return () => window.removeEventListener('account-blocked', handleBlockedEvent);
     }, []);
 
     useEffect(() => {
@@ -28,22 +23,31 @@ const AccountBlockedModal = () => {
                 setCountdown((prev) => prev - 1);
             }, 1000);
         } else if (isOpen && countdown === 0) {
-            // --- 5 SECONDS ARE UP: CLEAR EVERYTHING ---
             
-            // 1. Manually clear the refresh_token cookie
-            // Setting the expiration date to the past instantly deletes it.
-            document.cookie = "refresh_token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
-            
-            // Clear any other standard storage you might be using just in case
-            
-            // 2. Clear Redux state
-            dispatch(logout()); 
-            
-            // 3. Clear Axios in-memory token
-            setAccessToken(null);
-            
-            // 4. Force redirect to login
-            window.location.href = '/login'; 
+            // --- Call the backend to clear the HttpOnly Cookie ---
+            const clearSession = async () => {
+                try {
+                    // Send request without Bearer token so middleware ignores it entirely
+                    await api.post('/api/users/logout/', {}, { 
+                        skipLoading: true,
+                        headers: { Authorization: null } 
+                    });
+                } catch (err) {
+                    console.error("Failed to call logout", err);
+                } finally {
+                    // Clear local storage and state
+                    localStorage.removeItem('access_token');
+                    localStorage.removeItem('refresh_token'); 
+                    localStorage.removeItem('user');
+                    
+                    dispatch(logout()); 
+                    setAccessToken(null);
+                    
+                    window.location.href = '/login'; 
+                }
+            };
+
+            clearSession();
         }
 
         return () => clearInterval(timer);
