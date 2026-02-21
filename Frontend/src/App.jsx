@@ -207,7 +207,7 @@ function App() {
                             <Route path="/doctor/chat/:roomId" element={<DoctorChatPage />} />
                             <Route path="/doctor/foods" element={<DoctorFoods />} />
                             <Route path="/doctor/exercises" element={<DoctorExercises />} />
-                            <Route path="/doctor/ai-chat" element={<PatientAIChat />} />
+                            <Route path="/doctor/ai-chat/:roomId" element={<PatientAIChat />} />
                         </Route>
                     </Route>
 
