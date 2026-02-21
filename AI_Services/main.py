@@ -2,8 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from config import settings
-from routers import nutrition, vision_nutrition, chat,chat_groq,chat_doctor_groq
-
+from routers import chat, chat_doctor_groq, chat_groq, nutrition, vision_nutrition
 
 app = FastAPI(title=settings.PROJECT_NAME, version=settings.VERSION)
 

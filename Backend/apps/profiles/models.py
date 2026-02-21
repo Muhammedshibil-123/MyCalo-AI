@@ -1,26 +1,29 @@
-from django.db import models
-from django.conf import settings
 from cloudinary.models import CloudinaryField
+from django.conf import settings
+from django.db import models
+
 
 class Profile(models.Model):
-    GENDER_CHOICES = (('M', 'Male'), ('F', 'Female'))
+    GENDER_CHOICES = (("M", "Male"), ("F", "Female"))
     GOAL_CHOICES = (
-        ('LOSE', 'Weight Loss'),
-        ('MAINTAIN', 'Maintenance'),
-        ('GAIN', 'Muscle Gain'),
+        ("LOSE", "Weight Loss"),
+        ("MAINTAIN", "Maintenance"),
+        ("GAIN", "Muscle Gain"),
     )
     ACTIVITY_CHOICES = (
-        (1.2, 'Mostly Sitting (Sedentary)'),
-        (1.375, 'Lightly Active'),
-        (1.55, 'Moderately Active'),
-        (1.725, 'Very Active'),
-        (1.9, 'Extremely Active'),
+        (1.2, "Mostly Sitting (Sedentary)"),
+        (1.375, "Lightly Active"),
+        (1.55, "Moderately Active"),
+        (1.725, "Very Active"),
+        (1.9, "Extremely Active"),
     )
 
-    user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='profile')
+    user = models.OneToOneField(
+        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="profile"
+    )
     # aws_
     fcm_token = models.TextField(null=True, blank=True)
-    
+
     # Basic Stats
     name = models.CharField(max_length=120, blank=True, default="")
     photo = CloudinaryField("image", blank=True, null=True)
@@ -28,14 +31,19 @@ class Profile(models.Model):
     gender = models.CharField(max_length=1, choices=GENDER_CHOICES, null=True)
     height = models.FloatField(help_text="Height in CM", null=True)
     weight = models.FloatField(help_text="Current Weight in KG", null=True)
-    
-    target_weight = models.FloatField(help_text="Target Weight in KG", null=True, blank=True)
-    medical_conditions = models.JSONField(default=list, blank=True, help_text="List of conditions e.g. ['Diabetes', 'PCOS']")
-    
-    activity_level = models.FloatField(choices=ACTIVITY_CHOICES, default=1.2)
-    goal = models.CharField(max_length=10, choices=GOAL_CHOICES, default='MAINTAIN')
 
-    
+    target_weight = models.FloatField(
+        help_text="Target Weight in KG", null=True, blank=True
+    )
+    medical_conditions = models.JSONField(
+        default=list,
+        blank=True,
+        help_text="List of conditions e.g. ['Diabetes', 'PCOS']",
+    )
+
+    activity_level = models.FloatField(choices=ACTIVITY_CHOICES, default=1.2)
+    goal = models.CharField(max_length=10, choices=GOAL_CHOICES, default="MAINTAIN")
+
     daily_calorie_goal = models.IntegerField(default=0)
     protein_goal = models.IntegerField(default=0)
     carbs_goal = models.IntegerField(default=0)
@@ -49,12 +57,16 @@ class Profile(models.Model):
 
 
 class WeightHistory(models.Model):
-    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='weight_history')
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="weight_history",
+    )
     weight = models.FloatField()
     date = models.DateField(auto_now_add=True)
 
     class Meta:
-        ordering = ['date']
+        ordering = ["date"]
 
     def __str__(self):
         return f"{self.user.username} - {self.weight}kg on {self.date}"

@@ -1,5 +1,7 @@
 from rest_framework import serializers
-from .models import Profile,WeightHistory
+
+from .models import Profile, WeightHistory
+
 
 class ProfileUpdateSerializer(serializers.ModelSerializer):
 
@@ -9,24 +11,29 @@ class ProfileUpdateSerializer(serializers.ModelSerializer):
     class Meta:
         model = Profile
         fields = [
-            'name',
+            "name",
             "photo",
             "photo_url",
-            'age', 
-            'gender', 
-            'height', 
-            'weight', 
-            'target_weight',     
-            'medical_conditions', 
-            'activity_level', 
-            'goal',
-            'daily_calorie_goal',
-            'protein_goal',
-            'carbs_goal',
-            'fats_goal',
-            'fcm_token'
+            "age",
+            "gender",
+            "height",
+            "weight",
+            "target_weight",
+            "medical_conditions",
+            "activity_level",
+            "goal",
+            "daily_calorie_goal",
+            "protein_goal",
+            "carbs_goal",
+            "fats_goal",
+            "fcm_token",
         ]
-        read_only_fields = ['daily_calorie_goal', 'protein_goal', 'carbs_goal', 'fats_goal']
+        read_only_fields = [
+            "daily_calorie_goal",
+            "protein_goal",
+            "carbs_goal",
+            "fats_goal",
+        ]
 
     def get_photo_url(self, obj):
         if not obj.photo:
@@ -35,16 +42,9 @@ class ProfileUpdateSerializer(serializers.ModelSerializer):
             return obj.photo.url
         except Exception:
             return str(obj.photo)
-        
+
 
 class WeightHistorySerializer(serializers.ModelSerializer):
     class Meta:
         model = WeightHistory
-        fields = ['id', 'weight', 'date']
-           
-            
-            
-        
-
-
-    
+        fields = ["id", "weight", "date"]

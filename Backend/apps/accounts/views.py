@@ -2,23 +2,22 @@ import random
 import secrets
 import string
 
-
 import pyotp
 import requests
 from django.conf import settings
 from django.core.mail import send_mail
 from drf_yasg import openapi
 from drf_yasg.utils import swagger_auto_schema
-from .aws_utils import send_to_email_queue
 from rest_framework import generics, permissions, status, views
+from rest_framework.generics import ListAPIView
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
-from rest_framework.generics import ListAPIView
 from rest_framework_simplejwt.exceptions import InvalidToken, TokenError
 from rest_framework_simplejwt.tokens import AccessToken, RefreshToken
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 
+from .aws_utils import send_to_email_queue
 from .models import CustomUser
 from .serializers import (
     CorporateRegisterSerializer,
@@ -330,7 +329,7 @@ class GoogleLoginView(APIView):
 
         daily_calorie_goal = 0
         try:
-            if hasattr(user, 'profile'):
+            if hasattr(user, "profile"):
                 daily_calorie_goal = user.profile.daily_calorie_goal
         except Exception:
             pass
@@ -374,12 +373,14 @@ class UserListView(generics.ListAPIView):
     serializer_class = UserSerializer
     permission_classes = [IsAuthenticated]
 
+
 class DoctorListView(ListAPIView):
     serializer_class = UserSerializer
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        return CustomUser.objects.filter(role='doctor')
+        return CustomUser.objects.filter(role="doctor")
+
 
 class UserDetailView(generics.RetrieveUpdateDestroyAPIView):
     queryset = CustomUser.objects.all()
@@ -456,7 +457,7 @@ class ForgotPasswordView(APIView):
                 send_to_email_queue(
                     "Reset Your Password - Mycalo AI",
                     f"Your Password Reset OTP is: {otp_code}",
-                    email
+                    email,
                 )
 
                 return Response(

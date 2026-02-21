@@ -34,7 +34,6 @@ DEBUG = True
 ALLOWED_HOSTS = ["*", ".ngrok-free.app", ".ngrok-free.dev", "localhost", "127.0.0.1"]
 
 
-
 # Application definition
 
 INSTALLED_APPS = [
@@ -47,9 +46,9 @@ INSTALLED_APPS = [
     "rest_framework",
     "rest_framework_simplejwt.token_blacklist",
     "drf_yasg",
-    'cloudinary_storage', 
-    'django.contrib.staticfiles',
-    'cloudinary',
+    "cloudinary_storage",
+    "django.contrib.staticfiles",
+    "cloudinary",
     "apps.accounts",
     "apps.profiles",
     "apps.foods",
@@ -58,8 +57,8 @@ INSTALLED_APPS = [
     "apps.search",
     "apps.analytics",
     "apps.exercises",
-    'django_celery_beat',
-    'apps.admin_panel',
+    "django_celery_beat",
+    "apps.admin_panel",
 ]
 
 MIDDLEWARE = [
@@ -71,8 +70,7 @@ MIDDLEWARE = [
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
-
-    'apps.accounts.middleware.AccountStatusMiddleware',
+    "apps.accounts.middleware.AccountStatusMiddleware",
 ]
 
 ROOT_URLCONF = "config.urls"
@@ -134,7 +132,7 @@ AUTH_PASSWORD_VALIDATORS = [
 
 LANGUAGE_CODE = "en-us"
 
-TIME_ZONE = 'Asia/Kolkata'
+TIME_ZONE = "Asia/Kolkata"
 USE_TZ = True
 
 USE_I18N = True
@@ -185,7 +183,6 @@ EMAIL_HOST_USER = os.getenv("EMAIL_HOST_USER")
 EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD")
 
 
-
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 
@@ -213,9 +210,9 @@ SWAGGER_SETTINGS = {
 
 
 CLOUDINARY_STORAGE = {
-    'CLOUD_NAME': os.getenv('CLOUDINARY_CLOUD_NAME'),
-    'API_KEY': os.getenv('CLOUDINARY_API_KEY'),
-    'API_SECRET': os.getenv('CLOUDINARY_API_SECRET'),
+    "CLOUD_NAME": os.getenv("CLOUDINARY_CLOUD_NAME"),
+    "API_KEY": os.getenv("CLOUDINARY_API_KEY"),
+    "API_SECRET": os.getenv("CLOUDINARY_API_SECRET"),
 }
 
 STORAGES = {
@@ -227,20 +224,20 @@ STORAGES = {
     },
 }
 
-CELERY_BROKER_URL = 'redis://redis:6379/1'
-CELERY_RESULT_BACKEND = 'redis://redis:6379/1'
+CELERY_BROKER_URL = "redis://redis:6379/1"
+CELERY_RESULT_BACKEND = "redis://redis:6379/1"
 
-CELERY_ACCEPT_CONTENT = ['json']
-CELERY_TASK_SERIALIZER = 'json'
-CELERY_RESULT_SERIALIZER = 'json'
-CELERY_TIMEZONE = 'Asia/Kolkata'
+CELERY_ACCEPT_CONTENT = ["json"]
+CELERY_TASK_SERIALIZER = "json"
+CELERY_RESULT_SERIALIZER = "json"
+CELERY_TIMEZONE = "Asia/Kolkata"
 
 
 # AWS SQS & SES Configuration
-AWS_ACCESS_KEY_ID = os.getenv('AWS_ACCESS_KEY_ID')
-AWS_SECRET_ACCESS_KEY = os.getenv('AWS_SECRET_ACCESS_KEY')
-AWS_REGION = os.getenv('AWS_REGION', 'ap-south-1')
+AWS_ACCESS_KEY_ID = os.getenv("AWS_ACCESS_KEY_ID")
+AWS_SECRET_ACCESS_KEY = os.getenv("AWS_SECRET_ACCESS_KEY")
+AWS_REGION = os.getenv("AWS_REGION", "ap-south-1")
 
 # Queue URLs
-AWS_MEAL_REMINDER_QUEUE_URL = os.getenv('SQS_QUEUE_URL')
-AWS_EMAIL_QUEUE_URL = os.getenv('AWS_SQS_EMAIL_QUEUE_URL')
+AWS_MEAL_REMINDER_QUEUE_URL = os.getenv("SQS_QUEUE_URL")
+AWS_EMAIL_QUEUE_URL = os.getenv("AWS_SQS_EMAIL_QUEUE_URL")

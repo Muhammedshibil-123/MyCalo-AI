@@ -1,11 +1,12 @@
-from django.utils import timezone
-from rest_framework import permissions, status, viewsets,views
-from rest_framework.response import Response
-from rest_framework.parsers import MultiPartParser, FormParser
 from django.db import transaction
+from django.utils import timezone
+from rest_framework import permissions, status, views, viewsets
+from rest_framework.parsers import FormParser, MultiPartParser
+from rest_framework.response import Response
+
+from apps.foods.models import FoodImage, FoodItem
 
 from .models import DailyLog
-from apps.foods.models import FoodItem,FoodImage
 from .serializers import DailyLogSerializer
 
 
@@ -68,24 +69,25 @@ class DailyLogViewSet(viewsets.ModelViewSet):
         response_data["meals"] = list(meal_groups.values())
 
         return Response(response_data)
-    
+
+
 class LogAIMealView(views.APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def post(self, request):
-        
+
         data = request.data
         user = request.user
 
         meal_type = data.get("meal_type", "SNACK").upper()
         date_str = data.get("date", str(timezone.now().date()))
-        
+
         ai_items = data.get("items", [])
 
         if not ai_items:
             return Response(
-                {"error": "No items provided in the AI response"}, 
-                status=status.HTTP_400_BAD_REQUEST
+                {"error": "No items provided in the AI response"},
+                status=status.HTTP_400_BAD_REQUEST,
             )
 
         try:
@@ -95,10 +97,10 @@ class LogAIMealView(views.APIView):
                 for item in ai_items:
                     food_name = item.get("food_name")
                     details_100g = item.get("100g_serving_size", {})
-                   
+
                     food_defaults = {
                         "name": food_name,
-                        "serving_size": "100g", 
+                        "serving_size": "100g",
                         "calories": details_100g.get("calories", 0),
                         "protein": details_100g.get("protein", 0),
                         "carbohydrates": details_100g.get("carbs", 0),
@@ -110,23 +112,22 @@ class LogAIMealView(views.APIView):
                         "cholesterol": details_100g.get("cholesterol", 0),
                         "source": "AI",
                         "is_public": True,
-                        "is_verified": False, 
+                        "is_verified": False,
                         "votes": 0,
                     }
 
                     food_item, _ = FoodItem.objects.get_or_create(
-                        name__iexact=food_name,
-                        defaults=food_defaults
+                        name__iexact=food_name, defaults=food_defaults
                     )
 
                     user_grams = item.get("user_serving_size_g", 100)
-                    
+
                     log = DailyLog.objects.create(
                         user=user,
                         food_item=food_item,
                         user_serving_grams=user_grams,
                         meal_type=meal_type,
-                        date=date_str
+                        date=date_str,
                     )
                     created_logs.append(log.id)
 
@@ -134,7 +135,7 @@ class LogAIMealView(views.APIView):
                 {
                     "message": "AI Meal logged successfully",
                     "logs_created": len(created_logs),
-                    "success": True
+                    "success": True,
                 },
                 status=status.HTTP_201_CREATED,
             )
@@ -142,7 +143,7 @@ class LogAIMealView(views.APIView):
         except Exception as e:
             return Response(
                 {"error": str(e), "success": False},
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
 
 
@@ -156,10 +157,11 @@ class LogManualFoodView(views.APIView):
 
         meal_type = data.get("meal_type", "SNACK").upper()
         date_str = data.get("date", str(timezone.now().date()))
-        
+
         try:
             user_serving_grams = float(data.get("user_serving_grams", 100))
-            if user_serving_grams <= 0: raise ValueError
+            if user_serving_grams <= 0:
+                raise ValueError
         except ValueError:
             return Response({"error": "Invalid serving weight"}, status=400)
 
@@ -167,7 +169,7 @@ class LogManualFoodView(views.APIView):
 
         def get_normalized_value(key):
             val = data.get(key)
-            if val in [None, '', 'null', 'undefined']:
+            if val in [None, "", "null", "undefined"]:
                 return 0.0
             try:
                 user_value = float(val)
@@ -184,7 +186,7 @@ class LogManualFoodView(views.APIView):
                 food_item = FoodItem.objects.create(
                     name=food_name,
                     brand=data.get("brand", ""),
-                    serving_size="100g", 
+                    serving_size="100g",
                     calories=int(get_normalized_value("calories")),
                     protein=get_normalized_value("protein"),
                     carbohydrates=get_normalized_value("carbohydrates"),
@@ -194,16 +196,15 @@ class LogManualFoodView(views.APIView):
                     saturated_fat=get_normalized_value("saturated_fat"),
                     sodium=get_normalized_value("sodium"),
                     cholesterol=get_normalized_value("cholesterol"),
-                    source="USER", 
-                    is_public=True, 
-                    is_verified=False, 
+                    source="USER",
+                    is_public=True,
+                    is_verified=False,
                     created_by=user,
-                    votes=0
-                    
+                    votes=0,
                 )
 
-                images = request.FILES.getlist('images') 
-                
+                images = request.FILES.getlist("images")
+
                 for img in images:
                     FoodImage.objects.create(food=food_item, image=img)
 
@@ -212,19 +213,22 @@ class LogManualFoodView(views.APIView):
                     food_item=food_item,
                     user_serving_grams=user_serving_grams,
                     meal_type=meal_type,
-                    date=date_str
+                    date=date_str,
                 )
 
-                return Response({
-                    "message": "Food logged with multiple images successfully",
-                    "log_id": log.id,
-                    "food_id": food_item.id,
-                    "images_uploaded": len(images),
-                    "success": True
-                }, status=status.HTTP_201_CREATED)
+                return Response(
+                    {
+                        "message": "Food logged with multiple images successfully",
+                        "log_id": log.id,
+                        "food_id": food_item.id,
+                        "images_uploaded": len(images),
+                        "success": True,
+                    },
+                    status=status.HTTP_201_CREATED,
+                )
 
         except Exception as e:
             return Response(
                 {"error": str(e), "success": False},
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )

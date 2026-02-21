@@ -30,11 +30,11 @@ class Settings:
             raise ValueError(
                 "SECRET_KEY not found. Please copy it from Django Backend .env"
             )
-        if not self.DATABASE_PASSWORD: 
-             print("Warning: DATABASE_PASSWORD not set. SQL Tool will fail.")
+        if not self.DATABASE_PASSWORD:
+            print("Warning: DATABASE_PASSWORD not set. SQL Tool will fail.")
 
         if not self.DOC_GROQ_API_KEY:
-             print("Warning: DOC_GROQ_API_KEY not set. Doctor AI Assistant will fail.")
+            print("Warning: DOC_GROQ_API_KEY not set. Doctor AI Assistant will fail.")
 
 
 settings = Settings()

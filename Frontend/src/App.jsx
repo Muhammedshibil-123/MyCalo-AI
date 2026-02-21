@@ -44,6 +44,7 @@ import AdminExercises from './pages/admin/AdminExercises';
 import DoctorExercises from './pages/doctor/DoctorExercises';
 import AdminUserManagement from './pages/admin/AdminUserManagement';
 import PatientAIChat  from './pages/doctor/PatientAIChat';
+import PatientHistory  from './pages/doctor/PatientHistory';
 
 const getHomeRouteForRole = (role) => {
     if (role === 'admin' || role === 'employee') return '/admin/dashboard';
@@ -208,6 +209,7 @@ function App() {
                             <Route path="/doctor/foods" element={<DoctorFoods />} />
                             <Route path="/doctor/exercises" element={<DoctorExercises />} />
                             <Route path="/doctor/ai-chat/:roomId" element={<PatientAIChat />} />
+                            <Route path="/doctor/history/:roomId" element={<PatientHistory />} />
                         </Route>
                     </Route>
 
