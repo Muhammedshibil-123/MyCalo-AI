@@ -206,7 +206,7 @@ const Home = () => {
   const handleUpdateExerciseLog = async (logId) => {
     try {
       // Using PUT (with partial data) as typical for this setup, or PATCH
-      await api.put(`/api/tracking/exercise-logs/${logId}/`, {
+      await api.patch(`/api/tracking/exercise-logs/${logId}/`, {
         duration_minutes: parseFloat(editDuration)
       });
       setEditingExerciseId(null);
@@ -391,7 +391,7 @@ const Home = () => {
             </button>
             <button 
               onClick={() => navigate('/profile/edit')} 
-              className="w-10 h-10 rounded-full overflow-hidden border-2 border-gray-100 bg-blue-50 shadow-sm active:scale-95 transition-transform"
+              className="w-12 h-12 rounded-full overflow-hidden border-2 border-gray-100 bg-blue-50 shadow-sm active:scale-95 transition-transform"
             >
               {profile?.photo ? (
                 <img src={profile.photo} alt="Profile" className="w-full h-full object-cover" />

@@ -411,7 +411,7 @@ class ExerciseLogDetailView(views.APIView):
         ),
         responses={200: "Updated successfully", 404: "Not found"}
     )
-    def put(self, request, pk):
+    def patch(self, request, pk):
         try:
             
             log = ExerciseLog.objects.get(pk=pk, user=request.user)
