@@ -8,8 +8,8 @@ from drf_yasg import openapi
 
 from apps.foods.models import FoodImage, FoodItem
 
-from .models import DailyLog
-from .serializers import DailyLogSerializer
+from .models import DailyLog,ExerciseLog
+from .serializers import DailyLogSerializer,ExerciseLogSerializer
 
 
 class DailyLogViewSet(viewsets.ModelViewSet):
@@ -300,3 +300,97 @@ class LogManualFoodView(views.APIView):
                 {"error": str(e), "success": False},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
+        
+
+class LogExerciseView(views.APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    @swagger_auto_schema(
+        operation_description="Log an exercise session for the authenticated user.",
+        tags=["Exercise Logs"],
+        request_body=openapi.Schema(
+            type=openapi.TYPE_OBJECT,
+            properties={
+                "exercise": openapi.Schema(type=openapi.TYPE_INTEGER, description="ID of the Exercise"),
+                "duration_minutes": openapi.Schema(type=openapi.TYPE_INTEGER, description="Duration in minutes (e.g., 30)"),
+                "date": openapi.Schema(type=openapi.TYPE_STRING, description="Date in YYYY-MM-DD format"),
+            },
+            required=["exercise", "duration_minutes"],
+        ),
+        responses={
+            201: openapi.Response("Exercise logged successfully"),
+            400: "Invalid data provided",
+        },
+    )
+    def post(self, request):
+        if "date" not in request.data:
+            request.data["date"] = str(timezone.now().date())
+
+        serializer = ExerciseLogSerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save(user=request.user)
+            return Response(
+                {
+                    "message": "Exercise logged successfully",
+                    "success": True,
+                    "data": serializer.data
+                },
+                status=status.HTTP_201_CREATED,
+            )
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+class ExerciseLogListView(views.APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    @swagger_auto_schema(
+        operation_description="Retrieve a list of logged exercises and total burned calories for a specific date.",
+        tags=["Exercise Logs"],
+        manual_parameters=[
+            openapi.Parameter(
+                "date",
+                openapi.IN_QUERY,
+                description="Date in YYYY-MM-DD format (defaults to today)",
+                type=openapi.TYPE_STRING,
+            )
+        ],
+        responses={
+            200: openapi.Response(
+                description="Exercise logs and burned calories",
+                schema=openapi.Schema(
+                    type=openapi.TYPE_OBJECT,
+                    properties={
+                        "user_id": openapi.Schema(type=openapi.TYPE_INTEGER),
+                        "date": openapi.Schema(type=openapi.TYPE_STRING),
+                        "total_burned_calories": openapi.Schema(type=openapi.TYPE_INTEGER),
+                        "exercises": openapi.Schema(
+                            type=openapi.TYPE_ARRAY,
+                            items=openapi.Schema(type=openapi.TYPE_OBJECT)
+                        ),
+                    }
+                )
+            )
+        },
+    )
+    def get(self, request):
+        date_str = request.query_params.get("date", str(timezone.now().date()))
+        
+        exercise_logs = ExerciseLog.objects.filter(
+            user=request.user, date=date_str
+        ).select_related("exercise", "user__profile")
+
+        response_data = {
+            "user_id": request.user.id,
+            "date": date_str,
+            "total_burned_calories": 0,
+            "exercises": [],
+        }
+
+        for ex_log in exercise_logs:
+            serialized_ex = ExerciseLogSerializer(ex_log).data
+            ex_details = serialized_ex.get("exercise_details")
+            if ex_details:
+                response_data["exercises"].append(ex_details)
+                response_data["total_burned_calories"] += ex_details["burned_calories"]
+
+        return Response(response_data, status=status.HTTP_200_OK)

@@ -1,6 +1,7 @@
 from rest_framework import serializers
 
-from .models import DailyLog
+from .models import DailyLog,ExerciseLog
+
 
 
 class DailyLogSerializer(serializers.ModelSerializer):
@@ -43,4 +44,43 @@ class DailyLogSerializer(serializers.ModelSerializer):
             "sugar": round(float(food.sugar) * ratio, 1),
             "sodium": round(float(food.sodium) * ratio, 1),
             "cholesterol": round(float(food.cholesterol) * ratio, 1),
+        }
+
+
+class ExerciseLogSerializer(serializers.ModelSerializer):
+    exercise_details = serializers.SerializerMethodField()
+
+    class Meta:
+        model = ExerciseLog
+        fields = [
+            "id",
+            "exercise",
+            "duration_minutes",
+            "date",
+            "exercise_details",
+        ]
+        extra_kwargs = {
+            "exercise": {"write_only": True},
+            "date": {"write_only": True},
+        }
+
+    def get_exercise_details(self, obj):
+        exercise = obj.exercise
+        duration = obj.duration_minutes
+        
+        
+        user_weight = 70.0 
+        if hasattr(obj.user, 'profile') and obj.user.profile.weight:
+            user_weight = float(obj.user.profile.weight)
+
+        
+        burned_calories = round(float(exercise.met_value) * user_weight * (duration / 60))
+
+        return {
+            "log_id": obj.id,
+            "exercise_id": exercise.id,
+            "name": exercise.name,
+            "met_value": float(exercise.met_value),
+            "duration_minutes": duration,
+            "burned_calories": burned_calories,
         }

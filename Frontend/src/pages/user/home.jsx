@@ -25,7 +25,8 @@ import {
   MdOutlineRestaurant, 
   MdOutlineDinnerDining,
   MdOutlineCookie,
-  MdLocalFireDepartment
+  MdLocalFireDepartment,
+  MdOutlineFitnessCenter // Added for Exercise icon
 } from "react-icons/md";
 import { format, addDays, subDays, isSameDay } from "date-fns";
 import api from "../../lib/axios";
@@ -74,14 +75,16 @@ const Home = () => {
   const { user, profile: reduxProfile } = useSelector((state) => state.auth);
 
   const [currentDate, setCurrentDate] = useState(() => {
-  const savedDate = sessionStorage.getItem("selectedDate");
-  if (savedDate) {
-    const [year, month, day] = savedDate.split('-');
-    return new Date(year, month - 1, day);
-  }
-  return new Date();
-});
+    const savedDate = sessionStorage.getItem("selectedDate");
+    if (savedDate) {
+      const [year, month, day] = savedDate.split('-');
+      return new Date(year, month - 1, day);
+    }
+    return new Date();
+  });
+  
   const [dailyData, setDailyData] = useState(null);
+  const [exerciseData, setExerciseData] = useState(null); // Added state for exercise data
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   
@@ -113,16 +116,12 @@ const Home = () => {
   // Fetch Profile Data ONLY if not in Redux
   useEffect(() => {
     const fetchProfile = async () => {
-      // Skip if already loaded in Redux
       if (reduxProfile) return;
-      
       try {
         const response = await api.get("/api/profiles/me/");
-        // Cache in Redux for future use
         dispatch(setProfile(response.data));
       } catch (error) {
         console.error("Error fetching profile:", error);
-        // Profile might not exist yet, that's okay - we'll use defaults
       }
     };
     
@@ -137,13 +136,19 @@ const Home = () => {
     sessionStorage.setItem("selectedDate", dateStr);
   }, [currentDate]);
 
-  // Fetch Logs Helper
+  // Fetch Both Food and Exercise Logs
   const fetchDailyLogs = async () => {
     try {
-      if (!dailyData) setLoading(true); 
+      if (!dailyData && !exerciseData) setLoading(true); 
       const dateStr = format(currentDate, "yyyy-MM-dd");
-      const response = await api.get(`/api/tracking/logs/?date=${dateStr}`);
-      setDailyData(response.data);
+      
+      const [foodResponse, exerciseResponse] = await Promise.all([
+        api.get(`/api/tracking/logs/?date=${dateStr}`),
+        api.get(`/api/tracking/exercise-logs/?date=${dateStr}`)
+      ]);
+      
+      setDailyData(foodResponse.data);
+      setExerciseData(exerciseResponse.data);
     } catch (error) {
       console.error(error);
     } finally {
@@ -181,7 +186,6 @@ const Home = () => {
   };
 
   const handleDeleteLog = async (logId) => {
-    
     try {
       await api.delete(`/api/tracking/logs/${logId}/`);
       fetchDailyLogs(); 
@@ -192,6 +196,11 @@ const Home = () => {
 
   const stats = useMemo(() => {
     let totalConsumed = dailyData?.total_grant_calories || 0;
+    let totalBurned = exerciseData?.total_burned_calories || 0;
+    
+    // Net calories = Calories consumed minus calories burned
+    let netCalories = totalConsumed - totalBurned;
+    
     let totalProtein = 0;
     let totalCarbs = 0;
     let totalFat = 0;
@@ -210,8 +219,11 @@ const Home = () => {
       calories: {
         goal: GOAL_CALORIES,
         eaten: Math.round(totalConsumed),
-        left: Math.max(0, GOAL_CALORIES - Math.round(totalConsumed)),
-        percent: Math.min(100, (totalConsumed / GOAL_CALORIES) * 100)
+        burnt: Math.round(totalBurned),
+        // If netCalories is negative, you still have your full goal left
+        left: Math.max(0, GOAL_CALORIES - Math.round(netCalories)),
+        // Calculate circle percentage (bounded between 0 and 100)
+        percent: GOAL_CALORIES > 0 ? Math.max(0, Math.min(100, (netCalories / GOAL_CALORIES) * 100)) : 0
       },
       macros: {
         protein: Math.round(totalProtein),
@@ -219,7 +231,7 @@ const Home = () => {
         fat: Math.round(totalFat)
       }
     };
-  }, [dailyData, GOAL_CALORIES, GOAL_PROTEIN, GOAL_CARBS, GOAL_FAT]);
+  }, [dailyData, exerciseData, GOAL_CALORIES, GOAL_PROTEIN, GOAL_CARBS, GOAL_FAT]);
 
   const handleDateChange = (direction) => {
     setCurrentDate((prev) => direction === "prev" ? subDays(prev, 1) : addDays(prev, 1));
@@ -346,7 +358,7 @@ const Home = () => {
 
         <div className="bg-gray-50 border border-gray-100 rounded-2xl p-3.5 flex items-center gap-3 mb-6 focus-within:ring-2 focus-within:ring-blue-100 transition-all">
           <RiSearchLine className="text-gray-400 text-xl shrink-0" />
-          <input type="text" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} onKeyDown={handleSearch} placeholder="Search for food..." className="bg-transparent border-none outline-none w-full text-sm font-medium text-gray-700" />
+          <input type="text" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} onKeyDown={handleSearch} placeholder="Search for food or exercises..." className="bg-transparent border-none outline-none w-full text-sm font-medium text-gray-700" />
         </div>
 
         {/* Date Selector */}
@@ -356,7 +368,7 @@ const Home = () => {
           <button onClick={() => handleDateChange("next")} className="p-2 text-gray-400 hover:text-gray-600 active:scale-90 transition-transform"><RiArrowRightSLine className="text-xl" /></button>
         </div>
 
-        {/* --- ORIGINAL STATS SECTION --- */}
+        {/* --- STATS SECTION --- */}
         <div className="flex items-center gap-6">
           <div className="relative w-32 h-32 flex-shrink-0">
             <svg className="w-full h-full transform -rotate-90">
@@ -391,12 +403,14 @@ const Home = () => {
                  </div>
                  <span className="text-lg font-bold text-gray-800">{stats.calories.eaten}</span>
                </div>
+               
+               {/* Updated Burned Section */}
                <div className="bg-orange-50 rounded-xl p-2.5">
                  <div className="flex items-center gap-1 mb-1">
                    <MdLocalFireDepartment className="text-orange-500 text-xs" />
                    <span className="text-[10px] font-bold text-orange-700 uppercase">Burnt</span>
                  </div>
-                 <span className="text-lg font-bold text-gray-800">0</span>
+                 <span className="text-lg font-bold text-gray-800">{stats.calories.burnt}</span>
                </div>
             </div>
 
@@ -409,122 +423,181 @@ const Home = () => {
         </div>
       </div>
 
-      {/* --- INTERACTIVE FOOD LIST --- */}
+      {/* --- INTERACTIVE LIST --- */}
       <div className="px-4 space-y-4">
         {loading ? (
-          [1, 2, 3].map(i => <div key={i} className="h-28 bg-gray-200 rounded-2xl animate-pulse" />)
+          [1, 2, 3, 4].map(i => <div key={i} className="h-28 bg-gray-200 rounded-2xl animate-pulse" />)
         ) : (
-          mealSections.map((meal, index) => {
-            const data = getMealData(meal.id);
-            const MealIcon = meal.icon;
-            
-            return (
-              <div 
-                key={meal.id} 
-                className="bg-white rounded-2xl shadow-sm overflow-hidden border border-gray-100 transition-all duration-300 hover:shadow-md animate-fade-in-up"
-                style={{ animationDelay: `${300 + index * 100}ms` }}
-              >
-                <div className={`px-4 py-3 bg-gradient-to-r ${meal.gradient} border-b border-gray-100`}>
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className={`w-11 h-11 rounded-xl bg-gradient-to-br ${meal.iconBg} flex items-center justify-center shadow-sm`}>
-                        <MealIcon className="text-xl text-gray-700" />
+          <>
+            {/* Meal Sections */}
+            {mealSections.map((meal, index) => {
+              const data = getMealData(meal.id);
+              const MealIcon = meal.icon;
+              
+              return (
+                <div 
+                  key={meal.id} 
+                  className="bg-white rounded-2xl shadow-sm overflow-hidden border border-gray-100 transition-all duration-300 hover:shadow-md animate-fade-in-up"
+                  style={{ animationDelay: `${300 + index * 100}ms` }}
+                >
+                  <div className={`px-4 py-3 bg-gradient-to-r ${meal.gradient} border-b border-gray-100`}>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className={`w-11 h-11 rounded-xl bg-gradient-to-br ${meal.iconBg} flex items-center justify-center shadow-sm`}>
+                          <MealIcon className="text-xl text-gray-700" />
+                        </div>
+                        <div>
+                          <div className="text-sm font-bold text-gray-900">{meal.label}</div>
+                          <div className="text-xs text-gray-600 font-medium">
+                            {data.total_meal_calories > 0 ? `${data.total_meal_calories} kcal` : meal.time}
+                          </div>
+                        </div>
                       </div>
-                      <div>
-                        <div className="text-sm font-bold text-gray-900">{meal.label}</div>
-                        <div className="text-xs text-gray-600 font-medium">
-                          {data.total_meal_calories > 0 ? `${data.total_meal_calories} kcal` : meal.time}
+                      <button onClick={() => handleAddFood(meal.id)} className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center text-white hover:from-blue-600 hover:to-blue-700 shadow-md active:scale-95 transition-all">
+                        <IoMdAdd className="text-xl" />
+                      </button>
+                    </div>
+                  </div>
+
+                  {data.items.length > 0 ? (
+                    <div className="divide-y divide-gray-100">
+                      {data.items.map((item) => {
+                        const isExpanded = expandedId === item.id;
+                        const isEditing = editingId === item.id;
+                        
+                        return (
+                          <div key={item.id} className="transition-colors hover:bg-gray-50">
+                            {/* Main Row */}
+                            <div 
+                              onClick={() => toggleExpand(item.id)}
+                              className="px-4 py-3 flex items-start justify-between cursor-pointer"
+                            >
+                              <div className="flex-1 pr-2">
+                                <div className="text-sm font-bold text-gray-900">{item.food_details.name}</div>
+                                <div className="text-xs text-gray-500 mt-1 flex items-center gap-1.5 font-medium">
+                                  <span className="text-blue-600">{item.food_details.protein}g P</span>
+                                  <span className="text-gray-300">•</span>
+                                  <span className="text-purple-600">{item.food_details.carbohydrates}g C</span>
+                                  <span className="text-gray-300">•</span>
+                                  <span className="text-orange-600">{item.food_details.fat}g F</span>
+                                </div>
+                              </div>
+
+                              <div className="flex flex-col items-end gap-2" onClick={(e) => e.stopPropagation()}>
+                                <div className="flex items-baseline gap-1">
+                                  <span className="text-base font-black text-gray-900">{item.food_details.calories}</span>
+                                  <span className="text-[10px] font-bold text-gray-400">KCAL</span>
+                                </div>
+
+                                {isEditing ? (
+                                  <div className="flex items-center gap-1 bg-white border border-gray-200 rounded-lg p-0.5 shadow-sm">
+                                    <input 
+                                      type="number" 
+                                      value={editGrams} 
+                                      onChange={(e) => setEditGrams(e.target.value)}
+                                      className="w-12 text-center text-xs font-bold border-none outline-none"
+                                      autoFocus
+                                    />
+                                    <button onClick={() => handleUpdateLog(item.id)} className="p-1 text-green-600 hover:bg-green-50 rounded"><IoMdCheckmark /></button>
+                                    <button onClick={() => setEditingId(null)} className="p-1 text-gray-400 hover:bg-gray-100 rounded"><IoMdClose /></button>
+                                  </div>
+                                ) : (
+                                  <div className="flex items-center gap-1 bg-white border border-gray-100 rounded-lg p-1">
+                                    <div className="text-[10px] font-bold text-gray-600 px-1.5">{item.user_serving_grams}g</div>
+                                    <div className="w-px h-3 bg-gray-200"></div>
+                                    <button onClick={() => startEditing(item.id, item.user_serving_grams)} className="p-1 text-gray-400 hover:text-indigo-600 transition-colors"><IoMdCreate /></button>
+                                    <button onClick={() => handleDeleteLog(item.id)} className="p-1 text-gray-400 hover:text-red-500 transition-colors"><IoMdTrash /></button>
+                                    <button 
+                                      onClick={() => toggleExpand(item.id)} 
+                                      className={`p-1 text-gray-400 hover:text-indigo-600 transition-transform ${isExpanded ? 'rotate-180' : ''}`}
+                                    >
+                                      <IoIosArrowDown />
+                                    </button>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+
+                            {/* Expanded Details Section */}
+                            {isExpanded && !isEditing && (
+                              <div className="px-4 pb-4 pt-0 animate-fade-in">
+                                <div className="pt-3 border-t border-gray-100 grid grid-cols-4 gap-2">
+                                  <MacroPill label="Fiber" value={item.food_details.fiber || 0} theme="green" />
+                                  <MacroPill label="Sugar" value={item.food_details.sugar || 0} theme="orange" />
+                                  <MacroPill label="Sodium" value={item.food_details.sodium || 0} unit="mg" theme="blue" />
+                                  <MacroPill label="Sat. Fat" value={item.food_details.saturated_fat || 0} theme="purple" />
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <div className="px-4 py-6 text-center">
+                      <p className="text-xs text-gray-400 font-medium">No food logged yet</p>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+
+            {/* NEW: Exercise Section */}
+            <div 
+              className="bg-white rounded-2xl shadow-sm overflow-hidden border border-gray-100 transition-all duration-300 hover:shadow-md animate-fade-in-up"
+              style={{ animationDelay: `700ms` }}
+            >
+              <div className={`px-4 py-3 bg-gradient-to-r from-teal-50 to-teal-100/50 border-b border-gray-100`}>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className={`w-11 h-11 rounded-xl bg-gradient-to-br from-teal-100 to-teal-50 flex items-center justify-center shadow-sm`}>
+                      <MdOutlineFitnessCenter className="text-xl text-gray-700" />
+                    </div>
+                    <div>
+                      <div className="text-sm font-bold text-gray-900">Exercise</div>
+                      <div className="text-xs text-gray-600 font-medium">
+                        {exerciseData?.total_burned_calories > 0 
+                          ? `${exerciseData.total_burned_calories} kcal burnt` 
+                          : "Log your workout"}
+                      </div>
+                    </div>
+                  </div>
+                  <button onClick={() => navigate('/search')} className="w-10 h-10 rounded-full bg-gradient-to-br from-teal-500 to-teal-600 flex items-center justify-center text-white hover:from-teal-600 hover:to-teal-700 shadow-md active:scale-95 transition-all">
+                    <IoMdAdd className="text-xl" />
+                  </button>
+                </div>
+              </div>
+
+              {/* Display Logged Exercises */}
+              {exerciseData?.exercises?.length > 0 ? (
+                <div className="divide-y divide-gray-100">
+                  {exerciseData.exercises.map((ex) => (
+                    <div key={ex.log_id} className="px-4 py-3 flex items-center justify-between hover:bg-gray-50 transition-colors">
+                      <div className="flex-1 pr-2">
+                        <div className="text-sm font-bold text-gray-900">{ex.name}</div>
+                        <div className="text-xs text-gray-500 mt-1 font-medium flex items-center gap-1.5">
+                          <span className="text-teal-600">{ex.duration_minutes} mins</span>
+                          <span className="text-gray-300">•</span>
+                          <span>MET: {ex.met_value}</span>
+                        </div>
+                      </div>
+                      
+                      <div className="flex flex-col items-end gap-2">
+                        <div className="flex items-baseline gap-1">
+                          <span className="text-base font-black text-orange-600">{ex.burned_calories}</span>
+                          <span className="text-[10px] font-bold text-orange-400">KCAL</span>
                         </div>
                       </div>
                     </div>
-                    <button onClick={() => handleAddFood(meal.id)} className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center text-white hover:from-blue-600 hover:to-blue-700 shadow-md active:scale-95 transition-all">
-                      <IoMdAdd className="text-xl" />
-                    </button>
-                  </div>
+                  ))}
                 </div>
-
-                {data.items.length > 0 ? (
-                  <div className="divide-y divide-gray-100">
-                    {data.items.map((item) => {
-                      const isExpanded = expandedId === item.id;
-                      const isEditing = editingId === item.id;
-                      
-                      return (
-                        <div key={item.id} className="transition-colors hover:bg-gray-50">
-                          {/* Main Row */}
-                          <div 
-                            onClick={() => toggleExpand(item.id)}
-                            className="px-4 py-3 flex items-start justify-between cursor-pointer"
-                          >
-                            <div className="flex-1 pr-2">
-                              <div className="text-sm font-bold text-gray-900">{item.food_details.name}</div>
-                              <div className="text-xs text-gray-500 mt-1 flex items-center gap-1.5 font-medium">
-                                <span className="text-blue-600">{item.food_details.protein}g P</span>
-                                <span className="text-gray-300">•</span>
-                                <span className="text-purple-600">{item.food_details.carbohydrates}g C</span>
-                                <span className="text-gray-300">•</span>
-                                <span className="text-orange-600">{item.food_details.fat}g F</span>
-                              </div>
-                            </div>
-
-                            <div className="flex flex-col items-end gap-2" onClick={(e) => e.stopPropagation()}>
-                              <div className="flex items-baseline gap-1">
-                                <span className="text-base font-black text-gray-900">{item.food_details.calories}</span>
-                                <span className="text-[10px] font-bold text-gray-400">KCAL</span>
-                              </div>
-
-                              {isEditing ? (
-                                <div className="flex items-center gap-1 bg-white border border-gray-200 rounded-lg p-0.5 shadow-sm">
-                                  <input 
-                                    type="number" 
-                                    value={editGrams} 
-                                    onChange={(e) => setEditGrams(e.target.value)}
-                                    className="w-12 text-center text-xs font-bold border-none outline-none"
-                                    autoFocus
-                                  />
-                                  <button onClick={() => handleUpdateLog(item.id)} className="p-1 text-green-600 hover:bg-green-50 rounded"><IoMdCheckmark /></button>
-                                  <button onClick={() => setEditingId(null)} className="p-1 text-gray-400 hover:bg-gray-100 rounded"><IoMdClose /></button>
-                                </div>
-                              ) : (
-                                <div className="flex items-center gap-1 bg-white border border-gray-100 rounded-lg p-1">
-                                  <div className="text-[10px] font-bold text-gray-600 px-1.5">{item.user_serving_grams}g</div>
-                                  <div className="w-px h-3 bg-gray-200"></div>
-                                  <button onClick={() => startEditing(item.id, item.user_serving_grams)} className="p-1 text-gray-400 hover:text-indigo-600 transition-colors"><IoMdCreate /></button>
-                                  <button onClick={() => handleDeleteLog(item.id)} className="p-1 text-gray-400 hover:text-red-500 transition-colors"><IoMdTrash /></button>
-                                  <button 
-                                    onClick={() => toggleExpand(item.id)} 
-                                    className={`p-1 text-gray-400 hover:text-indigo-600 transition-transform ${isExpanded ? 'rotate-180' : ''}`}
-                                  >
-                                    <IoIosArrowDown />
-                                  </button>
-                                </div>
-                              )}
-                            </div>
-                          </div>
-
-                          {/* Expanded Details Section */}
-                          {isExpanded && !isEditing && (
-                            <div className="px-4 pb-4 pt-0 animate-fade-in">
-                              <div className="pt-3 border-t border-gray-100 grid grid-cols-4 gap-2">
-                                <MacroPill label="Fiber" value={item.food_details.fiber || 0} theme="green" />
-                                <MacroPill label="Sugar" value={item.food_details.sugar || 0} theme="orange" />
-                                <MacroPill label="Sodium" value={item.food_details.sodium || 0} unit="mg" theme="blue" />
-                                <MacroPill label="Sat. Fat" value={item.food_details.saturated_fat || 0} theme="purple" />
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
-                ) : (
-                  <div className="px-4 py-6 text-center">
-                    <p className="text-xs text-gray-400 font-medium">No food logged yet</p>
-                  </div>
-                )}
-              </div>
-            );
-          })
+              ) : (
+                <div className="px-4 py-6 text-center">
+                  <p className="text-xs text-gray-400 font-medium">No exercises logged yet</p>
+                </div>
+              )}
+            </div>
+          </>
         )}
       </div>
     </div>

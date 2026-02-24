@@ -274,12 +274,7 @@ const SearchPage = () => {
           <IoMdAdd className="text-3xl" />
         </button>
       ) : (
-        <button
-          onClick={() => navigate("/create-exercise")}
-          className="fixed bottom-6 right-4 w-14 h-14 bg-gradient-to-br from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white rounded-full shadow-2xl flex items-center justify-center transition-all hover:scale-110 active:scale-95 z-40"
-        >
-          <IoMdFitness className="text-3xl" />
-        </button>
+        <div></div>
       )}
 
       {/* --- RESTORED CREATE MENU (Without "Select Meal" Grid) --- */}
