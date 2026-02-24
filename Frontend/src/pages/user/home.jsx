@@ -26,7 +26,7 @@ import {
   MdOutlineDinnerDining,
   MdOutlineCookie,
   MdLocalFireDepartment,
-  MdOutlineFitnessCenter // Added for Exercise icon
+  MdOutlineFitnessCenter
 } from "react-icons/md";
 import { format, addDays, subDays, isSameDay } from "date-fns";
 import api from "../../lib/axios";
@@ -84,17 +84,21 @@ const Home = () => {
   });
   
   const [dailyData, setDailyData] = useState(null);
-  const [exerciseData, setExerciseData] = useState(null); // Added state for exercise data
+  const [exerciseData, setExerciseData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   
   const [showOptions, setShowOptions] = useState(false);
   const [showCamera, setShowCamera] = useState(false);
   
-  // Interactive State for Log Items
+  // Interactive State for Food Log Items
   const [editingId, setEditingId] = useState(null); 
   const [editGrams, setEditGrams] = useState(0);
   const [expandedId, setExpandedId] = useState(null);
+
+  // Interactive State for Exercise Log Items
+  const [editingExerciseId, setEditingExerciseId] = useState(null);
+  const [editDuration, setEditDuration] = useState(0);
   
   const fileInputRef = useRef(null);
   const videoRef = useRef(null);
@@ -160,8 +164,7 @@ const Home = () => {
     fetchDailyLogs();
   }, [currentDate]);
 
-  // --- ACTIONS ---
-
+  // --- ACTIONS FOR FOOD ---
   const startEditing = (logId, currentGrams) => {
     setEditingId(logId);
     setEditGrams(currentGrams);
@@ -194,6 +197,35 @@ const Home = () => {
     }
   };
 
+  // --- ACTIONS FOR EXERCISE ---
+  const startEditingExercise = (logId, currentDuration) => {
+    setEditingExerciseId(logId);
+    setEditDuration(currentDuration);
+  };
+
+  const handleUpdateExerciseLog = async (logId) => {
+    try {
+      // Using PUT (with partial data) as typical for this setup, or PATCH
+      await api.put(`/api/tracking/exercise-logs/${logId}/`, {
+        duration_minutes: parseFloat(editDuration)
+      });
+      setEditingExerciseId(null);
+      fetchDailyLogs(); 
+    } catch (error) {
+      console.error("Failed to update exercise log", error);
+      alert("Failed to update. Please try again.");
+    }
+  };
+
+  const handleDeleteExerciseLog = async (logId) => {
+    try {
+      await api.delete(`/api/tracking/exercise-logs/${logId}/`);
+      fetchDailyLogs(); 
+    } catch (error) {
+      console.error("Failed to delete exercise log", error);
+    }
+  };
+
   const stats = useMemo(() => {
     let totalConsumed = dailyData?.total_grant_calories || 0;
     let totalBurned = exerciseData?.total_burned_calories || 0;
@@ -220,9 +252,9 @@ const Home = () => {
         goal: GOAL_CALORIES,
         eaten: Math.round(totalConsumed),
         burnt: Math.round(totalBurned),
-        // If netCalories is negative, you still have your full goal left
-        left: Math.max(0, GOAL_CALORIES - Math.round(netCalories)),
-        // Calculate circle percentage (bounded between 0 and 100)
+        // Allows showing negative values
+        left: GOAL_CALORIES - Math.round(netCalories),
+        // Calculate circle percentage (bounded between 0 and 100 for SVG calculation)
         percent: GOAL_CALORIES > 0 ? Math.max(0, Math.min(100, (netCalories / GOAL_CALORIES) * 100)) : 0
       },
       macros: {
@@ -353,7 +385,23 @@ const Home = () => {
             <h1 className="text-xl font-bold text-gray-900">Hi, {displayName} 👋</h1>
             <p className="text-xs text-gray-500 font-medium mt-0.5">Let's hit your goals today!</p>
           </div>
-          <button onClick={handleMainButtonClick} className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center text-gray-700 hover:bg-gray-200 transition-colors shadow-sm"><RiCameraAiFill className="text-xl" /></button>
+          <div className="flex items-center gap-3">
+            <button onClick={handleMainButtonClick} className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center text-gray-700 hover:bg-gray-200 transition-colors shadow-sm">
+              <RiCameraAiFill className="text-xl" />
+            </button>
+            <button 
+              onClick={() => navigate('/profile/edit')} 
+              className="w-10 h-10 rounded-full overflow-hidden border-2 border-gray-100 bg-blue-50 shadow-sm active:scale-95 transition-transform"
+            >
+              {profile?.photo ? (
+                <img src={profile.photo} alt="Profile" className="w-full h-full object-cover" />
+              ) : (
+                <div className="w-full h-full text-blue-600 flex items-center justify-center font-bold text-lg">
+                  {displayName.charAt(0).toUpperCase()}
+                </div>
+              )}
+            </button>
+          </div>
         </div>
 
         <div className="bg-gray-50 border border-gray-100 rounded-2xl p-3.5 flex items-center gap-3 mb-6 focus-within:ring-2 focus-within:ring-blue-100 transition-all">
@@ -375,7 +423,8 @@ const Home = () => {
               <circle cx="64" cy="64" r={radius} stroke="#f3f4f6" strokeWidth="8" fill="none" />
               <circle
                 cx="64" cy="64" r={radius}
-                stroke="url(#gradient)" strokeWidth="8" fill="none"
+                stroke={stats.calories.left < 0 ? "#ef4444" : "url(#gradient)"} 
+                strokeWidth="8" fill="none"
                 strokeDasharray={circumference}
                 strokeDashoffset={strokeDashoffset}
                 strokeLinecap="round"
@@ -389,7 +438,9 @@ const Home = () => {
               </defs>
             </svg>
             <div className="absolute inset-0 flex flex-col items-center justify-center">
-              <span className="text-2xl font-bold text-gray-800">{stats.calories.left}</span>
+              <span className={`text-2xl font-bold ${stats.calories.left < 0 ? 'text-red-500' : 'text-gray-800'}`}>
+                {stats.calories.left}
+              </span>
               <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Left</span>
             </div>
           </div>
@@ -542,7 +593,7 @@ const Home = () => {
               );
             })}
 
-            {/* NEW: Exercise Section */}
+            {/* Exercise Section */}
             <div 
               className="bg-white rounded-2xl shadow-sm overflow-hidden border border-gray-100 transition-all duration-300 hover:shadow-md animate-fade-in-up"
               style={{ animationDelay: `700ms` }}
@@ -571,25 +622,48 @@ const Home = () => {
               {/* Display Logged Exercises */}
               {exerciseData?.exercises?.length > 0 ? (
                 <div className="divide-y divide-gray-100">
-                  {exerciseData.exercises.map((ex) => (
-                    <div key={ex.log_id} className="px-4 py-3 flex items-center justify-between hover:bg-gray-50 transition-colors">
-                      <div className="flex-1 pr-2">
-                        <div className="text-sm font-bold text-gray-900">{ex.name}</div>
-                        <div className="text-xs text-gray-500 mt-1 font-medium flex items-center gap-1.5">
-                          <span className="text-teal-600">{ex.duration_minutes} mins</span>
-                          <span className="text-gray-300">•</span>
-                          <span>MET: {ex.met_value}</span>
+                  {exerciseData.exercises.map((ex) => {
+                    const isEditingExercise = editingExerciseId === ex.log_id;
+
+                    return (
+                      <div key={ex.log_id} className="px-4 py-3 flex items-center justify-between hover:bg-gray-50 transition-colors">
+                        <div className="flex-1 pr-2">
+                          <div className="text-sm font-bold text-gray-900">{ex.name}</div>
+                          <div className="text-xs text-gray-500 mt-1 font-medium flex items-center gap-1.5">
+                            <span className="text-teal-600">MET: {ex.met_value}</span>
+                          </div>
+                        </div>
+                        
+                        <div className="flex flex-col items-end gap-2">
+                          <div className="flex items-baseline gap-1">
+                            <span className="text-base font-black text-orange-600">{ex.burned_calories}</span>
+                            <span className="text-[10px] font-bold text-orange-400">KCAL</span>
+                          </div>
+
+                          {isEditingExercise ? (
+                            <div className="flex items-center gap-1 bg-white border border-gray-200 rounded-lg p-0.5 shadow-sm">
+                              <input 
+                                type="number" 
+                                value={editDuration} 
+                                onChange={(e) => setEditDuration(e.target.value)}
+                                className="w-12 text-center text-xs font-bold border-none outline-none text-teal-700"
+                                autoFocus
+                              />
+                              <button onClick={() => handleUpdateExerciseLog(ex.log_id)} className="p-1 text-green-600 hover:bg-green-50 rounded"><IoMdCheckmark /></button>
+                              <button onClick={() => setEditingExerciseId(null)} className="p-1 text-gray-400 hover:bg-gray-100 rounded"><IoMdClose /></button>
+                            </div>
+                          ) : (
+                            <div className="flex items-center gap-1 bg-white border border-gray-100 rounded-lg p-1">
+                              <div className="text-[10px] font-bold text-teal-700 px-1.5">{ex.duration_minutes}m</div>
+                              <div className="w-px h-3 bg-gray-200"></div>
+                              <button onClick={() => startEditingExercise(ex.log_id, ex.duration_minutes)} className="p-1 text-gray-400 hover:text-indigo-600 transition-colors"><IoMdCreate /></button>
+                              <button onClick={() => handleDeleteExerciseLog(ex.log_id)} className="p-1 text-gray-400 hover:text-red-500 transition-colors"><IoMdTrash /></button>
+                            </div>
+                          )}
                         </div>
                       </div>
-                      
-                      <div className="flex flex-col items-end gap-2">
-                        <div className="flex items-baseline gap-1">
-                          <span className="text-base font-black text-orange-600">{ex.burned_calories}</span>
-                          <span className="text-[10px] font-bold text-orange-400">KCAL</span>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               ) : (
                 <div className="px-4 py-6 text-center">

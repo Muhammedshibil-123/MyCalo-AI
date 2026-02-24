@@ -394,3 +394,60 @@ class ExerciseLogListView(views.APIView):
                 response_data["total_burned_calories"] += ex_details["burned_calories"]
 
         return Response(response_data, status=status.HTTP_200_OK)
+    
+
+class ExerciseLogDetailView(views.APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    @swagger_auto_schema(
+        operation_description="Update an exercise log (e.g. change duration).",
+        tags=["Exercise Logs"],
+        request_body=openapi.Schema(
+            type=openapi.TYPE_OBJECT,
+            properties={
+                "duration_minutes": openapi.Schema(type=openapi.TYPE_INTEGER),
+                "date": openapi.Schema(type=openapi.TYPE_STRING, format="date"),
+            }
+        ),
+        responses={200: "Updated successfully", 404: "Not found"}
+    )
+    def put(self, request, pk):
+        try:
+            
+            log = ExerciseLog.objects.get(pk=pk, user=request.user)
+        except ExerciseLog.DoesNotExist:
+            return Response(
+                {"error": "Exercise log not found"}, 
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        
+        serializer = ExerciseLogSerializer(log, data=request.data, partial=True)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(
+                {"message": "Exercise log updated successfully", "data": serializer.data}, 
+                status=status.HTTP_200_OK
+            )
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    @swagger_auto_schema(
+        operation_description="Delete an exercise log.",
+        tags=["Exercise Logs"],
+        responses={204: "Deleted successfully", 404: "Not found"}
+    )
+    def delete(self, request, pk):
+        try:
+            
+            log = ExerciseLog.objects.get(pk=pk, user=request.user)
+        except ExerciseLog.DoesNotExist:
+            return Response(
+                {"error": "Exercise log not found"}, 
+                status=status.HTTP_404_NOT_FOUND
+            )
+        
+        log.delete()
+        return Response(
+            {"message": "Exercise log deleted successfully", "success": True}, 
+            status=status.HTTP_204_NO_CONTENT
+        )
