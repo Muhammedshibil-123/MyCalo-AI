@@ -10,31 +10,53 @@ const Consult = () => {
   const { user } = useSelector((state) => state.auth);
   
   const [doctors, setDoctors] = useState([]);
+  const [userProfile, setUserProfile] = useState(null);
   const [loading, setLoading] = useState(true);
+  
+  // 1. Add state for the search query
+  const [searchQuery, setSearchQuery] = useState('');
 
   useEffect(() => {
-    const fetchDoctors = async () => {
+    const fetchData = async () => {
       try {
-        const response = await api.get('/api/users/doctors/');
-        setDoctors(response.data);
+        const [doctorsRes, profileRes] = await Promise.all([
+          api.get('/api/users/doctors/'),
+          api.get('/api/profiles/me/').catch(() => ({ data: null })) 
+        ]);
+        
+        setDoctors(doctorsRes.data);
+        if (profileRes.data) {
+          setUserProfile(profileRes.data);
+        }
       } catch (error) {
-        console.error("Error fetching doctors:", error);
+        console.error("Error fetching data:", error);
       } finally {
         setLoading(false);
       }
     };
-    if (user) fetchDoctors();
+
+    if (user) {
+      fetchData();
+    }
   }, [user]);
 
   const handleDoctorSelect = (doctor) => {
     navigate('/chat', { state: { doctor } });
   };
 
-  // Helper to get image URL (Cloudinary path logic)
   const getImageUrl = (path) => {
     if (!path) return null;
     return path.startsWith('http') ? path : `https://res.cloudinary.com/${import.meta.env.VITE_CLOUDINARY_CLOUD_NAME}/${path}`;
   };
+
+  // 2. Filter doctors based on the search query (by specialization or name)
+  const filteredDoctors = doctors.filter((doc) => {
+    const query = searchQuery.toLowerCase();
+    const specialization = doc.doctor_profile?.specialization?.toLowerCase() || "";
+    const name = doc.username?.toLowerCase() || "";
+    
+    return specialization.includes(query) || name.includes(query);
+  });
 
   return (
     <div className="min-h-screen bg-gray-50 md:p-6">
@@ -47,15 +69,15 @@ const Consult = () => {
             <p className="text-xs text-gray-500 font-medium uppercase tracking-wider">Expert medical advice</p>
           </div>
           
-          {/* User Profile Avatar - Redirects to Edit */}
+          {/* User Profile Avatar */}
           <button 
             onClick={() => navigate('/profile/edit')}
             className="relative group transition-transform active:scale-95"
           >
-            <div className="w-10 h-10 rounded-full border-2 border-blue-100 p-0.5 group-hover:border-blue-500 transition-colors">
-              {user?.profile_image ? (
+            <div className="w-12 h-12 rounded-full border-2 border-blue-100 p-0.5 group-hover:border-blue-500 transition-colors">
+              {userProfile?.photo_url || userProfile?.photo ? (
                 <img 
-                  src={getImageUrl(user.profile_image)} 
+                  src={userProfile.photo_url || getImageUrl(userProfile.photo)} 
                   alt="Profile" 
                   className="w-full h-full rounded-full object-cover" 
                 />
@@ -68,14 +90,16 @@ const Consult = () => {
           </button>
         </div>
 
-        {/* Search Bar (UI Only) */}
+        {/* Search Bar */}
         <div className="px-5 py-3">
           <div className="relative">
             <FiSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
             <input 
               type="text" 
-              placeholder="Search by specialization..." 
-              className="w-full pl-10 pr-4 py-2 bg-gray-100 border-none rounded-xl text-sm focus:ring-2 focus:ring-blue-500/20 transition-all"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search by specialization or name..." 
+              className="w-full pl-10 pr-4 py-2 bg-gray-100 border-none outline-none rounded-xl text-sm focus:ring-2 focus:ring-blue-500/20 transition-all"
             />
           </div>
         </div>
@@ -90,10 +114,11 @@ const Consult = () => {
           ) : (
             <div className="space-y-1 pb-20">
               <AnimatePresence>
-                {doctors.map((doc, index) => {
+                {/* 3. Map over filteredDoctors instead of all doctors */}
+                {filteredDoctors.map((doc, index) => {
                   const profile = doc.doctor_profile;
-                  const displayName = profile?.name ? `Dr. ${profile.name}` : `Dr. ${doc.username}`;
-                  const photoUrl = getImageUrl(profile?.photo);
+                  const displayName = `Dr. ${doc.username}`;
+                  const photoUrl = profile?.photo_url || getImageUrl(profile?.photo);
 
                   return (
                     <motion.div
@@ -126,9 +151,11 @@ const Consult = () => {
                           {displayName}
                         </h3>
                         <div className="flex items-center gap-2 mt-0.5">
-                          <span className="text-sm font-medium text-blue-600 bg-blue-50 px-2 py-0.5 rounded-md">
-                            {profile?.specialization || "General Physician"}
-                          </span>
+                          {profile?.specialization && (
+                            <span className="text-sm font-medium text-blue-600 bg-blue-50 px-2 py-0.5 rounded-md">
+                              {profile.specialization}
+                            </span>
+                          )}
                           {profile?.qualification && (
                             <span className="text-[11px] text-gray-400 font-bold border border-gray-200 px-1.5 rounded uppercase">
                               {profile.qualification}
@@ -150,17 +177,24 @@ const Consult = () => {
                 })}
               </AnimatePresence>
 
-              {doctors.length === 0 && (
+              {/* 4. Show a nice message if no doctors match the search */}
+              {filteredDoctors.length === 0 && (
                 <motion.div 
                   initial={{ opacity: 0 }} 
                   animate={{ opacity: 1 }}
                   className="flex flex-col items-center justify-center p-12 text-center"
                 >
                   <div className="w-24 h-24 bg-gray-50 rounded-full flex items-center justify-center mb-4 border border-dashed border-gray-200">
-                    <FiActivity size={40} className="text-gray-300" />
+                    <FiSearch size={40} className="text-gray-300" />
                   </div>
-                  <h3 className="text-gray-900 font-semibold">No Doctors Available</h3>
-                  <p className="text-sm text-gray-500 mt-2 max-w-[200px]">We couldn't find any specialists online right now.</p>
+                  <h3 className="text-gray-900 font-semibold">
+                    {doctors.length === 0 ? "No Doctors Available" : "No matches found"}
+                  </h3>
+                  <p className="text-sm text-gray-500 mt-2 max-w-[200px]">
+                    {doctors.length === 0 
+                      ? "We couldn't find any specialists online right now."
+                      : `We couldn't find any doctors matching "${searchQuery}".`}
+                  </p>
                 </motion.div>
               )}
             </div>

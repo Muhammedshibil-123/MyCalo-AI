@@ -1,6 +1,6 @@
 from rest_framework import serializers
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
-from apps.profiles.models import DoctorProfile
+from apps.profiles.serializers import DoctorProfileSerializer
 
 from .models import CustomUser
 
@@ -67,14 +67,6 @@ class VerifyOTPSerializer(serializers.Serializer):
     email = serializers.EmailField()
     otp = serializers.CharField(max_length=6)
 
-
-class DoctorProfileSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = DoctorProfile
-        fields = [
-            'name', 'photo', 'specialization', 'qualification', 
-            'experience_years', 'bio', 'clinic_address'
-        ]
 
 class UserSerializer(serializers.ModelSerializer):
 
