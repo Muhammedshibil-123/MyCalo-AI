@@ -21,10 +21,10 @@ class Profile(models.Model):
     user = models.OneToOneField(
         settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="profile"
     )
-    # aws_
+    
     fcm_token = models.TextField(null=True, blank=True)
 
-    # Basic Stats
+    
     name = models.CharField(max_length=120, blank=True, default="")
     photo = CloudinaryField("image", blank=True, null=True)
     age = models.IntegerField(null=True, blank=True)
@@ -70,3 +70,42 @@ class WeightHistory(models.Model):
 
     def __str__(self):
         return f"{self.user.username} - {self.weight}kg on {self.date}"
+
+
+
+
+class DoctorProfile(models.Model):
+    user = models.OneToOneField(
+        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="doctor_profile"
+    )
+    name = models.CharField(max_length=120)
+    photo = CloudinaryField("image", blank=True, null=True)
+    specialization = models.CharField(max_length=255)
+    qualification = models.CharField(max_length=255)  
+    experience_years = models.PositiveIntegerField(default=0)
+    bio = models.TextField(blank=True, null=True)
+    contact_email = models.EmailField(blank=True, null=True)
+    clinic_address = models.TextField(blank=True, null=True)
+    
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"Dr. {self.name} ({self.specialization})"
+
+class EmployeeProfile(models.Model):
+    user = models.OneToOneField(
+        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="employee_profile"
+    )
+    name = models.CharField(max_length=120)
+    photo = CloudinaryField("image", blank=True, null=True)
+    department = models.CharField(max_length=100)
+    designation = models.CharField(max_length=100) 
+    employee_id = models.CharField(max_length=50, unique=True)
+    education = models.CharField(max_length=255)
+    joining_date = models.DateField(null=True, blank=True)
+    
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"{self.name} - {self.designation}"
