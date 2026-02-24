@@ -379,7 +379,7 @@ class DoctorListView(ListAPIView):
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        return CustomUser.objects.filter(role="doctor")
+        return CustomUser.objects.filter(role="doctor").select_related('doctor_profile')
 
 
 class UserDetailView(generics.RetrieveUpdateDestroyAPIView):
