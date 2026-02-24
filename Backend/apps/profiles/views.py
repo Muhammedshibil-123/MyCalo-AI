@@ -35,7 +35,7 @@ class WeightHistoryView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        history = WeightHistory.objects.filter(user=request.user).order_by("date")
+        history = WeightHistory.objects.filter(user=request.user)
         serializer = WeightHistorySerializer(history, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
 

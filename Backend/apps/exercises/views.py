@@ -120,3 +120,24 @@ class AdminExerciseVerifyView(APIView):
 
         serializer = ExerciseSerializer(exercise)
         return Response(serializer.data)
+
+
+class ExerciseDetailView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_object(self, pk):
+        try:
+            return Exercise.objects.get(pk=pk)
+        except Exercise.DoesNotExist:
+            return None
+
+    def get(self, request, pk):
+        exercise = self.get_object(pk)
+        if not exercise:
+            return Response(
+                {"error": "Exercise not found"}, 
+                status=status.HTTP_404_NOT_FOUND
+            )
+        
+        serializer = ExerciseSerializer(exercise)
+        return Response(serializer.data, status=status.HTTP_200_OK)

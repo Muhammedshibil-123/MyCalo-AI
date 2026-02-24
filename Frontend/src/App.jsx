@@ -47,6 +47,7 @@ import PatientAIChat from './pages/doctor/PatientAIChat';
 import PatientHistory from './pages/doctor/PatientHistory';
 import HelpSupport from './pages/user/HelpSupport';
 import TermsConditions from './pages/user/TermsConditions';
+import ExerciseDetail from './pages/user/ExerciseDetail';
 
 const getHomeRouteForRole = (role) => {
     if (role === 'admin' || role === 'employee') return '/admin/dashboard';
@@ -192,6 +193,7 @@ function App() {
                         <Route path="/ai-chat" element={<ChatAI />} />
                         <Route path="/help-support" element={<HelpSupport />} />
                         <Route path="/terms-conditions" element={<TermsConditions />} />
+                        <Route path="/exercise/:id" element={<ExerciseDetail />} />
                     </Route>
 
                     <Route element={<RoleRoute allowedRoles={['admin', 'employee']} />}>

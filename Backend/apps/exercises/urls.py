@@ -5,9 +5,11 @@ from .views import (
     AdminExerciseListView,
     AdminExerciseVerifyView,
     CreateExerciseView,
+    ExerciseDetailView
 )
 
 urlpatterns = [
+    path("<int:pk>/", ExerciseDetailView.as_view(), name="exercise-detail"),
     path("create/", CreateExerciseView.as_view(), name="create-exercise"),
     path("admin/manage/", AdminExerciseListView.as_view(), name="admin-exercise-list"),
     path(
