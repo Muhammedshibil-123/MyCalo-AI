@@ -10,6 +10,12 @@ import {
   IoMdInformationCircle
 } from 'react-icons/io';
 import { RiCameraAiFill, RiSparklingFill } from 'react-icons/ri';
+import { 
+  MdOutlineFastfood, 
+  MdOutlineRestaurant, 
+  MdOutlineDinnerDining,
+  MdOutlineCookie
+} from "react-icons/md";
 import api from '../../lib/axios';
 import { AiOutlineLoading3Quarters } from "react-icons/ai";
 
@@ -54,6 +60,7 @@ const ResultsView = ({ initialData, navigate }) => {
   const [aiText, setAiText] = useState("");
   const [isThinking, setIsThinking] = useState(true);
   const [isLogging, setIsLogging] = useState(false);
+  const [showMealModal, setShowMealModal] = useState(false);
   
   // State for Interactions
   const [editingIndex, setEditingIndex] = useState(null);
@@ -120,13 +127,25 @@ const ResultsView = ({ initialData, navigate }) => {
     }
   };
 
-  const handleAddToLog = async () => {
-    if (data.items.length === 0) return;
+  const executeLog = async (selectedMeal) => {
     setIsLogging(true);
+    setShowMealModal(false);
     
-    // Retrieve context from Session Storage
-    const selectedMeal = sessionStorage.getItem("selectedMeal") || "SNACK";
-    const selectedDate = sessionStorage.getItem("selectedDate") || new Date().toISOString().split('T')[0];
+    // Accurately parse the date without timezone shifts
+    let finalDate = "";
+    const storedDate = sessionStorage.getItem("selectedDate");
+    
+    if (storedDate) {
+      // If the stored date has a timestamp (e.g., "2024-10-22T18:30:00.000Z"), extract just the YYYY-MM-DD
+      finalDate = storedDate.split('T')[0]; 
+    } else {
+      // Create local YYYY-MM-DD avoiding the UTC shift of toISOString()
+      const now = new Date();
+      const year = now.getFullYear();
+      const month = String(now.getMonth() + 1).padStart(2, '0');
+      const day = String(now.getDate()).padStart(2, '0');
+      finalDate = `${year}-${month}-${day}`;
+    }
 
     // UX Delay
     await new Promise(r => setTimeout(r, 800));
@@ -134,7 +153,7 @@ const ResultsView = ({ initialData, navigate }) => {
     try {
       const payload = {
         meal_type: selectedMeal.toUpperCase(), 
-        date: selectedDate,
+        date: finalDate, // Using the strictly formatted date string
         items: data.items,
         overall_suggestion: data.overall_suggestion
       };
@@ -148,6 +167,31 @@ const ResultsView = ({ initialData, navigate }) => {
       setIsLogging(false);
     }
   };
+
+  const handleAddToLog = () => {
+    if (data.items.length === 0) return;
+    
+    // Check if meal type is in Session Storage
+    const storedMeal = sessionStorage.getItem("selectedMeal");
+    
+    if (storedMeal) {
+      executeLog(storedMeal);
+    } else {
+      setShowMealModal(true);
+    }
+  };
+
+  const handleSelectMeal = (mealId) => {
+    sessionStorage.setItem("selectedMeal", mealId);
+    executeLog(mealId);
+  };
+
+  const mealOptions = [
+    { id: "BREAKFAST", label: "Breakfast", icon: MdOutlineFastfood, color: "text-orange-500", bg: "bg-orange-50" },
+    { id: "LUNCH", label: "Lunch", icon: MdOutlineRestaurant, color: "text-blue-500", bg: "bg-blue-50" },
+    { id: "DINNER", label: "Dinner", icon: MdOutlineDinnerDining, color: "text-purple-500", bg: "bg-purple-50" },
+    { id: "SNACK", label: "Snack", icon: MdOutlineCookie, color: "text-green-500", bg: "bg-green-50" },
+  ];
 
   return (
     <div className="space-y-6 animate-fade-in-up">
@@ -233,7 +277,7 @@ const ResultsView = ({ initialData, navigate }) => {
                       {/* Controls Row - Prevents Expand on Click */}
                       <div 
                         className="flex items-center gap-1 bg-gray-50 rounded-xl p-1 border border-gray-100"
-                        onClick={(e) => e.stopPropagation()} // Important: Stops card from expanding when clicking controls
+                        onClick={(e) => e.stopPropagation()} 
                       >
                         {editingIndex === idx ? (
                           <div className="flex items-center gap-1">
@@ -346,6 +390,45 @@ const ResultsView = ({ initialData, navigate }) => {
           )}
         </button>
       </div>
+
+      {/* 4. Meal Selection Modal */}
+      {showMealModal && (
+        <div 
+          onClick={() => setShowMealModal(false)} 
+          className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center bg-black/40 backdrop-blur-sm p-4 animate-fade-in"
+        >
+          <div 
+            onClick={(e) => e.stopPropagation()} 
+            className="bg-white w-full max-w-sm rounded-3xl p-6 shadow-2xl space-y-4 animate-fade-in-up"
+          >
+            <h3 className="text-lg font-bold text-gray-800 text-center mb-4">Select Meal Type</h3>
+            <div className="grid grid-cols-2 gap-3">
+              {mealOptions.map((meal) => {
+                const Icon = meal.icon;
+                return (
+                  <button 
+                    key={meal.id}
+                    onClick={() => handleSelectMeal(meal.id)}
+                    className={`flex flex-col items-center justify-center gap-2 p-4 rounded-2xl border border-transparent hover:border-gray-200 ${meal.bg} transition-all active:scale-95`}
+                  >
+                    <div className={`w-12 h-12 bg-white rounded-full flex items-center justify-center shadow-sm ${meal.color}`}>
+                      <Icon className="text-2xl" />
+                    </div>
+                    <span className="font-bold text-gray-700 text-sm">{meal.label}</span>
+                  </button>
+                );
+              })}
+            </div>
+            <button 
+              onClick={() => setShowMealModal(false)} 
+              className="w-full mt-2 py-3.5 rounded-xl font-bold text-gray-500 hover:bg-gray-100 transition-colors"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 };

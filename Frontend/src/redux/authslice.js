@@ -3,6 +3,7 @@ import { createSlice } from '@reduxjs/toolkit';
 const initialState = {
   user: null,
   accessToken: null,
+  profile: null,       // Added profile cache
   isAuthenticated: false,
   loading: true,       // For initial app-wide auth check
   loadingCount: 0,     // For background API calls
@@ -19,9 +20,13 @@ const authSlice = createSlice({
       state.isAuthenticated = true;
       state.loading = false;
     },
+    setProfile: (state, action) => {
+      state.profile = action.payload;
+    },
     logout: (state) => {
       state.user = null;
       state.accessToken = null;
+      state.profile = null;
       state.isAuthenticated = false;
       state.loading = false;
     },
@@ -38,5 +43,5 @@ const authSlice = createSlice({
   },
 });
 
-export const { setCredentials, logout, finishInitialLoad, startFetching, stopFetching } = authSlice.actions;
+export const { setCredentials, setProfile, logout, finishInitialLoad, startFetching, stopFetching } = authSlice.actions;
 export default authSlice.reducer;

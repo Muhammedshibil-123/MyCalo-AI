@@ -1,6 +1,8 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import api from "../../lib/axios";
 import { useNavigate } from "react-router-dom";
+import { useDispatch } from "react-redux";
+import { setProfile } from "../../redux/authslice";
 import {
   RiArrowLeftLine,
   RiCameraFill,
@@ -15,12 +17,13 @@ import {
 
 export default function ProfileEdit() {
   const navigate = useNavigate();
+  const dispatch = useDispatch();
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
-  const [profile, setProfile] = useState(null);
+  const [profile, setProfileLocal] = useState(null);
 
   // Form fields
   const [name, setName] = useState("");
@@ -52,7 +55,7 @@ export default function ProfileEdit() {
     const res = await api.get("/api/profiles/me/");
     const data = res.data;
 
-    setProfile(data);
+    setProfileLocal(data);
 
     setName(data?.name ?? "");
     setAge(data?.age ?? "");
@@ -71,7 +74,10 @@ export default function ProfileEdit() {
       carbs: data?.carbs_goal ?? 0,
       fats: data?.fats_goal ?? 0,
     });
-  }, []);
+
+    // ✅ Update Redux cache whenever we fetch profile
+    dispatch(setProfile(data));
+  }, [dispatch]);
 
   useEffect(() => {
     let active = true;
@@ -130,7 +136,20 @@ export default function ProfileEdit() {
       });
 
       // Refetch from backend to get the real Cloudinary URL and fresh calculations
-      await fetchProfile();
+      const response = await api.get("/api/profiles/me/");
+      
+      // ✅ Update Redux cache with fresh data
+      dispatch(setProfile(response.data));
+      
+      // Update local state
+      setProfileLocal(response.data);
+      setPhotoPreview(response.data?.photo_url || response.data?.photo || null);
+      setMacros({
+        calories: response.data?.daily_calorie_goal ?? 0,
+        protein: response.data?.protein_goal ?? 0,
+        carbs: response.data?.carbs_goal ?? 0,
+        fats: response.data?.fats_goal ?? 0,
+      });
     } catch (e) {
       console.log(e);
       setError("Failed to upload photo automatically.");
@@ -161,7 +180,19 @@ export default function ProfileEdit() {
       });
 
       // Refetch data after save (instant update without full reload)
-      await fetchProfile();
+      const response = await api.get("/api/profiles/me/");
+      
+      // ✅ Update Redux cache with fresh data
+      dispatch(setProfile(response.data));
+      
+      // Update local state
+      setProfileLocal(response.data);
+      setMacros({
+        calories: response.data?.daily_calorie_goal ?? 0,
+        protein: response.data?.protein_goal ?? 0,
+        carbs: response.data?.carbs_goal ?? 0,
+        fats: response.data?.fats_goal ?? 0,
+      });
     } catch (e2) {
       console.log(e2);
       const data = e2?.response?.data;

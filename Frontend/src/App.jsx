@@ -66,7 +66,7 @@ const DelayedLoader = ({ isLoading }) => {
         if (isLoading) {
             timeout = setTimeout(() => {
                 setShow(true);
-            }, 10);
+            }, 200);
         } else {
             setShow(false);
         }

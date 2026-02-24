@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import { useSelector } from "react-redux";
+import { useSelector, useDispatch } from "react-redux";
+import { setProfile } from "../../redux/authslice";
 import { 
   RiCameraAiFill, 
   RiSearchLine,
@@ -69,9 +70,17 @@ const MacroPill = ({ label, value, unit="g", theme }) => {
 
 const Home = () => {
   const navigate = useNavigate();
-  const { user } = useSelector((state) => state.auth);
+  const dispatch = useDispatch();
+  const { user, profile: reduxProfile } = useSelector((state) => state.auth);
 
-  const [currentDate, setCurrentDate] = useState(new Date());
+  const [currentDate, setCurrentDate] = useState(() => {
+  const savedDate = sessionStorage.getItem("selectedDate");
+  if (savedDate) {
+    const [year, month, day] = savedDate.split('-');
+    return new Date(year, month - 1, day);
+  }
+  return new Date();
+});
   const [dailyData, setDailyData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
@@ -84,13 +93,13 @@ const Home = () => {
   const [editGrams, setEditGrams] = useState(0);
   const [expandedId, setExpandedId] = useState(null);
   
-  // Profile State for Goals and Name
-  const [profile, setProfile] = useState(null);
-  
   const fileInputRef = useRef(null);
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
   const streamRef = useRef(null);
+
+  // Use profile from Redux (cached)
+  const profile = reduxProfile;
 
   // Use profile goals if available, otherwise use defaults
   const GOAL_CALORIES = profile?.daily_calorie_goal || 0;
@@ -101,22 +110,26 @@ const Home = () => {
   // Get display name - prioritize profile name over username
   const displayName = profile?.name || user?.username || "User";
 
-  // Fetch Profile Data
+  // Fetch Profile Data ONLY if not in Redux
   useEffect(() => {
     const fetchProfile = async () => {
+      // Skip if already loaded in Redux
+      if (reduxProfile) return;
+      
       try {
         const response = await api.get("/api/profiles/me/");
-        setProfile(response.data);
+        // Cache in Redux for future use
+        dispatch(setProfile(response.data));
       } catch (error) {
         console.error("Error fetching profile:", error);
         // Profile might not exist yet, that's okay - we'll use defaults
       }
     };
     
-    if (user) {
+    if (user && !reduxProfile) {
       fetchProfile();
     }
-  }, [user]);
+  }, [user, reduxProfile, dispatch]);
 
   // Sync Date to Session Storage
   useEffect(() => {
@@ -128,7 +141,7 @@ const Home = () => {
   const fetchDailyLogs = async () => {
     try {
       if (!dailyData) setLoading(true); 
-      const dateStr = currentDate.toISOString().split("T")[0];
+      const dateStr = format(currentDate, "yyyy-MM-dd");
       const response = await api.get(`/api/tracking/logs/?date=${dateStr}`);
       setDailyData(response.data);
     } catch (error) {

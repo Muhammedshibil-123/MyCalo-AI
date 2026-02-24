@@ -22,6 +22,7 @@ const Profile = () => {
 
   const handleLogout = async () => {
     try {
+      sessionStorage.clear();
       await api.post("/api/users/logout/");
     } catch (error) {
       console.error("Logout failed", error);
