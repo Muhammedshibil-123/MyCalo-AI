@@ -103,15 +103,16 @@ const Questionnaire = () => {
 
   // Steps:
   // 0 Intro
-  // 1 Gender
-  // 2 Age
-  // 3 Height
-  // 4 Current Weight
-  // 5 Activity
-  // 6 Goal
-  // 7 Target Weight (new)
-  // 8 Medical Conditions (new)
-  // 9 Final Calculating (Animations)
+  // 1 Name (new)
+  // 2 Gender
+  // 3 Age
+  // 4 Height
+  // 5 Current Weight
+  // 6 Activity
+  // 7 Goal
+  // 8 Target Weight
+  // 9 Medical Conditions
+  // 10 Final Calculating (Animations)
   const [step, setStep] = useState(0);
   const [direction, setDirection] = useState(0);
   
@@ -120,6 +121,7 @@ const Questionnaire = () => {
   const [isAnimating, setIsAnimating] = useState(false);
 
   const [formData, setFormData] = useState({
+    name: "", // Added name field
     gender: "",
     age: 21,
     height: 170,
@@ -169,7 +171,7 @@ const Questionnaire = () => {
   const nextStep = () => {
     // basic guard: don't go forward if invalid
     if (!isStepValid()) return;
-    if (step < 9) {
+    if (step < 10) {
       setDirection(1);
       setStep((s) => s + 1);
     }
@@ -187,7 +189,7 @@ const Questionnaire = () => {
     setIsAnimating(true);
 
     try {
-      // 1. Send Data to Backend (Matches your endpoint: /api/profiles/update/)
+      // 1. Send Data to Backend
       const response = await api.patch("/api/profiles/update/", formData);
       console.log("Plan Generated:", response.data);
 
@@ -215,7 +217,7 @@ const Questionnaire = () => {
 
   // when user arrives to final step, trigger submit
   useEffect(() => {
-    if (step === 9) {
+    if (step === 10) {
       handleSubmit();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -227,20 +229,22 @@ const Questionnaire = () => {
       case 0:
         return true;
       case 1:
-        return formData.gender === "M" || formData.gender === "F";
+        return formData.name.trim().length > 0; // Require name to be filled
       case 2:
-        return formData.age > 10 && formData.age < 120;
+        return formData.gender === "M" || formData.gender === "F";
       case 3:
-        return formData.height > 50 && formData.height < 250;
+        return formData.age > 10 && formData.age < 120;
       case 4:
-        return formData.weight > 20 && formData.weight < 400;
+        return formData.height > 50 && formData.height < 250;
       case 5:
-        return typeof formData.activity_level === "number";
+        return formData.weight > 20 && formData.weight < 400;
       case 6:
-        return formData.goal === "LOSE" || formData.goal === "MAINTAIN" || formData.goal === "GAIN";
+        return typeof formData.activity_level === "number";
       case 7:
-        return formData.target_weight > 20 && formData.target_weight < 400;
+        return formData.goal === "LOSE" || formData.goal === "MAINTAIN" || formData.goal === "GAIN";
       case 8:
+        return formData.target_weight > 20 && formData.target_weight < 400;
+      case 9:
         return true; // medical optional
       default:
         return true;
@@ -258,11 +262,11 @@ const Questionnaire = () => {
       {/* Card */}
       <div className="w-full max-w-md flex flex-col h-screen md:h-auto md:min-h-[600px] bg-white md:rounded-3xl md:shadow-2xl relative overflow-hidden">
 
-        {/* Progress (10 dots) - HIDDEN WHEN CALCULATING (Step 9) */}
-        {step < 9 && (
-          <div className="pt-6 pb-4 flex justify-center gap-2">
-            {[...Array(10)].map((_, i) => (
-              <div key={i} className={`h-2 w-6 rounded-full ${i <= step ? "bg-emerald-600" : "bg-gray-300"}`} />
+        {/* Progress (11 dots) - HIDDEN WHEN CALCULATING (Step 10) */}
+        {step < 10 && (
+          <div className="pt-6 pb-4 flex justify-center gap-2 px-4">
+            {[...Array(11)].map((_, i) => (
+              <div key={i} className={`h-2 flex-1 max-w-[24px] rounded-full transition-colors duration-300 ${i <= step ? "bg-emerald-600" : "bg-gray-200"}`} />
             ))}
           </div>
         )}
@@ -289,8 +293,24 @@ const Questionnaire = () => {
                 </>
               )}
 
-              {/* 1 - Gender */}
+              {/* 1 - Name */}
               {step === 1 && (
+                <>
+                  <h2 className="text-2xl font-semibold mb-2">What's your name?</h2>
+                  <p className="text-sm text-gray-400 mb-4">So we know how to call you</p>
+                  <input
+                    type="text"
+                    value={formData.name}
+                    onChange={(e) => updateData("name", e.target.value)}
+                    placeholder="Enter your name"
+                    autoFocus
+                    className="w-full max-w-xs px-5 py-4 rounded-2xl border-2 border-gray-200 focus:border-emerald-600 focus:bg-emerald-50 focus:ring-0 outline-none text-center text-xl font-medium transition-all"
+                  />
+                </>
+              )}
+
+              {/* 2 - Gender */}
+              {step === 2 && (
                 <>
                   <h2 className="text-2xl font-semibold">What's your biological sex?</h2>
                   <div className="grid grid-cols-2 gap-4 w-full max-w-xs">
@@ -298,7 +318,7 @@ const Questionnaire = () => {
                       <button
                         key={g}
                         onClick={() => updateData("gender", g)}
-                        className={`h-32 rounded-2xl border-2 ${formData.gender === g ? "border-emerald-600 bg-emerald-50" : "border-gray-200"}`}
+                        className={`h-32 rounded-2xl border-2 transition-all ${formData.gender === g ? "border-emerald-600 bg-emerald-50 scale-105" : "border-gray-200 hover:border-gray-300"}`}
                       >
                         <div className="flex flex-col items-center justify-center h-full">
                           <span className="text-4xl">{g === "M" ? "♂️" : "♀️"}</span>
@@ -310,32 +330,32 @@ const Questionnaire = () => {
                 </>
               )}
 
-              {/* 2 - Age */}
-              {step === 2 && (
+              {/* 3 - Age */}
+              {step === 3 && (
                 <>
                   <h2 className="text-2xl font-semibold">What's your Age?</h2>
                   <WheelPicker min={18} max={80} value={formData.age} onChange={(v) => updateData("age", v)} />
                 </>
               )}
 
-              {/* 3 - Height */}
-              {step === 3 && (
+              {/* 4 - Height */}
+              {step === 4 && (
                 <>
                   <h2 className="text-2xl font-semibold">How tall are you?</h2>
                   <WheelPicker min={140} max={210} value={formData.height} onChange={(v) => updateData("height", v)} unit="cm" />
                 </>
               )}
 
-              {/* 4 - Current Weight */}
-              {step === 4 && (
+              {/* 5 - Current Weight */}
+              {step === 5 && (
                 <>
                   <h2 className="text-2xl font-semibold">What's your current weight?</h2>
                   <WheelPicker min={30} max={200} value={formData.weight} onChange={(v) => updateData("weight", v)} unit="kg" />
                 </>
               )}
 
-              {/* 5 - Activity - IMPROVED DESIGN */}
-              {step === 5 && (
+              {/* 6 - Activity - IMPROVED DESIGN */}
+              {step === 6 && (
                 <>
                   <h2 className="text-2xl font-semibold mb-2">How active are you?</h2>
                   <p className="text-sm text-gray-400 mb-4">Select your typical daily activity level</p>
@@ -372,8 +392,8 @@ const Questionnaire = () => {
                 </>
               )}
 
-              {/* 6 - Goal */}
-              {step === 6 && (
+              {/* 7 - Goal */}
+              {step === 7 && (
                 <>
                   <h2 className="text-2xl font-semibold">What is your main goal?</h2>
                   <div className="space-y-4 w-full max-w-xs">
@@ -385,13 +405,13 @@ const Questionnaire = () => {
                       <button
                         key={g.id}
                         onClick={() => updateData("goal", g.id)}
-                        className={`w-full p-5 rounded-2xl border ${formData.goal === g.id ? "border-emerald-600 bg-emerald-50" : "border-gray-200"}`}
+                        className={`w-full p-5 rounded-2xl border-2 transition-all ${formData.goal === g.id ? "border-emerald-600 bg-emerald-50" : "border-gray-200 hover:border-gray-300"}`}
                       >
                         <div className="flex items-center gap-3">
                           <span className="text-2xl">{g.emoji}</span>
                           <div className="text-left">
                             <div className="font-semibold">{g.label}</div>
-                            <div className="text-xs text-gray-400">{g.id === "LOSE" ? "Burn fat & get lean" : g.id === "MAINTAIN" ? "Stay healthy & fit" : "Gain mass & strength"}</div>
+                            <div className="text-xs text-gray-500">{g.id === "LOSE" ? "Burn fat & get lean" : g.id === "MAINTAIN" ? "Stay healthy & fit" : "Gain mass & strength"}</div>
                           </div>
                         </div>
                       </button>
@@ -400,8 +420,8 @@ const Questionnaire = () => {
                 </>
               )}
 
-              {/* 7 - Target Weight */}
-              {step === 7 && (
+              {/* 8 - Target Weight */}
+              {step === 8 && (
                 <>
                   <h2 className="text-2xl font-semibold">What's your target weight?</h2>
                   <div className="bg-emerald-50 text-emerald-700 text-sm p-3 rounded-xl max-w-xs">
@@ -411,8 +431,8 @@ const Questionnaire = () => {
                 </>
               )}
 
-              {/* 8 - Medical Conditions - IMPROVED DESIGN */}
-              {step === 8 && (
+              {/* 9 - Medical Conditions - IMPROVED DESIGN */}
+              {step === 9 && (
                 <>
                   <h2 className="text-2xl font-semibold">Any medical conditions?</h2>
                   <p className="text-gray-500 text-sm max-w-xs">Select all that apply. This helps us personalize your plan safely.</p>
@@ -426,11 +446,11 @@ const Questionnaire = () => {
                           <button
                             key={opt}
                             onClick={() => toggleMedical(opt)}
-                            className={`px-3 py-2.5 rounded-lg border text-sm font-medium transition-all ${
+                            className={`px-3 py-2.5 rounded-lg border-2 text-sm font-medium transition-all ${
                               active 
                                 ? isNone
-                                  ? "bg-gray-600 text-white border-gray-600"
-                                  : "bg-emerald-600 text-white border-emerald-600"
+                                  ? "bg-gray-600 text-white border-gray-600 shadow-md"
+                                  : "bg-emerald-600 text-white border-emerald-600 shadow-md"
                                 : "bg-white text-gray-700 border-gray-200 hover:border-gray-300"
                             }`}
                           >
@@ -443,8 +463,8 @@ const Questionnaire = () => {
                 </>
               )}
 
-              {/* 9 - Final Calculating (Animations) */}
-              {step === 9 && (
+              {/* 10 - Final Calculating (Animations) */}
+              {step === 10 && (
                 <div className="flex flex-col items-center justify-center space-y-6">
                   <motion.div 
                     animate={{ rotate: 360 }} 
@@ -470,8 +490,8 @@ const Questionnaire = () => {
         </div>
 
         {/* Navigation (inside card so desktop looks correct) */}
-        {step < 9 && (
-          <div className="absolute bottom-0 left-0 w-full border-t bg-white px-6 py-4 flex justify-between items-center">
+        {step < 10 && (
+          <div className="absolute bottom-0 left-0 w-full border-t bg-white px-6 py-4 flex justify-between items-center z-10">
             <button 
               onClick={prevStep} 
               disabled={step === 0} 
@@ -482,10 +502,10 @@ const Questionnaire = () => {
 
             <button
               onClick={nextStep}
-              className={`px-6 py-3 rounded-full font-semibold ${isStepValid() ? "bg-emerald-600 text-white" : "bg-gray-200 text-gray-400"}`}
+              className={`px-6 py-3 rounded-full font-semibold transition-all shadow-sm ${isStepValid() ? "bg-emerald-600 text-white hover:bg-emerald-700 hover:shadow-md" : "bg-gray-200 text-gray-400"}`}
               disabled={!isStepValid()}
             >
-              {step === 8 ? "FINISH" : "NEXT →"}
+              {step === 9 ? "FINISH" : "NEXT →"}
             </button>
           </div>
         )}

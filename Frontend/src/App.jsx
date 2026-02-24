@@ -43,8 +43,10 @@ import AdminFoods from './pages/admin/AdminFoods';
 import AdminExercises from './pages/admin/AdminExercises';
 import DoctorExercises from './pages/doctor/DoctorExercises';
 import AdminUserManagement from './pages/admin/AdminUserManagement';
-import PatientAIChat  from './pages/doctor/PatientAIChat';
-import PatientHistory  from './pages/doctor/PatientHistory';
+import PatientAIChat from './pages/doctor/PatientAIChat';
+import PatientHistory from './pages/doctor/PatientHistory';
+import HelpSupport from './pages/user/HelpSupport';
+import TermsConditions from './pages/user/TermsConditions';
 
 const getHomeRouteForRole = (role) => {
     if (role === 'admin' || role === 'employee') return '/admin/dashboard';
@@ -188,15 +190,17 @@ function App() {
                         <Route path="/questionnaire" element={<Questionnaire />} />
                         <Route path="/profile/edit" element={<ProfileEdit />} />
                         <Route path="/ai-chat" element={<ChatAI />} />
+                        <Route path="/help-support" element={<HelpSupport />} />
+                        <Route path="/terms-conditions" element={<TermsConditions />} />
                     </Route>
 
                     <Route element={<RoleRoute allowedRoles={['admin', 'employee']} />}>
                         <Route element={<AdminLayout />}>
                             <Route path="/admin/dashboard" element={<AdminDashboard />} />
-                            <Route path="/admin/foods" element={<AdminFoods/>} />
-                            <Route path="/admin/exercises" element={<AdminExercises/>} />
+                            <Route path="/admin/foods" element={<AdminFoods />} />
+                            <Route path="/admin/exercises" element={<AdminExercises />} />
                             <Route element={<RoleRoute allowedRoles={['admin']} />}>
-                                <Route path="/admin/usermanagement" element={<AdminUserManagement/>} />
+                                <Route path="/admin/usermanagement" element={<AdminUserManagement />} />
                             </Route>
                         </Route>
                     </Route>

@@ -84,15 +84,39 @@ const Home = () => {
   const [editGrams, setEditGrams] = useState(0);
   const [expandedId, setExpandedId] = useState(null);
   
+  // Profile State for Goals and Name
+  const [profile, setProfile] = useState(null);
+  
   const fileInputRef = useRef(null);
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
   const streamRef = useRef(null);
 
-  const GOAL_CALORIES = 2500;
-  const GOAL_PROTEIN = 160;
-  const GOAL_CARBS = 300;
-  const GOAL_FAT = 80;
+  // Use profile goals if available, otherwise use defaults
+  const GOAL_CALORIES = profile?.daily_calorie_goal || 0;
+  const GOAL_PROTEIN = profile?.protein_goal || 0;
+  const GOAL_CARBS = profile?.carbs_goal || 0;
+  const GOAL_FAT = profile?.fats_goal || 0;
+
+  // Get display name - prioritize profile name over username
+  const displayName = profile?.name || user?.username || "User";
+
+  // Fetch Profile Data
+  useEffect(() => {
+    const fetchProfile = async () => {
+      try {
+        const response = await api.get("/api/profiles/me/");
+        setProfile(response.data);
+      } catch (error) {
+        console.error("Error fetching profile:", error);
+        // Profile might not exist yet, that's okay - we'll use defaults
+      }
+    };
+    
+    if (user) {
+      fetchProfile();
+    }
+  }, [user]);
 
   // Sync Date to Session Storage
   useEffect(() => {
@@ -182,7 +206,7 @@ const Home = () => {
         fat: Math.round(totalFat)
       }
     };
-  }, [dailyData]);
+  }, [dailyData, GOAL_CALORIES, GOAL_PROTEIN, GOAL_CARBS, GOAL_FAT]);
 
   const handleDateChange = (direction) => {
     setCurrentDate((prev) => direction === "prev" ? subDays(prev, 1) : addDays(prev, 1));
@@ -301,7 +325,7 @@ const Home = () => {
       <div className="bg-white rounded-b-[2.5rem] shadow-sm px-6 pt-6 pb-8 z-10 relative mb-6">
         <div className="flex items-center justify-between mb-6">
           <div>
-            <h1 className="text-xl font-bold text-gray-900">Hi, {user?.first_name || user?.name || user?.username || "User"} 👋</h1>
+            <h1 className="text-xl font-bold text-gray-900">Hi, {displayName} 👋</h1>
             <p className="text-xs text-gray-500 font-medium mt-0.5">Let's hit your goals today!</p>
           </div>
           <button onClick={handleMainButtonClick} className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center text-gray-700 hover:bg-gray-200 transition-colors shadow-sm"><RiCameraAiFill className="text-xl" /></button>

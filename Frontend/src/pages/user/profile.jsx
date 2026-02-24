@@ -108,7 +108,7 @@ const Profile = () => {
 
       <div className="bg-white divide-y">
         <button
-          onClick={() => navigate("/support")}
+          onClick={() => navigate("/help-support")}
           className="w-full flex items-center px-5 py-4"
         >
           <FaHeadset className="text-xl text-gray-700 mr-4" />
@@ -124,7 +124,7 @@ const Profile = () => {
         </button>
 
         <button
-          onClick={() => navigate("/terms")}
+          onClick={() => navigate("/terms-conditions")}
           className="w-full flex items-center px-5 py-4"
         >
           <FaFileAlt className="text-xl text-gray-700 mr-4" />
