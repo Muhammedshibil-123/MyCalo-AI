@@ -57,7 +57,7 @@ class CustomTokenjwtView(TokenObtainPairView):
             response.set_cookie(
                 key=settings.SIMPLE_JWT["AUTH_COOKIE"],
                 value=refresh_token,
-                expires=settings.SIMPLE_JWT["REFRESH_TOKEN_LIFETIME"],
+                max_age=settings.SIMPLE_JWT["REFRESH_TOKEN_LIFETIME"],
                 secure=settings.SIMPLE_JWT["AUTH_COOKIE_SECURE"],
                 httponly=settings.SIMPLE_JWT["AUTH_COOKIE_HTTP_ONLY"],
                 samesite=settings.SIMPLE_JWT["AUTH_COOKIE_SAMESITE"],
@@ -93,7 +93,7 @@ class CustomTokenRefreshView(TokenRefreshView):
                     response.set_cookie(
                         key=settings.SIMPLE_JWT["AUTH_COOKIE"],
                         value=new_refresh_token,
-                        expires=settings.SIMPLE_JWT["REFRESH_TOKEN_LIFETIME"],
+                        max_age=settings.SIMPLE_JWT["REFRESH_TOKEN_LIFETIME"], 
                         secure=settings.SIMPLE_JWT["AUTH_COOKIE_SECURE"],
                         httponly=settings.SIMPLE_JWT["AUTH_COOKIE_HTTP_ONLY"],
                         samesite=settings.SIMPLE_JWT["AUTH_COOKIE_SAMESITE"],
@@ -228,7 +228,7 @@ class VerifyOTPView(views.APIView):
                     response.set_cookie(
                         key=settings.SIMPLE_JWT["AUTH_COOKIE"],
                         value=str(refresh),
-                        expires=settings.SIMPLE_JWT["REFRESH_TOKEN_LIFETIME"],
+                        max_age=settings.SIMPLE_JWT["REFRESH_TOKEN_LIFETIME"],
                         secure=settings.SIMPLE_JWT["AUTH_COOKIE_SECURE"],
                         httponly=settings.SIMPLE_JWT["AUTH_COOKIE_HTTP_ONLY"],
                         samesite=settings.SIMPLE_JWT["AUTH_COOKIE_SAMESITE"],
@@ -661,7 +661,7 @@ class CorporateVerifyOTPView(views.APIView):
                     response.set_cookie(
                         key=settings.SIMPLE_JWT["AUTH_COOKIE"],
                         value=str(refresh),
-                        expires=settings.SIMPLE_JWT["REFRESH_TOKEN_LIFETIME"],
+                        max_age=settings.SIMPLE_JWT["REFRESH_TOKEN_LIFETIME"],
                         secure=settings.SIMPLE_JWT["AUTH_COOKIE_SECURE"],
                         httponly=settings.SIMPLE_JWT["AUTH_COOKIE_HTTP_ONLY"],
                         samesite=settings.SIMPLE_JWT["AUTH_COOKIE_SAMESITE"],

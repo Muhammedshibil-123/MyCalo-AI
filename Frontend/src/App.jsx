@@ -51,11 +51,11 @@ import ExerciseDetail from './pages/user/ExerciseDetail';
 import AdminProfile from './pages/admin/AdminProfile';
 import DoctorProfile from './pages/doctor/DoctorProfile';
 
-const getHomeRouteForRole = (role) => {
+const getHomeRouteForRole = (role, dailyCalorieGoal = 0) => {
     if (role === 'admin' || role === 'employee') return '/admin/dashboard';
     if (role === 'doctor') return '/doctor/consult';
     if (role === 'user') {
-        if (!goal || goal === 0) return '/questionnaire';
+        if (!dailyCalorieGoal || dailyCalorieGoal === 0) return '/questionnaire';
         return '/';
     }
     return '/';
@@ -88,22 +88,21 @@ const DelayedLoader = ({ isLoading }) => {
 const PublicRoute = () => {
     const { isAuthenticated, user } = useSelector((state) => state.auth);
     if (isAuthenticated) {
-        const dest = getHomeRouteForRole(user?.role);
-        return <Navigate to={dest} replace />;
+        if (user?.role === 'admin' || user?.role === 'employee') return <Navigate to="/admin/dashboard" replace />;
+        if (user?.role === 'doctor') return <Navigate to="/doctor/consult" replace />;
+        return <Navigate to="/" replace />;
     }
     return <Outlet />;
 };
 
 const RoleRoute = ({ allowedRoles }) => {
     const { user, isAuthenticated } = useSelector((state) => state.auth);
-
     if (!isAuthenticated) return <Navigate to="/welcome" replace />;
-
     if (!allowedRoles.includes(user?.role)) {
-        const correctHome = getHomeRouteForRole(user?.role);
-        return <Navigate to={correctHome} replace />;
+        if (user?.role === 'admin' || user?.role === 'employee') return <Navigate to="/admin/dashboard" replace />;
+        if (user?.role === 'doctor') return <Navigate to="/doctor/consult" replace />;
+        return <Navigate to="/" replace />;  
     }
-
     return <Outlet />;
 };
 
