@@ -114,11 +114,7 @@ const VerifyEmailOtp = () => {
           }
         }));
 
-        if (!data.daily_calorie_goal || data.daily_calorie_goal === 0) {
-          navigate("/questionnaire");
-        } else {
-          navigate("/");
-        }
+        navigate("/questionnaire");
       }
     } catch (err) {
       if (err.response?.data) {
