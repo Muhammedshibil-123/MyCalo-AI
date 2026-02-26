@@ -54,7 +54,7 @@ import DoctorProfile from './pages/doctor/DoctorProfile';
 const getHomeRouteForRole = (role, dailyCalorieGoal = 0) => {
     if (role === 'admin' || role === 'employee') return '/admin/dashboard';
     if (role === 'doctor') return '/doctor/consult';
-    if (role === 'user') {
+    if (role === 'user' || !role) {
         if (!dailyCalorieGoal || dailyCalorieGoal === 0) return '/questionnaire';
         return '/';
     }
@@ -88,9 +88,8 @@ const DelayedLoader = ({ isLoading }) => {
 const PublicRoute = () => {
     const { isAuthenticated, user } = useSelector((state) => state.auth);
     if (isAuthenticated) {
-        if (user?.role === 'admin' || user?.role === 'employee') return <Navigate to="/admin/dashboard" replace />;
-        if (user?.role === 'doctor') return <Navigate to="/doctor/consult" replace />;
-        return <Navigate to="/" replace />;
+        // Use the helper function here!
+        return <Navigate to={getHomeRouteForRole(user?.role, user?.daily_calorie_goal)} replace />;
     }
     return <Outlet />;
 };
