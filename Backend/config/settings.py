@@ -29,9 +29,9 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = os.getenv("SECRET_KEY")
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = os.environ.get('DEBUG', 'True') == 'True'
 
-ALLOWED_HOSTS = ["*", ".ngrok-free.app", ".ngrok-free.dev", "localhost", "127.0.0.1"]
+ALLOWED_HOSTS = ["*", "43.205.137.139",".ngrok-free.app", ".ngrok-free.dev", "localhost", "127.0.0.1"]
 
 
 # Application definition
@@ -191,6 +191,7 @@ CSRF_TRUSTED_ORIGINS = [
     "https://*.ngrok-free.dev",
     "http://localhost:8080",
     "http://127.0.0.1:8080",
+    "http://43.205.137.139",
 ]
 CORS_ALLOW_ALL_ORIGINS = True
 CORS_ALLOW_CREDENTIALS = True
@@ -215,14 +216,29 @@ CLOUDINARY_STORAGE = {
     "API_SECRET": os.getenv("CLOUDINARY_API_SECRET"),
 }
 
-STORAGES = {
-    "default": {
-        "BACKEND": "cloudinary_storage.storage.MediaCloudinaryStorage",
-    },
-    "staticfiles": {
-        "BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage",
-    },
-}
+if not DEBUG:
+    STATICFILES_STORAGE = 'cloudinary_storage.storage.StaticCloudinaryStorage'
+    
+
+    STORAGES = {
+        "default": {
+            "BACKEND": "cloudinary_storage.storage.MediaCloudinaryStorage",
+        },
+        "staticfiles": {
+            "BACKEND": "cloudinary_storage.storage.StaticCloudinaryStorage",
+        },
+    }
+else:
+    STATICFILES_STORAGE = 'django.contrib.staticfiles.storage.StaticFilesStorage'
+    
+    STORAGES = {
+        "default": {
+            "BACKEND": "django.core.files.storage.FileSystemStorage",
+        },
+        "staticfiles": {
+            "BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage",
+        },
+    }
 
 CELERY_BROKER_URL = os.getenv("REDIS_URL", "redis://redis:6379/1")
 CELERY_RESULT_BACKEND = os.getenv("REDIS_URL", "redis://redis:6379/1")
@@ -241,3 +257,7 @@ AWS_REGION = os.getenv("AWS_REGION", "ap-south-1")
 # Queue URLs
 AWS_MEAL_REMINDER_QUEUE_URL = os.getenv("SQS_QUEUE_URL")
 AWS_EMAIL_QUEUE_URL = os.getenv("AWS_SQS_EMAIL_QUEUE_URL")
+
+# Add this to help Django trust the Traefik proxy
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+USE_X_FORWARDED_HOST = True

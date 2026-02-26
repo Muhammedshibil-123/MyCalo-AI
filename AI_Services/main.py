@@ -4,7 +4,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from config import settings
 from routers import chat, chat_doctor_groq, chat_groq, nutrition, vision_nutrition
 
-app = FastAPI(title=settings.PROJECT_NAME, version=settings.VERSION)
+app = FastAPI(title=settings.PROJECT_NAME, version=settings.VERSION,root_path="/ai")
 
 # CORS Middleware (Allowing Django to connect)
 app.add_middleware(
