@@ -20,7 +20,6 @@ class Settings:
     ALGORITHM: str = os.getenv("ALGORITHM", "HS256")
 
 
-    DATABASE_PASSWORD: str = os.getenv("DATABASE_PASSWORD")
     AWS_ACCESS_KEY_ID: str = os.getenv("AWS_ACCESS_KEY_ID")
     AWS_SECRET_ACCESS_KEY: str = os.getenv("AWS_SECRET_ACCESS_KEY")
     AWS_REGION: str = os.getenv("AWS_REGION", "ap-south-1")
