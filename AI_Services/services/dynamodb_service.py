@@ -7,22 +7,20 @@ from config import settings
 
 
 def get_dynamodb_resource():
-    # Use the same endpoint as your RealTime service
-    endpoint = os.getenv("DYNAMODB_ENDPOINT", "http://dynamodb-local:8000")
+    
+    endpoint = os.getenv("DYNAMODB_ENDPOINT") or None
+    
     return boto3.resource(
         "dynamodb",
-        region_name="us-east-1",
+        region_name=os.getenv("AWS_REGION", "us-east-1"),
         endpoint_url=endpoint,
-        aws_access_key_id="local",
-        aws_secret_access_key="local",
+        
+        aws_access_key_id=os.getenv("AWS_ACCESS_KEY_ID"),
+        aws_secret_access_key=os.getenv("AWS_SECRET_ACCESS_KEY"),
     )
 
 
 def save_ai_chat_message(user_id, message, sender_type):
-    """
-    Saves a message and keeps the last 100 entries per user.
-    sender_type: 'user' or 'ai'
-    """
     try:
         dynamodb = get_dynamodb_resource()
         table = dynamodb.Table("AIChatHistory")
@@ -62,7 +60,6 @@ def save_ai_chat_message(user_id, message, sender_type):
 
 
 def get_ai_chat_history(user_id):
-    """Retrieves the last 100 messages for the frontend to display"""
     try:
         dynamodb = get_dynamodb_resource()
         table = dynamodb.Table("AIChatHistory")

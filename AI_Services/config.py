@@ -19,6 +19,13 @@ class Settings:
     SECRET_KEY: str = os.getenv("SECRET_KEY")
     ALGORITHM: str = os.getenv("ALGORITHM", "HS256")
 
+
+    DATABASE_PASSWORD: str = os.getenv("DATABASE_PASSWORD")
+    AWS_ACCESS_KEY_ID: str = os.getenv("AWS_ACCESS_KEY_ID")
+    AWS_SECRET_ACCESS_KEY: str = os.getenv("AWS_SECRET_ACCESS_KEY")
+    AWS_REGION: str = os.getenv("AWS_REGION", "ap-south-1")
+    DYNAMODB_ENDPOINT: str = os.getenv("DYNAMODB_ENDPOINT")
+
     def validate(self):
         if not self.GEMINI_API_KEY:
             self.GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
@@ -35,6 +42,9 @@ class Settings:
 
         if not self.DOC_GROQ_API_KEY:
             print("Warning: DOC_GROQ_API_KEY not set. Doctor AI Assistant will fail.")
+
+        if not self.AWS_ACCESS_KEY_ID or not self.AWS_SECRET_ACCESS_KEY:
+            print("Warning: AWS Credentials not set. DynamoDB operations will fail.")
 
 
 settings = Settings()
