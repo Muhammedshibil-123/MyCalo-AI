@@ -21,7 +21,10 @@ from apps.chat.routing import websocket_urlpatterns
 
 application = ProtocolTypeRouter({
     "http": get_asgi_application(),
-    "websocket": JWTAuthMiddleware(
-        URLRouter(websocket_urlpatterns)
+    # "websocket": JWTAuthMiddleware(
+    #     URLRouter(websocket_urlpatterns)
+    # ),
+    "websocket": JWTAuthMiddlewareStack(
+        URLRouter(routing.websocket_urlpatterns)
     ),
 })
