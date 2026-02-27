@@ -30,7 +30,7 @@ const CreateWithAI = () => {
     setError(null);
 
     try {
-      const response = await api.post('/ai/nutrition/analyze/', { query: prompt });
+      const response = await api.post('/ai/nutrition/analyze', { query: prompt });
       setResultData(response.data);
       setView('result'); 
     } catch (err) {

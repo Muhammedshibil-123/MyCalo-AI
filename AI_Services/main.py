@@ -15,7 +15,11 @@ app = FastAPI(
 # CORS Middleware (Allowing Django to connect)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # In production, change this to your Django URL
+    allow_origins=[
+        "http://localhost:5173",          # Your local React server
+        "http://localhost:8080",          # Your local Docker setup
+        "https://my-calo-ai.vercel.app"   # EXACT Vercel URL (No trailing slash)
+    ], # In production, change this to your Django URL
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
