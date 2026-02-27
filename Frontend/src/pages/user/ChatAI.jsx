@@ -48,7 +48,7 @@ const ChatAI = () => {
     useEffect(() => {
         const fetchHistory = async () => {
             try {
-                const response = await api.get("/chat-groq/history", { skipLoading: true });
+                const response = await api.get("/ai/chat-groq/history", { skipLoading: true });
                 if (response.data.success) {
                     const history = response.data.history.map(m => ({ ...m, animate: false }));
                     setMessages(history);
@@ -83,7 +83,7 @@ const ChatAI = () => {
         setIsLoading(true);
 
         try {
-            const response = await api.post("/chat-groq/ask", {
+            const response = await api.post("/ai/chat-groq/ask", {
                 query: userQuery
             }, { skipLoading: true });
 

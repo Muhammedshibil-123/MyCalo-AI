@@ -100,7 +100,7 @@ const PatientAIChat = () => {
         setIsLoading(true);
 
         try {
-            const response = await api.post("/chat-groq/ask_doc", {
+            const response = await api.post("ai/chat-groq/ask_doc", {
                 query: userQuery,
                 user_id: parseInt(patientId) 
             }, { skipLoading: true });

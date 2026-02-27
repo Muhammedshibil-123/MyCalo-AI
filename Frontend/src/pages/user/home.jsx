@@ -311,7 +311,7 @@ const Home = () => {
     const formData = new FormData();
     formData.append("file", file);
     try {
-      const res = await api.post("/nutrition/analyze-image", formData, { headers: { "Content-Type": "multipart/form-data" } });
+      const res = await api.post("/ai/nutrition/analyze-image", formData, { headers: { "Content-Type": "multipart/form-data" } });
       navigate("/analyze-image-result", { state: { data: res.data } });
     } catch (e) { alert("Failed to analyze."); }
   };
