@@ -6,7 +6,7 @@ let access_token_in_memory = null;
 const isDevelopment = import.meta.env.MODE === 'development';
 
 const api = axios.create({
-  baseURL: isDevelopment ? "http://localhost:8080" : "",
+  baseURL: import.meta.env.VITE_API_BASE_URL || "",
   withCredentials: true,
 });
 

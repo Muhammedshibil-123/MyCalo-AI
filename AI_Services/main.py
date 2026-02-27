@@ -4,7 +4,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from config import settings
 from routers import chat, chat_doctor_groq, chat_groq, nutrition, vision_nutrition
 
-app = FastAPI(title=settings.PROJECT_NAME, version=settings.VERSION,root_path="/ai")
+app = FastAPI(title=settings.PROJECT_NAME, version=settings.VERSION)
 
 # CORS Middleware (Allowing Django to connect)
 app.add_middleware(
@@ -16,13 +16,13 @@ app.add_middleware(
 )
 
 # Include Routers
-app.include_router(nutrition.router)
-app.include_router(vision_nutrition.router)
-app.include_router(chat.router)
-app.include_router(chat_groq.router)
-app.include_router(chat_doctor_groq.router)
+app.include_router(nutrition.router, prefix="/ai")
+app.include_router(vision_nutrition.router, prefix="/ai")
+app.include_router(chat.router, prefix="/ai")
+app.include_router(chat_groq.router, prefix="/ai")
+app.include_router(chat_doctor_groq.router, prefix="/ai")
 
-
-@app.get("/")
+# Health check at the root of the /ai prefix
+@app.get("/ai")
 def health_check():
     return {"status": "ok", "service": "AI_Services"}

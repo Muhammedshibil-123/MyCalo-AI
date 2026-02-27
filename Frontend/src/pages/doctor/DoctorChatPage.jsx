@@ -71,10 +71,9 @@ const DoctorChatPage = () => {
     if (!roomId || !accessToken) return;
 
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    let host = window.location.host; 
-    if (host.includes('localhost:5173')) host = 'localhost:8080';
+    const wsHost = import.meta.env.VITE_WS_HOST || window.location.host;
     
-    const wsUrl = `${protocol}//${host}/ws/chat/${roomId}/`;
+    const wsUrl = `${protocol}//${wsHost}/ws/chat/${roomId}/`;
     const ws = new WebSocket(wsUrl, [accessToken]);
 
     ws.onmessage = (event) => {
