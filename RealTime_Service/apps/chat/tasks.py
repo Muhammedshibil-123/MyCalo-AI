@@ -10,16 +10,13 @@ from datetime import datetime
 def process_file_upload(file_path, room_name, user_id, original_filename):
     try:
         
-        resource_type = "auto"
         lower_path = file_path.lower()
         
-        
-        if lower_path.endswith(('.mp3', '.wav', '.ogg', '.m4a', '.webm')):
-             resource_type = "video" 
-        elif lower_path.endswith(('.mp4', '.mov', '.avi', '.mkv')):
-             resource_type = "video"
+        # Audio and Video both must use resource_type="video" in Cloudinary
+        is_media = any(lower_path.endswith(ext) for ext in ['.mp3', '.wav', '.ogg', '.m4a', '.webm', '.mp4', '.mov', '.avi'])
+        resource_type = "video" if is_media else "image"
 
-        print(f"🔄 Celery: Starting upload for {original_filename}...")
+        print(f"🔄 Celery: Starting upload for {original_filename} as {resource_type}...")
         
         
         upload_data = cloudinary.uploader.upload(

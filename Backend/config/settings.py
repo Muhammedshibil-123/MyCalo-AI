@@ -195,6 +195,10 @@ CSRF_TRUSTED_ORIGINS = [
 ]
 CORS_ALLOW_ALL_ORIGINS = True
 CORS_ALLOW_CREDENTIALS = True
+CORS_ALLOWED_ORIGINS = [
+    "https://my-calo-ai.vercel.app",
+    "http://localhost:5173",
+]
 
 SWAGGER_SETTINGS = {
     "SECURITY_DEFINITIONS": {

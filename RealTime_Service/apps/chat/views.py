@@ -17,16 +17,43 @@ class ChatMediaUploadView(APIView):
 
     def post(self, request):
         file_obj = request.data.get('file')
-        if not file_obj:
-            return Response({"error": "No file provided"}, status=400)
+        room_id = request.data.get('room_id') 
+        
+        if not file_obj or not room_id:
+            return Response({"error": "File and room_id required"}, status=400)
 
-        upload_data = cloudinary.uploader.upload(file_obj, resource_type="auto", folder="chat_media")
+        # FIX: Ensure audio blobs get an extension so Cloudinary knows what they are
+        ext = os.path.splitext(file_obj.name)[1]
+        if not ext:
+            if 'audio' in file_obj.content_type:
+                ext = '.webm'
+            elif 'video' in file_obj.content_type:
+                ext = '.mp4'
+            else:
+                ext = '.jpg'
+
+        safe_name = f"upload_{request.user.id}_{int(os.path.getmtime(settings.BASE_DIR))}{ext}"
+        
+        tmp_dir = os.path.join(settings.BASE_DIR, 'tmp')
+        os.makedirs(tmp_dir, exist_ok=True)
+        file_path = os.path.join(tmp_dir, safe_name) 
+        
+        with open(file_path, 'wb+') as destination:
+            for chunk in file_obj.chunks():
+                destination.write(chunk)
+
+        # ALWAYS use Celery so the frontend synchronization works correctly
+        process_file_upload.delay(
+            file_path=file_path,
+            room_name=room_id,
+            user_id=request.user.id,
+            original_filename=safe_name
+        )
 
         return Response({
-            "url": upload_data.get("secure_url"),
-            "format": upload_data.get("format"),
-            "resource_type": upload_data.get("resource_type")
-        })
+            "message": "Upload started in background",
+            "status": "processing"
+        }, status=202)
     
 class DoctorConsultationListView(APIView):
     authentication_classes = [StatelessTokenAuthentication]
@@ -124,40 +151,39 @@ class ResolveConsultationView(APIView):
             print(f"Error resolving consultation: {e}")
             return Response({"error": str(e)}, status=500)
         
-class ChatMediaUploadView(APIView):
-    authentication_classes = [StatelessTokenAuthentication]
-    permission_classes = [IsAuthenticated]
-    parser_classes = [MultiPartParser]
+def post(self, request):
+    file_obj = request.data.get('file')
+    room_id = request.data.get('room_id') 
+    
+    if not file_obj or not room_id:
+        return Response({"error": "File and room_id required"}, status=400)
 
-    def post(self, request):
-        file_obj = request.data.get('file')
-        room_id = request.data.get('room_id') 
-        
-        if not file_obj or not room_id:
-            return Response({"error": "File and room_id required"}, status=400)
+    
+    ext = os.path.splitext(file_obj.name)[1]
+    if not ext:
+        if 'audio' in file_obj.content_type:
+            ext = '.webm'
+        elif 'video' in file_obj.content_type:
+            ext = '.mp4'
+        elif 'image' in file_obj.content_type:
+            ext = '.jpg'
 
-        
-        
-        tmp_dir = os.path.join(settings.BASE_DIR, 'tmp')
-        os.makedirs(tmp_dir, exist_ok=True)
-        
-        file_path = os.path.join(tmp_dir, file_obj.name)
-        
-        
-        with open(file_path, 'wb+') as destination:
-            for chunk in file_obj.chunks():
-                destination.write(chunk)
+    
+    safe_name = f"{os.path.splitext(file_obj.name)[0]}{ext}"
+    
+    tmp_dir = os.path.join(settings.BASE_DIR, 'tmp')
+    os.makedirs(tmp_dir, exist_ok=True)
+    file_path = os.path.join(tmp_dir, safe_name) 
+    
+    with open(file_path, 'wb+') as destination:
+        for chunk in file_obj.chunks():
+            destination.write(chunk)
 
-        
-        process_file_upload.delay(
-            file_path=file_path,
-            room_name=room_id,
-            user_id=request.user.id,
-            original_filename=file_obj.name
-        )
+    process_file_upload.delay(
+        file_path=file_path,
+        room_name=room_id,
+        user_id=request.user.id,
+        original_filename=safe_name
+    )
 
-        
-        return Response({
-            "message": "Upload started in background",
-            "status": "processing"
-        }, status=202)
+    return Response({"message": "Upload started", "status": "processing"}, status=202)

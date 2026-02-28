@@ -54,6 +54,12 @@ class ChatConsumer(AsyncWebsocketConsumer):
         )
         await self.channel_layer.group_discard(self.room_group_name, self.channel_name)
 
+    async def call_ended(self, event):
+        await self.send(text_data=json.dumps({
+            'type': 'call_ended',
+            'sender_id': event['sender_id']
+        }))
+
     async def receive(self, text_data):
         data = json.loads(text_data)
         msg_type = data.get('type', 'chat_message') # Default to chat

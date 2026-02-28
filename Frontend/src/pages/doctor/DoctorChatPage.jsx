@@ -15,12 +15,12 @@ const DoctorChatPage = () => {
   const { user, accessToken } = useSelector((state) => state.auth);
   const patient = location.state?.patient;
   const initialStatus = location.state?.status || 'active';
-  
+
   const [messages, setMessages] = useState([]);
   const [inputText, setInputText] = useState('');
   const [isResolving, setIsResolving] = useState(false);
   const [isResolved, setIsResolved] = useState(initialStatus === 'resolved');
-  
+
   const [showVideoCall, setShowVideoCall] = useState(false);
   const [isInitiator, setIsInitiator] = useState(false);
   const [incomingCallData, setIncomingCallData] = useState(null);
@@ -35,19 +35,19 @@ const DoctorChatPage = () => {
   const mediaRecorderRef = useRef(null);
   const audioChunksRef = useRef([]);
   const timerRef = useRef(null);
-  
+
   const { roomUploads, uploadFile, removeUpload } = useUpload();
   const roomUploadsRef = useRef(roomUploads);
 
   const pendingMessages = roomUploads[roomId] || [];
-  
+
   const displayMessages = [...messages, ...pendingMessages].sort((a, b) => {
-      const t1 = new Date(a.Timestamp || a.timestamp || 0).getTime();
-      const t2 = new Date(b.Timestamp || b.timestamp || 0).getTime();
-      return t1 - t2;
+    const t1 = new Date(a.Timestamp || a.timestamp || 0).getTime();
+    const t2 = new Date(b.Timestamp || b.timestamp || 0).getTime();
+    return t1 - t2;
   });
 
-  const [selectedMedia, setSelectedMedia] = useState(null); 
+  const [selectedMedia, setSelectedMedia] = useState(null);
   const socketRef = useRef(null);
   const messagesEndRef = useRef(null);
   const fileInputRef = useRef(null);
@@ -72,49 +72,52 @@ const DoctorChatPage = () => {
 
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
     const wsHost = import.meta.env.VITE_WS_HOST || window.location.host;
-    
+
     const wsUrl = `${protocol}//${wsHost}/ws/chat/${roomId}/`;
     const ws = new WebSocket(wsUrl, [accessToken]);
 
     ws.onmessage = (event) => {
       try {
         const data = JSON.parse(event.data);
-        
+
         if (data.type === 'call_user') {
-            setIsReceivingCall(true);
-            setIncomingCallData(data.data);
+          setIsReceivingCall(true);
+          setIncomingCallData(data.data);
         } else if (data.type === 'call_ended') {
-            setIsReceivingCall(false);
-            setShowVideoCall(false);
-            setIncomingCallData(null);
+          setIsReceivingCall(false);
+          setShowVideoCall(false);
+          setIncomingCallData(null);
         } else if (data.type === 'chat_history') {
           setMessages(data.messages);
-           // Sync Logic: Check if pending uploads are already in history
-           const pending = roomUploadsRef.current[roomId] || [];
-           if (pending.length > 0) {
-              const lastMsg = data.messages[data.messages.length - 1];
-              if (lastMsg && String(lastMsg.sender_id) === String(user.id) && lastMsg.file_url) {
-                  removeUpload(roomId, pending[0].tempId);
-              }
-           }
-        } else if (data.type === 'new_message') {
-          if (String(data.sender_id) === String(user.id) && data.file_url) {
-             const pending = roomUploadsRef.current[roomId] || [];
-             if (pending.length > 0) removeUpload(roomId, pending[0].tempId);
+          // Sync Logic: Check if pending uploads are already in history
+          const pending = roomUploadsRef.current[roomId] || [];
+          if (pending.length > 0) {
+            const lastMsg = data.messages[data.messages.length - 1];
+            if (lastMsg && String(lastMsg.sender_id) === String(user.id) && lastMsg.file_url) {
+              removeUpload(roomId, pending[0].tempId);
+            }
           }
           const normalizedMsg = {
-              Timestamp: data.timestamp,
-              SenderID: data.sender_id,
-              Message: data.message,
-              FileUrl: data.file_url,
-              FileType: data.file_type
+            Timestamp: data.timestamp,
+            SenderID: data.sender_id,
+            Message: data.message,
+            FileUrl: data.file_url,
+            FileType: data.file_type
           };
+
           setMessages((prev) => {
-             const lastMsg = prev[prev.length - 1];
-             if (lastMsg && lastMsg.Timestamp === normalizedMsg.Timestamp && String(lastMsg.SenderID) === String(normalizedMsg.SenderID)) {
-                 return prev;
-             }
-             return [...prev, normalizedMsg];
+            const isDuplicate = prev.some(m => m.Timestamp === normalizedMsg.Timestamp && String(m.SenderID) === String(normalizedMsg.SenderID));
+            if (isDuplicate) return prev;
+
+            // Only remove the pending upload AFTER we are sure we are adding the new message
+            if (String(data.sender_id) === String(user.id) && data.file_url) {
+              const pending = roomUploadsRef.current[roomId] || [];
+              if (pending.length > 0) {
+                // Delay removal slightly to allow React to render the new message first
+                setTimeout(() => removeUpload(roomId, pending[0].tempId), 100);
+              }
+            }
+            return [...prev, normalizedMsg];
           });
         }
       } catch (err) { console.error("WS Error:", err); }
@@ -125,14 +128,14 @@ const DoctorChatPage = () => {
   }, [roomId, accessToken, isResolved, reconnectAttempt]);
 
   // Smart Scroll
-  useEffect(() => { 
+  useEffect(() => {
     if (messagesEndRef.current) {
-        if (isInitialLoad) {
-            messagesEndRef.current.scrollIntoView({ behavior: "auto" });
-            if (displayMessages.length > 0) setIsInitialLoad(false);
-        } else {
-            messagesEndRef.current.scrollIntoView({ behavior: "smooth" });
-        }
+      if (isInitialLoad) {
+        messagesEndRef.current.scrollIntoView({ behavior: "auto" });
+        if (displayMessages.length > 0) setIsInitialLoad(false);
+      } else {
+        messagesEndRef.current.scrollIntoView({ behavior: "smooth" });
+      }
     }
   }, [displayMessages, isInitialLoad]);
 
@@ -147,8 +150,8 @@ const DoctorChatPage = () => {
 
   const handleFileSelect = (e) => {
     if (e.target.files[0]) {
-        uploadFile(e.target.files[0], roomId, null, user.id);
-        fileInputRef.current.value = '';
+      uploadFile(e.target.files[0], roomId, null, user.id);
+      fileInputRef.current.value = '';
     }
   };
 
@@ -157,32 +160,32 @@ const DoctorChatPage = () => {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       const mediaRecorder = new MediaRecorder(stream);
       mediaRecorderRef.current = mediaRecorder; audioChunksRef.current = [];
-      mediaRecorder.ondataavailable = (e) => { if(e.data.size > 0) audioChunksRef.current.push(e.data); };
+      mediaRecorder.ondataavailable = (e) => { if (e.data.size > 0) audioChunksRef.current.push(e.data); };
       mediaRecorder.start(); setIsRecording(true); setRecordingTime(0);
       timerRef.current = setInterval(() => setRecordingTime(t => t + 1), 1000);
     } catch (err) { alert("Mic access denied."); }
   };
 
   const cleanupRecording = () => {
-      if (mediaRecorderRef.current && mediaRecorderRef.current.stream) { 
-          mediaRecorderRef.current.stream.getTracks().forEach(t => t.stop()); 
-      }
-      setIsRecording(false); 
-      clearInterval(timerRef.current);
+    if (mediaRecorderRef.current && mediaRecorderRef.current.stream) {
+      mediaRecorderRef.current.stream.getTracks().forEach(t => t.stop());
+    }
+    setIsRecording(false);
+    clearInterval(timerRef.current);
   };
 
   const cancelRecording = () => {
-      if (mediaRecorderRef.current) { mediaRecorderRef.current.stop(); }
-      cleanupRecording();
+    if (mediaRecorderRef.current) { mediaRecorderRef.current.stop(); }
+    cleanupRecording();
   };
 
   const sendRecording = () => {
-      if (!mediaRecorderRef.current) return;
-      mediaRecorderRef.current.stop();
-      cleanupRecording();
-      setTimeout(() => {
-          uploadFile(new File([new Blob(audioChunksRef.current, { type: 'audio/webm' })], `voice_${Date.now()}.webm`, { type: 'audio/webm' }), roomId, 'audio', user.id);
-      }, 200);
+    if (!mediaRecorderRef.current) return;
+    mediaRecorderRef.current.stop();
+    cleanupRecording();
+    setTimeout(() => {
+      uploadFile(new File([new Blob(audioChunksRef.current, { type: 'audio/webm' })], `voice_${Date.now()}.webm`, { type: 'audio/webm' }), roomId, 'audio', user.id);
+    }, 200);
   };
 
   const handleResolve = async () => {
@@ -196,15 +199,15 @@ const DoctorChatPage = () => {
     } catch (error) { alert("Failed."); } finally { setIsResolving(false); }
   };
 
-  const formatTime = (s) => `${Math.floor(s/60)}:${(s%60).toString().padStart(2,'0')}`;
+  const formatTime = (s) => `${Math.floor(s / 60)}:${(s % 60).toString().padStart(2, '0')}`;
 
   const isRequestAccepted = (index) => {
-      for (let j = index + 1; j < displayMessages.length; j++) {
-          if (displayMessages[j].FileType === 'system' && (displayMessages[j].Message || '').includes("Video call started")) {
-              return true;
-          }
+    for (let j = index + 1; j < displayMessages.length; j++) {
+      if (displayMessages[j].FileType === 'system' && (displayMessages[j].Message || '').includes("Video call started")) {
+        return true;
       }
-      return false;
+    }
+    return false;
   };
 
   return (
@@ -220,33 +223,33 @@ const DoctorChatPage = () => {
           <h3 className="font-bold text-gray-900 truncate">{patient?.first_name || patient?.username || "Patient"}</h3>
           <p className="text-[10px] text-blue-600 font-medium">{isResolved ? "Consultation Resolved" : "Active Consultation"}</p>
         </div>
-        
+
         {!isResolved && (
-            <>
-                <button onClick={startCall} className="w-10 h-10 flex items-center justify-center rounded-full bg-blue-50 text-blue-600 hover:bg-blue-100 transition-all shrink-0 mr-1">
-                    <IoMdVideocam className="text-xl" />
-                </button>
-                <button onClick={handleResolve} disabled={isResolving} className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-green-600 text-white font-bold text-xs hover:bg-green-700 transition-all shadow-md shrink-0">
-                    {isResolving ? "..." : <><IoMdCheckmarkCircle size={16} /> Resolve</>}
-                </button>
-            </>
+          <>
+            <button onClick={startCall} className="w-10 h-10 flex items-center justify-center rounded-full bg-blue-50 text-blue-600 hover:bg-blue-100 transition-all shrink-0 mr-1">
+              <IoMdVideocam className="text-xl" />
+            </button>
+            <button onClick={handleResolve} disabled={isResolving} className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-green-600 text-white font-bold text-xs hover:bg-green-700 transition-all shadow-md shrink-0">
+              {isResolving ? "..." : <><IoMdCheckmarkCircle size={16} /> Resolve</>}
+            </button>
+          </>
         )}
       </div>
 
       {isReceivingCall && !showVideoCall && (
-          <div className="fixed top-4 left-4 right-4 bg-white border border-gray-200 p-4 rounded-2xl shadow-2xl z-[60] flex items-center justify-between animate-fade-in ring-1 ring-black/5">
-              <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center text-blue-600 font-bold text-xl">P</div>
-                  <div className="flex flex-col">
-                      <span className="font-bold text-gray-900">Patient Calling</span>
-                      <span className="text-xs text-gray-500">{patient?.username}</span>
-                  </div>
-              </div>
-              <div className="flex gap-2">
-                  <button onClick={() => setIsReceivingCall(false)} className="p-3 bg-red-50 text-red-600 rounded-full hover:bg-red-100 transition-colors"><IoMdClose size={20} /></button>
-                  <button onClick={answerCall} className="p-3 bg-green-600 text-white rounded-full hover:bg-green-700 transition-colors animate-pulse"><IoMdCall size={20} /></button>
-              </div>
+        <div className="fixed top-4 left-4 right-4 bg-white border border-gray-200 p-4 rounded-2xl shadow-2xl z-[60] flex items-center justify-between animate-fade-in ring-1 ring-black/5">
+          <div className="flex items-center gap-3">
+            <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center text-blue-600 font-bold text-xl">P</div>
+            <div className="flex flex-col">
+              <span className="font-bold text-gray-900">Patient Calling</span>
+              <span className="text-xs text-gray-500">{patient?.username}</span>
+            </div>
           </div>
+          <div className="flex gap-2">
+            <button onClick={() => setIsReceivingCall(false)} className="p-3 bg-red-50 text-red-600 rounded-full hover:bg-red-100 transition-colors"><IoMdClose size={20} /></button>
+            <button onClick={answerCall} className="p-3 bg-green-600 text-white rounded-full hover:bg-green-700 transition-colors animate-pulse"><IoMdCall size={20} /></button>
+          </div>
+        </div>
       )}
 
       {showVideoCall && <VideoCall socket={socketRef} user={user} roomId={roomId} isInitiator={isInitiator} signalData={incomingCallData} onClose={() => { setShowVideoCall(false); setIsReceivingCall(false); }} />}
@@ -258,65 +261,65 @@ const DoctorChatPage = () => {
           const isUploading = msg.isUploading;
           const fileUrl = msg.FileUrl || msg.file_url;
           const fileType = msg.FileType || msg.file_type;
-          
+
           if (fileType === 'system') {
-              return (
-                  <div key={i} className="flex justify-center my-4">
-                      <span className="text-xs text-gray-500 font-medium bg-gray-100 px-3 py-1 rounded-full border border-gray-200">
-                          {msg.Message || msg.message}
-                      </span>
-                  </div>
-              );
+            return (
+              <div key={i} className="flex justify-center my-4">
+                <span className="text-xs text-gray-500 font-medium bg-gray-100 px-3 py-1 rounded-full border border-gray-200">
+                  {msg.Message || msg.message}
+                </span>
+              </div>
+            );
           }
 
           if (fileType === 'call_request') {
-              const requestDone = isRequestAccepted(i);
-              return (
-                <div key={i} className={`flex w-full ${isMe ? 'justify-end' : 'justify-start'}`}>
-                   <div className={`p-4 rounded-2xl max-w-[80%] ${isMe ? 'bg-blue-100 text-blue-800' : 'bg-white border border-gray-200 shadow-sm'}`}>
-                      <div className="flex flex-col gap-3">
-                          <div className="flex items-center gap-2">
-                              <IoMdVideocam size={24} className={isMe ? "text-blue-600" : "text-green-600"} />
-                              <span className="font-semibold">{isMe ? "You requested a video call" : "Patient requesting video call"}</span>
-                          </div>
-                          {!isMe && (
-                              <button 
-                                onClick={!requestDone ? startCall : undefined} 
-                                disabled={requestDone}
-                                className={`w-full py-2 rounded-xl font-medium text-sm transition-colors shadow-sm ${requestDone ? 'bg-gray-200 text-gray-500 cursor-not-allowed' : 'bg-green-600 text-white hover:bg-green-700'}`}
-                              >
-                                  {requestDone ? "Request Accepted" : "Accept Request"}
-                              </button>
-                          )}
-                      </div>
-                   </div>
+            const requestDone = isRequestAccepted(i);
+            return (
+              <div key={i} className={`flex w-full ${isMe ? 'justify-end' : 'justify-start'}`}>
+                <div className={`p-4 rounded-2xl max-w-[80%] ${isMe ? 'bg-blue-100 text-blue-800' : 'bg-white border border-gray-200 shadow-sm'}`}>
+                  <div className="flex flex-col gap-3">
+                    <div className="flex items-center gap-2">
+                      <IoMdVideocam size={24} className={isMe ? "text-blue-600" : "text-green-600"} />
+                      <span className="font-semibold">{isMe ? "You requested a video call" : "Patient requesting video call"}</span>
+                    </div>
+                    {!isMe && (
+                      <button
+                        onClick={!requestDone ? startCall : undefined}
+                        disabled={requestDone}
+                        className={`w-full py-2 rounded-xl font-medium text-sm transition-colors shadow-sm ${requestDone ? 'bg-gray-200 text-gray-500 cursor-not-allowed' : 'bg-green-600 text-white hover:bg-green-700'}`}
+                      >
+                        {requestDone ? "Request Accepted" : "Accept Request"}
+                      </button>
+                    )}
+                  </div>
                 </div>
-              );
+              </div>
+            );
           }
 
           return (
             <div key={msg.tempId || i} className={`flex w-full ${isMe ? 'justify-end' : 'justify-start'}`}>
               <div className={`relative max-w-[85%] sm:max-w-[70%] rounded-2xl p-1 shadow-sm overflow-hidden ${isMe ? 'bg-blue-600 text-white rounded-br-none' : 'bg-white text-gray-800 border border-gray-200 rounded-bl-none'}`}>
                 {fileUrl ? (
-                    <div className="relative rounded-xl overflow-hidden">
-                        {fileType === 'image' && <img src={fileUrl} className={`max-h-72 w-full object-contain bg-black/5 ${isUploading ? 'opacity-70' : ''}`} onClick={() => !isUploading && setSelectedMedia({ url: fileUrl, type: 'image' })} />}
-                        {fileType === 'video' && (
-                            <div className="relative cursor-pointer bg-black min-h-[150px] flex items-center justify-center" onClick={() => !isUploading && setSelectedMedia({ url: fileUrl, type: 'video' })}>
-                                <video src={fileUrl} className="max-h-72 w-full object-contain opacity-80" />
-                                <div className="absolute inset-0 flex items-center justify-center"><IoMdPlay className="text-white text-4xl" /></div>
-                            </div>
-                        )}
-                        {fileType === 'audio' && <div className="p-1"><CustomAudioPlayer src={fileUrl} isMe={isMe} /></div>}
-                        {isUploading && (
-                            <div className="absolute bottom-2 right-2 flex items-center justify-center bg-black/60 rounded-full w-8 h-8 z-20">
-                                <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
-                            </div>
-                        )}
-                    </div>
+                  <div className="relative rounded-xl overflow-hidden">
+                    {fileType === 'image' && <img src={fileUrl} className={`max-h-72 w-full object-contain bg-black/5 ${isUploading ? 'opacity-70' : ''}`} onClick={() => !isUploading && setSelectedMedia({ url: fileUrl, type: 'image' })} />}
+                    {fileType === 'video' && (
+                      <div className="relative cursor-pointer bg-black min-h-[150px] flex items-center justify-center" onClick={() => !isUploading && setSelectedMedia({ url: fileUrl, type: 'video' })}>
+                        <video src={fileUrl} className="max-h-72 w-full object-contain opacity-80" />
+                        <div className="absolute inset-0 flex items-center justify-center"><IoMdPlay className="text-white text-4xl" /></div>
+                      </div>
+                    )}
+                    {fileType === 'audio' && <div className="p-1"><CustomAudioPlayer src={fileUrl} isMe={isMe} /></div>}
+                    {isUploading && (
+                      <div className="absolute bottom-2 right-2 flex items-center justify-center bg-black/60 rounded-full w-8 h-8 z-20">
+                        <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                      </div>
+                    )}
+                  </div>
                 ) : null}
                 {(msg.Message || msg.message) ? <p className="text-sm px-3 py-2 leading-relaxed break-words">{msg.Message || msg.message}</p> : null}
                 <div className={`text-[9px] text-right px-2 pb-1 opacity-70`}>
-                  {new Date(msg.Timestamp || msg.timestamp || Date.now()).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                  {new Date(msg.Timestamp || msg.timestamp || Date.now()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                 </div>
               </div>
             </div>
@@ -330,22 +333,22 @@ const DoctorChatPage = () => {
           <div className="flex items-center gap-2 max-w-4xl mx-auto w-full">
             {isRecording ? (
               <div className="flex-1 bg-gray-100 rounded-full flex items-center px-3 py-1.5 border border-red-200">
-                  <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse mr-2"></div>
-                  <span className="text-red-600 font-mono text-sm flex-1">{formatTime(recordingTime)}</span>
-                  <button onClick={cancelRecording} className="p-2 text-gray-500 hover:text-red-500"><IoMdTrash size={20} /></button>
-                  <button onClick={sendRecording} className="w-10 h-10 bg-blue-600 rounded-full flex items-center justify-center text-white shadow-md"><IoMdSend size={20} /></button>
+                <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse mr-2"></div>
+                <span className="text-red-600 font-mono text-sm flex-1">{formatTime(recordingTime)}</span>
+                <button onClick={cancelRecording} className="p-2 text-gray-500 hover:text-red-500"><IoMdTrash size={20} /></button>
+                <button onClick={sendRecording} className="w-10 h-10 bg-blue-600 rounded-full flex items-center justify-center text-white shadow-md"><IoMdSend size={20} /></button>
               </div>
             ) : (
               <>
                 <button onClick={() => fileInputRef.current?.click()} className="w-11 h-11 shrink-0 flex items-center justify-center rounded-full bg-gray-100 text-gray-600 active:scale-95 transition-all"><RiImageAddLine size={24} /></button>
                 <input type="file" ref={fileInputRef} hidden accept="image/*,video/*,audio/*" onChange={handleFileSelect} />
                 <div className="flex-1 bg-gray-100 rounded-2xl flex items-center px-4 py-2.5 border border-transparent focus-within:bg-white focus-within:border-blue-500 transition-all">
-                    <input className="bg-transparent flex-1 outline-none text-sm text-gray-800" placeholder="Advice..." value={inputText} onChange={e => setInputText(e.target.value)} onKeyDown={e => e.key === 'Enter' && sendMessage()} />
+                  <input className="bg-transparent flex-1 outline-none text-sm text-gray-800" placeholder="Advice..." value={inputText} onChange={e => setInputText(e.target.value)} onKeyDown={e => e.key === 'Enter' && sendMessage()} />
                 </div>
                 {inputText.trim() ? (
-                    <button onClick={sendMessage} className="w-11 h-11 shrink-0 bg-blue-600 text-white rounded-full flex items-center justify-center shadow-md active:scale-95 transition-all"><IoMdSend size={24} /></button>
+                  <button onClick={sendMessage} className="w-11 h-11 shrink-0 bg-blue-600 text-white rounded-full flex items-center justify-center shadow-md active:scale-95 transition-all"><IoMdSend size={24} /></button>
                 ) : (
-                    <button onClick={startRecording} className="w-11 h-11 shrink-0 bg-gray-100 text-gray-700 rounded-full flex items-center justify-center active:scale-95 transition-all"><IoMdMic size={24} /></button>
+                  <button onClick={startRecording} className="w-11 h-11 shrink-0 bg-gray-100 text-gray-700 rounded-full flex items-center justify-center active:scale-95 transition-all"><IoMdMic size={24} /></button>
                 )}
               </>
             )}
