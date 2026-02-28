@@ -65,7 +65,7 @@ class DoctorGroqAgent:
         """Lazy initialization of the SQL database connection"""
         if self.db is None:
             try:
-                db_uri = f"postgresql+psycopg2://postgres:{settings.DATABASE_PASSWORD}@mycalo_db:5432/mycalo_ai_db"
+                db_uri = f"postgresql+psycopg2://postgres:{settings.DB_PASSWORD}@{settings.DB_HOST}:{settings.DB_PORT}/{settings.DB_NAME}"
                 self.db = SQLDatabase.from_uri(
                     db_uri,
                     include_tables=[
@@ -91,8 +91,8 @@ class DoctorGroqAgent:
                     model="models/gemini-embedding-001", google_api_key=self.gemini_key
                 )
                 chroma_client = chromadb.HttpClient(
-                    host="chromadb",
-                    port=8000,
+                    host=settings.CHROMA_HOST,
+                    port=settings.CHROMA_PORT,
                     settings=Settings(anonymized_telemetry=False),
                 )
                 self.vectorstore = Chroma(

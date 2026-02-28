@@ -16,7 +16,9 @@ def seed_database():
 
     print("Connecting to ChromaDB...")
     chroma_client = chromadb.HttpClient(
-        host="chromadb", port=8000, settings=Settings(anonymized_telemetry=False)
+        host=settings.CHROMA_HOST,
+        port=settings.CHROMA_PORT,
+        settings=Settings(anonymized_telemetry=False),
     )
 
     vectorstore = Chroma(

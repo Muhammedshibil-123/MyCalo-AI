@@ -14,10 +14,21 @@ class Settings:
 
     BACKUP_GEMINI_KEY: str = os.getenv("BACKUP_GEMINI_KEY")
 
-    DATABASE_PASSWORD: str = os.getenv("DATABASE_PASSWORD")
+    DATABASE_PASSWORD: str = os.getenv("DB_PASSWORD") or os.getenv("DATABASE_PASSWORD")
 
     SECRET_KEY: str = os.getenv("SECRET_KEY")
     ALGORITHM: str = os.getenv("ALGORITHM", "HS256")
+
+    # Database Settings
+    DB_HOST: str = os.getenv("DB_HOST", "db")
+    DB_PORT: str = os.getenv("DB_PORT", "5432")
+    DB_NAME: str = os.getenv("DB_NAME", "mycalo_ai_db")
+    DB_USER: str = os.getenv("DB_USER", "postgres")
+    DB_PASSWORD: str = os.getenv("DB_PASSWORD") or os.getenv("DATABASE_PASSWORD")
+
+    # ChromaDB Settings
+    CHROMA_HOST: str = os.getenv("CHROMA_HOST", "chromadb")
+    CHROMA_PORT: int = int(os.getenv("CHROMA_PORT", "8000"))
 
 
     AWS_ACCESS_KEY_ID: str = os.getenv("AWS_ACCESS_KEY_ID")
