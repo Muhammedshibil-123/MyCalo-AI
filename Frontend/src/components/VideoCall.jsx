@@ -153,84 +153,88 @@ const VideoCall = ({ socket, user, roomId, onClose, isInitiator, signalData }) =
   };
 
   return (
-    <div className="fixed inset-0 z-[100] bg-slate-950 flex flex-col overflow-hidden">
+    <div className="fixed inset-0 z-[100] bg-slate-950 flex flex-col h-screen w-screen overflow-hidden font-sans">
       
-      {/* 1. TOP BAR (Encryption Info) */}
-      <div className="absolute top-0 left-0 right-0 p-6 flex justify-between items-start z-[110] pointer-events-none">
-        <div className="flex items-center gap-2 bg-emerald-500/10 backdrop-blur-md border border-emerald-500/20 px-4 py-2 rounded-full pointer-events-auto">
-          <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></div>
-          <span className="text-emerald-500 text-[10px] font-bold uppercase tracking-widest">Secure Connection</span>
+      {/* 1. TOP HEADER (Security & Info) */}
+      <div className="h-16 flex items-center justify-between px-6 z-50 bg-gradient-to-b from-slate-950/80 to-transparent">
+        <div className="flex items-center gap-2 bg-emerald-500/10 border border-emerald-500/20 px-3 py-1.5 rounded-full">
+          <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse" />
+          <span className="text-emerald-500 text-[10px] font-bold uppercase tracking-widest">Encrypted</span>
         </div>
-
-        {/* Local Self Video (Locked to Top Right) */}
-        <div className="w-32 md:w-56 aspect-video bg-slate-800 rounded-2xl overflow-hidden border border-white/10 shadow-2xl pointer-events-auto transform hover:scale-105 transition-all duration-300">
-          {!videoOn && (
-            <div className="absolute inset-0 flex items-center justify-center bg-slate-900 z-10">
-              <RiCameraOffFill className="text-slate-600 text-xl" />
-            </div>
-          )}
-          <video 
-            playsInline 
-            ref={myVideo} 
-            autoPlay 
-            muted 
-            className="w-full h-full object-cover scale-x-[-1]" 
-          />
+        <div className="text-slate-400 text-xs font-medium">
+          Room: <span className="text-slate-200">{roomId}</span>
         </div>
       </div>
 
-      {/* 2. MAIN VIDEO VIEWPORT */}
-      <div className="relative flex-1 w-full h-full flex items-center justify-center bg-slate-900">
-          {callAccepted || !isInitiator ? (
-              <video 
-                playsInline 
-                ref={userVideo} 
-                autoPlay 
-                className="w-full h-full object-cover md:object-contain" 
-              />
-          ) : (
-              <div className="flex flex-col items-center gap-6">
-                <div className="relative flex items-center justify-center">
-                  <div className="absolute w-24 h-24 bg-blue-500/20 rounded-full animate-ping"></div>
-                  <div className="relative w-20 h-20 bg-blue-600 rounded-full flex items-center justify-center shadow-lg">
-                    <RiVidiconFill size={32} className="text-white animate-pulse" />
-                  </div>
+      {/* 2. MAIN VIDEO AREA (This section will shrink/grow) */}
+      <div className="flex-1 relative w-full flex items-center justify-center p-2 md:p-6 bg-slate-900/40">
+        
+        {/* Remote Video Container */}
+        <div className="relative w-full h-full max-w-6xl aspect-video md:aspect-auto bg-black rounded-3xl overflow-hidden shadow-2xl border border-white/5 flex items-center justify-center">
+            {callAccepted || !isInitiator ? (
+                <video 
+                    playsInline 
+                    ref={userVideo} 
+                    autoPlay 
+                    className="w-full h-full object-cover md:object-contain" 
+                />
+            ) : (
+                <div className="flex flex-col items-center gap-4">
+                    <div className="w-16 h-16 bg-blue-600 rounded-full flex items-center justify-center animate-bounce shadow-lg shadow-blue-500/20">
+                        <RiVidiconFill size={28} className="text-white" />
+                    </div>
+                    <p className="text-slate-400 text-sm animate-pulse">Waiting for participant...</p>
                 </div>
-                <h2 className="text-white text-xl font-medium tracking-wide">Connecting...</h2>
-              </div>
-          )}
+            )}
+        </div>
+
+        {/* Local Video (Floating Mini-Window) */}
+        <div className="absolute bottom-6 right-6 md:top-10 md:right-10 w-28 md:w-56 aspect-video bg-slate-800 rounded-2xl overflow-hidden border-2 border-white/10 shadow-2xl z-40">
+            {!videoOn && (
+                <div className="absolute inset-0 flex items-center justify-center bg-slate-900 z-10">
+                    <RiCameraOffFill className="text-slate-600 text-xl" />
+                </div>
+            )}
+            <video 
+                playsInline 
+                ref={myVideo} 
+                autoPlay 
+                muted 
+                className="w-full h-full object-cover scale-x-[-1]" 
+            />
+        </div>
       </div>
 
-      {/* 3. BOTTOM CONTROLS (Fixed at bottom, never hidden) */}
-      <div className="h-32 md:h-40 w-full flex items-center justify-center bg-gradient-to-t from-slate-950 to-transparent relative z-[120]">
-        <div className="flex items-center gap-6 md:gap-10 px-8 py-4 bg-white/5 backdrop-blur-2xl border border-white/10 rounded-3xl shadow-2xl mb-6">
+      {/* 3. CONTROLS BAR (Locked to Bottom) */}
+      <div className="h-28 md:h-36 flex items-center justify-center px-6 bg-gradient-to-t from-slate-950/90 to-transparent">
+        <div className="flex items-center gap-4 md:gap-8 p-3 md:p-4 bg-white/5 backdrop-blur-3xl border border-white/10 rounded-[2.5rem] shadow-2xl ring-1 ring-white/10">
             
             {/* Mic Toggle */}
             <button 
-              onClick={toggleMic} 
-              className={`p-4 rounded-2xl transition-all duration-300 ${
-                micOn ? 'bg-slate-800/80 hover:bg-slate-700 text-white' : 'bg-red-500 text-white animate-bounce'
-              }`}
+                onClick={toggleMic} 
+                className={`p-4 md:p-5 rounded-3xl transition-all duration-300 ${
+                    micOn ? 'bg-slate-800/80 hover:bg-slate-700 text-white' : 'bg-red-500/90 text-white shadow-lg shadow-red-500/20'
+                }`}
             >
-              {micOn ? <IoMdMic size={24} /> : <IoMdMicOff size={24} />}
+                {micOn ? <IoMdMic size={24} /> : <IoMdMicOff size={24} />}
             </button>
 
             {/* End Call Button */}
             <button 
-              onClick={() => endCall(true)} 
-              className="p-5 rounded-2xl bg-red-600 hover:bg-red-500 text-white transition-all duration-300 shadow-[0_0_30px_rgba(220,38,38,0.3)] group"
+                onClick={() => endCall(true)} 
+                className="p-5 md:p-6 rounded-3xl bg-red-600 hover:bg-red-500 text-white transition-all duration-300 shadow-[0_15px_30px_rgba(220,38,38,0.3)] hover:-rotate-12 active:scale-90"
             >
-              <IoMdCall size={32} className="rotate-[135deg] group-hover:scale-110 transition-transform" />
+                <IoMdCall size={32} className="rotate-[135deg]" />
             </button>
 
             {/* Video Toggle */}
             <button 
-              onClick={toggleVideo} 
-              className={`p-4 rounded-2xl transition-all duration-300 ${
-                videoOn ? 'bg-slate-800/80 hover:bg-slate-700 text-white' : 'bg-red-500 text-white animate-bounce'
-              }`}
+                onClick={toggleVideo} 
+                className={`p-4 md:p-5 rounded-3xl transition-all duration-300 ${
+                    videoOn ? 'bg-slate-800/80 hover:bg-slate-700 text-white' : 'bg-red-500/90 text-white shadow-lg shadow-red-500/20'
+                }`}
             >
-              {videoOn ? <RiVidiconFill size={24} /> : <RiCameraOffFill size={24} />}
+                {videoOn ? <RiVidiconFill size={24} /> : <RiCameraOffFill size={24} />}
             </button>
         </div>
       </div>
