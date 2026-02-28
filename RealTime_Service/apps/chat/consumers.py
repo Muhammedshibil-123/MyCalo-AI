@@ -18,17 +18,24 @@ class ChatConsumer(AsyncWebsocketConsumer):
         self.user_id = self.scope.get("user_id")
 
         if self.user_id is None:
+            print(f"Connection Rejected: user_id is None for room {self.room_name}")
             await self.close(code=4003)
             return
 
         await self.channel_layer.group_add(self.room_group_name, self.channel_name)
 
-        headers = dict(self.scope.get('headers', []))
-        subprotocol = None
-        if b'sec-websocket-protocol' in headers:
-            subprotocol = headers[b'sec-websocket-protocol'].decode('utf-8').split(',')[0].strip()
+        # 1. Grab the subprotocol safely from Daphne's ASGI scope
+        subprotocols = self.scope.get('subprotocols', [])
+        accepted_subprotocol = subprotocols[0] if subprotocols else None
 
-        await self.accept(subprotocol=subprotocol)
+        # 2. Fallback to raw headers just in case
+        if not accepted_subprotocol:
+            headers = dict(self.scope.get('headers', []))
+            if b'sec-websocket-protocol' in headers:
+                accepted_subprotocol = headers[b'sec-websocket-protocol'].decode('utf-8').split(',')[0].strip()
+
+        # 3. Accept and ECHO the protocol back to the browser!
+        await self.accept(subprotocol=accepted_subprotocol)
 
         history = await self.get_chat_history()
         await self.send(text_data=json.dumps({
