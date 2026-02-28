@@ -48,3 +48,37 @@ def check_missing_meals(meal_type):
         else:
 
             continue
+
+
+@shared_task
+def send_broadcast_notification(title, message):
+    User = get_user_model()
+    
+    active_users = User.objects.filter(is_active=True).select_related('profile')
+
+    sqs = boto3.client(
+        "sqs",
+        region_name=settings.AWS_REGION,
+        aws_access_key_id=settings.AWS_ACCESS_KEY_ID,
+        aws_secret_access_key=settings.AWS_SECRET_ACCESS_KEY,
+    )
+    
+    queue_url = settings.AWS_MEAL_REMINDER_QUEUE_URL
+
+    count = 0
+    for user in active_users:
+        if hasattr(user, "profile") and getattr(user.profile, "fcm_token", None):
+            fcm_token = user.profile.fcm_token
+
+            payload = {
+                "user_id": user.id,
+                "fcm_token": fcm_token,
+                "title": title,
+                "body": message,
+            }
+
+            sqs.send_message(QueueUrl=queue_url, MessageBody=json.dumps(payload))
+            count += 1
+            
+    print(f"Queued broadcast notification for {count} users.")
+    return f"Sent to {count} users"

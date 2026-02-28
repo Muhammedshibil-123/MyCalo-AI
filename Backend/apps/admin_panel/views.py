@@ -15,6 +15,8 @@ from apps.exercises.models import Exercise
 from apps.foods.models import FoodItem
 from apps.tracking.models import DailyLog
 
+from apps.notifications.tasks import send_broadcast_notification
+
 
 class IsAdminOrEmployee(BasePermission):
     def has_permission(self, request, view):
@@ -261,4 +263,26 @@ class UserManagementDetailView(APIView):
 
         return Response(
             {"message": "User soft-deleted successfully"}, status=status.HTTP_200_OK
+        )
+
+
+class BroadcastNotificationView(APIView):
+    permission_classes = [IsAdmin]
+
+    def post(self, request):
+        title = request.data.get("title")
+        message = request.data.get("message")
+
+        if not title or not message:
+            return Response(
+                {"error": "Both 'title' and 'message' are required."}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        
+        send_broadcast_notification.delay(title, message)
+
+        return Response(
+            {"message": "Broadcast notification has been queued and is sending to users."}, 
+            status=status.HTTP_200_OK
         )

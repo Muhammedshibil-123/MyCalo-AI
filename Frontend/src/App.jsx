@@ -51,6 +51,7 @@ import ExerciseDetail from './pages/user/ExerciseDetail';
 import AdminProfile from './pages/admin/AdminProfile';
 import DoctorProfile from './pages/doctor/DoctorProfile';
 import PatientLogs from './pages/doctor/PatientLogs';
+import AdminBroadcast from './pages/admin/AdminBroadcast';
 
 const getHomeRouteForRole = (role, dailyCalorieGoal = 0) => {
     if (role === 'admin' || role === 'employee') return '/admin/dashboard';
@@ -205,6 +206,7 @@ function App() {
                             <Route path="/admin/profile" element={<AdminProfile />} />
                             <Route element={<RoleRoute allowedRoles={['admin']} />}>
                                 <Route path="/admin/usermanagement" element={<AdminUserManagement />} />
+                                <Route path="/admin/broadcast" element={<AdminBroadcast />} />
                             </Route>
                         </Route>
                     </Route>

@@ -10,6 +10,7 @@ from .views import (
     UserManagementDetailView,
     UserManagementListView,
     UsersCountView,
+    BroadcastNotificationView,
 )
 
 urlpatterns = [
@@ -35,5 +36,10 @@ urlpatterns = [
         "users-management/<int:pk>/",
         UserManagementDetailView.as_view(),
         name="admin-users-detail",
+    ),
+    path(
+        "broadcast/", 
+        BroadcastNotificationView.as_view(), 
+        name="admin-broadcast"
     ),
 ]
