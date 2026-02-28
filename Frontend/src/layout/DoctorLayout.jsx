@@ -41,7 +41,7 @@ export default function DoctorLayout() {
     { name: 'Live Chat', path: `/doctor/chat/${roomId}`, icon: FiMessageSquare },
     { name: 'AI Assistant', path: `/doctor/ai-chat/${roomId}`, icon: FiCpu },
     { name: 'History', path: `/doctor/history/${roomId}`, icon: FiPieChart },
-    { name: 'Patient Logs', path: `/doctor/logs/${roomId}`, icon: FiClipboard },
+    { name: 'Patient Logs', path: `/doctor/patient-logs/${roomId}`, icon: FiClipboard },
   ];
 
   const handleLogout = () => {

@@ -50,6 +50,7 @@ import TermsConditions from './pages/user/TermsConditions';
 import ExerciseDetail from './pages/user/ExerciseDetail';
 import AdminProfile from './pages/admin/AdminProfile';
 import DoctorProfile from './pages/doctor/DoctorProfile';
+import PatientLogs from './pages/doctor/PatientLogs';
 
 const getHomeRouteForRole = (role, dailyCalorieGoal = 0) => {
     if (role === 'admin' || role === 'employee') return '/admin/dashboard';
@@ -218,6 +219,7 @@ function App() {
                             <Route path="/doctor/ai-chat/:roomId" element={<PatientAIChat />} />
                             <Route path="/doctor/history/:roomId" element={<PatientHistory />} />
                             <Route path="/doctor/profile" element={<DoctorProfile />} />
+                            <Route path="/doctor/patient-logs/:patientId" element={<PatientLogs />} />
                         </Route>
                     </Route>
 

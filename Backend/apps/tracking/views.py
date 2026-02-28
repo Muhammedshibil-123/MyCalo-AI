@@ -11,6 +11,9 @@ from apps.foods.models import FoodImage, FoodItem
 from .models import DailyLog,ExerciseLog
 from .serializers import DailyLogSerializer,ExerciseLogSerializer
 
+from django.contrib.auth import get_user_model
+User = get_user_model()
+
 
 class DailyLogViewSet(viewsets.ModelViewSet):
     serializer_class = DailyLogSerializer
@@ -451,3 +454,99 @@ class ExerciseLogDetailView(views.APIView):
             {"message": "Exercise log deleted successfully", "success": True}, 
             status=status.HTTP_204_NO_CONTENT
         )
+    
+
+
+class PatientDailyLogView(views.APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    @swagger_auto_schema(
+        operation_description="Retrieve a summarized list of daily food logs for a specific patient.",
+        tags=["Doctor Tools"],
+        manual_parameters=[
+            openapi.Parameter(
+                "date",
+                openapi.IN_QUERY,
+                description="Date in YYYY-MM-DD format (defaults to today)",
+                type=openapi.TYPE_STRING,
+            )
+        ],
+        responses={200: "Daily logs grouped by meal"},
+    )
+    def get(self, request, user_id, *args, **kwargs):
+        date_str = request.query_params.get("date", str(timezone.now().date()))
+
+        
+        logs = DailyLog.objects.filter(user_id=user_id, date=date_str).select_related(
+            "food_item"
+        )
+
+        response_data = {
+            "user_id": user_id,
+            "date": date_str,
+            "total_grant_calories": 0,
+            "meals": [],
+        }
+
+        meal_groups = {
+            "BREAKFAST": {"meal_type": "breakfast", "total_meal_calories": 0, "items": []},
+            "LUNCH": {"meal_type": "lunch", "total_meal_calories": 0, "items": []},
+            "DINNER": {"meal_type": "dinner", "total_meal_calories": 0, "items": []},
+            "SNACK": {"meal_type": "snack", "total_meal_calories": 0, "items": []},
+        }
+
+        for log in logs:
+            serialized_item = DailyLogSerializer(log).data
+            if serialized_item.get("food_details"):
+                item_calories = serialized_item["food_details"]["calories"]
+
+                meal_key = log.meal_type
+                if meal_key in meal_groups:
+                    meal_groups[meal_key]["items"].append(serialized_item)
+                    meal_groups[meal_key]["total_meal_calories"] += item_calories
+                    response_data["total_grant_calories"] += item_calories
+
+        response_data["meals"] = list(meal_groups.values())
+
+        return Response(response_data)
+
+
+class PatientExerciseLogView(views.APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    @swagger_auto_schema(
+        operation_description="Retrieve a list of logged exercises for a specific patient.",
+        tags=["Doctor Tools"],
+        manual_parameters=[
+            openapi.Parameter(
+                "date",
+                openapi.IN_QUERY,
+                description="Date in YYYY-MM-DD format (defaults to today)",
+                type=openapi.TYPE_STRING,
+            )
+        ],
+        responses={200: "Exercise logs and burned calories"},
+    )
+    def get(self, request, user_id):
+        date_str = request.query_params.get("date", str(timezone.now().date()))
+        
+        
+        exercise_logs = ExerciseLog.objects.filter(
+            user_id=user_id, date=date_str
+        ).select_related("exercise", "user__profile")
+
+        response_data = {
+            "user_id": user_id,
+            "date": date_str,
+            "total_burned_calories": 0,
+            "exercises": [],
+        }
+
+        for ex_log in exercise_logs:
+            serialized_ex = ExerciseLogSerializer(ex_log).data
+            ex_details = serialized_ex.get("exercise_details")
+            if ex_details:
+                response_data["exercises"].append(ex_details)
+                response_data["total_burned_calories"] += ex_details["burned_calories"]
+
+        return Response(response_data, status=status.HTTP_200_OK)
