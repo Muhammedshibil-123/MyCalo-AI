@@ -273,3 +273,6 @@ class AdminConsultationMessagesView(APIView):
         except Exception as e:
             print(f"Error fetching messages for admin: {e}")
             return Response({"error": str(e)}, status=500)
+        
+
+# Test CI/CD trigger.

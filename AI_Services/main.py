@@ -36,3 +36,5 @@ app.include_router(chat_doctor_groq.router, prefix="/ai")
 @app.get("/ai")
 def health_check():
     return {"status": "ok", "service": "AI_Services"}
+
+# Test CI/CD trigger.
