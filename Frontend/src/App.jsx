@@ -52,6 +52,8 @@ import AdminProfile from './pages/admin/AdminProfile';
 import DoctorProfile from './pages/doctor/DoctorProfile';
 import PatientLogs from './pages/doctor/PatientLogs';
 import AdminBroadcast from './pages/admin/AdminBroadcast';
+import AdminChatMonitor from './pages/admin/AdminChatMonitor';
+import AdminChat from './pages/admin/AdminChat';
 
 const getHomeRouteForRole = (role, dailyCalorieGoal = 0) => {
     if (role === 'admin' || role === 'employee') return '/admin/dashboard';
@@ -204,6 +206,8 @@ function App() {
                             <Route path="/admin/foods" element={<AdminFoods />} />
                             <Route path="/admin/exercises" element={<AdminExercises />} />
                             <Route path="/admin/profile" element={<AdminProfile />} />
+                            <Route path="/admin/chatmoniter" element={<AdminChatMonitor />} />
+                            <Route path="/admin/chat/:roomId" element={<AdminChat />} />
                             <Route element={<RoleRoute allowedRoles={['admin']} />}>
                                 <Route path="/admin/usermanagement" element={<AdminUserManagement />} />
                                 <Route path="/admin/broadcast" element={<AdminBroadcast />} />

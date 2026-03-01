@@ -30,7 +30,7 @@ export default function AdminLayout() {
     { name: 'Exercises', path: '/admin/exercises', icon: FiActivity, adminOnly: false },
     { name: 'User Management', path: '/admin/usermanagement', icon: FiUsers, adminOnly: true },
     { name: 'Broadcast', path: '/admin/broadcast', icon: FiRadio, adminOnly: true },
-    { name: 'Chat Monitor', path: '/admin/chats', icon: FiMessageSquare, adminOnly: false },
+    { name: 'Chat Monitor', path: '/admin/chatmoniter', icon: FiMessageSquare, adminOnly: false },
     { name: 'Flagged Content', path: '/admin/flagged', icon: FiAlertTriangle, adminOnly: false },
   ];
 

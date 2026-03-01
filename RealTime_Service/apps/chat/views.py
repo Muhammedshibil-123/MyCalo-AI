@@ -9,6 +9,7 @@ from datetime import datetime
 import os
 from django.conf import settings
 from .tasks import process_file_upload
+from boto3.dynamodb.conditions import Key
 
 class ChatMediaUploadView(APIView):
     authentication_classes = [StatelessTokenAuthentication]
@@ -187,3 +188,88 @@ def post(self, request):
     )
 
     return Response({"message": "Upload started", "status": "processing"}, status=202)
+
+
+class AdminDoctorConsultationListView(APIView):
+    """
+    Admin endpoint to fetch all consultations for a SPECIFIC doctor.
+    """
+    authentication_classes = [StatelessTokenAuthentication]
+    permission_classes = [IsAuthenticated] # You can add an IsAdmin permission class later if you have one
+
+    def get(self, request, doctor_id):
+        try:
+            # Ensure doctor_id is an integer as DynamoDB expects a Number type for this index
+            doc_id = int(doctor_id)
+        except (ValueError, TypeError):
+            return Response({"error": "Invalid doctor ID format"}, status=400)
+
+        # Allow filtering by status, defaulting to all active
+        status_filter = request.query_params.get('status', 'active')  
+        
+        try:
+            dynamodb = get_dynamodb_resource()
+            consultations_table = dynamodb.Table('DoctorConsultations')
+
+            # Query the GSI (Global Secondary Index) using the specified doctor_id
+            response = consultations_table.query(
+                IndexName='DoctorStatusIndex',
+                KeyConditionExpression='DoctorID = :doc_id AND #status = :status',
+                ExpressionAttributeNames={
+                    '#status': 'Status'
+                },
+                ExpressionAttributeValues={
+                    ':doc_id': doc_id, 
+                    ':status': status_filter
+                }
+            )
+            
+            consultations = response.get('Items', [])
+            
+            # Sort by the latest message time
+            consultations.sort(
+                key=lambda x: x.get('LastMessageTime', ''), 
+                reverse=True
+            )
+            
+            # Add patient meta details
+            for consult in consultations:
+                consult['patient_data'] = {
+                    'id': int(consult['PatientID']),
+                    'username': f"User {consult['PatientID']}",
+                }
+            
+            return Response(consultations)
+            
+        except Exception as e:
+            print(f"Error fetching consultations for admin: {e}")
+            return Response({"error": str(e)}, status=500)
+
+
+class AdminConsultationMessagesView(APIView):
+    """
+    Admin endpoint to fetch the actual chat history for a specific consultation ID.
+    """
+    authentication_classes = [StatelessTokenAuthentication]
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, room_id):
+        try:
+            dynamodb = get_dynamodb_resource()
+            messages_table = dynamodb.Table('ChatHistory') 
+            
+            # FIX: Changed 'RoomName' to 'RoomID' to match your DynamoDB schema
+            response = messages_table.query(
+                KeyConditionExpression=Key('RoomID').eq(room_id)
+            )
+            
+            messages = response.get('Items', [])
+            
+            # Sort the messages chronologically
+            messages.sort(key=lambda x: x.get('Timestamp', x.get('CreatedAt', '')))
+            
+            return Response(messages)
+            
+        except Exception as e:
+            print(f"Error fetching messages for admin: {e}")
+            return Response({"error": str(e)}, status=500)
