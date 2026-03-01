@@ -2,7 +2,7 @@ name: MyCalo AI Production Deployment
 
 on:
   push:
-    branches: [ main ]
+    branches: [ main ] # Triggers only when you push to main
 
 jobs:
   build-and-deploy:
@@ -11,31 +11,32 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v3
 
+      # 1. Login to Docker Hub
       - name: Login to Docker Hub
         uses: docker/login-action@v2
         with:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
 
-      # 1. Build and Push Backend
+      # 2. Build and Push Backend
       - name: Build and Push Backend
         run: |
           docker build -t ${{ secrets.DOCKER_USERNAME }}/mycalo-backend:latest ./Backend
           docker push ${{ secrets.DOCKER_USERNAME }}/mycalo-backend:latest
 
-      # 2. Build and Push AI Service
+      # 3. Build and Push AI Service
       - name: Build and Push AI Service
         run: |
-          docker build -t ${{ secrets.DOCKER_USERNAME }}/mycalo-ai:latest ./ai-services
+          docker build -t ${{ secrets.DOCKER_USERNAME }}/mycalo-ai:latest ./AI_Services
           docker push ${{ secrets.DOCKER_USERNAME }}/mycalo-ai:latest
 
-      # 3. Build and Push Realtime Service
-      - name: Build and Push Realtime Service
+      # 4. Build and Push RealTime Service
+      - name: Build and Push RealTime Service
         run: |
           docker build -t ${{ secrets.DOCKER_USERNAME }}/mycalo-realtime:latest ./RealTime_Service
           docker push ${{ secrets.DOCKER_USERNAME }}/mycalo-realtime:latest
 
-      # 4. SSH into EC2 and Restart All Deployments
+      # 5. SSH into EC2 and Restart All K3s Pods
       - name: Deploy to AWS K3s
         uses: appleboy/ssh-action@master
         with:
@@ -43,7 +44,7 @@ jobs:
           username: ${{ secrets.EC2_USER }}
           key: ${{ secrets.EC2_SSH_KEY }}
           script: |
-            # Restart core services
+            # Restart Backend & Celery services
             kubectl rollout restart deployment/backend
             kubectl rollout restart deployment/backend-worker
             kubectl rollout restart deployment/backend-beat
@@ -51,8 +52,11 @@ jobs:
             # Restart AI service
             kubectl rollout restart deployment/ai-service
             
-            # Restart Realtime services
+            # Restart Real-Time & Chat services
             kubectl rollout restart deployment/realtime-service
             kubectl rollout restart deployment/realtime-worker
             
+            # Final verification of pod status
+            echo "Waiting for pods to stabilize..."
+            sleep 5
             kubectl get pods
