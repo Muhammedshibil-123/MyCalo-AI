@@ -1,0 +1,46 @@
+name: Deploy Backend
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'Backend/**' # Triggers only if the Backend folder changes
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v3
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v2
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+
+      - name: Build and Push Backend
+        run: |
+          docker build -t ${{ secrets.DOCKER_USERNAME }}/mycalo-backend:latest ./Backend
+          docker push ${{ secrets.DOCKER_USERNAME }}/mycalo-backend:latest
+
+      - name: Deploy to AWS K3s
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USER }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script: |
+            echo "Restarting Backend & Celery services..."
+            kubectl rollout restart deployment/backend
+            kubectl rollout restart deployment/backend-worker
+            kubectl rollout restart deployment/backend-beat
+            
+            echo "Waiting for Backend to start..."
+            kubectl rollout status deployment/backend
+            
+            echo "Running Main Backend Migrations..."
+            kubectl exec deploy/backend -- python manage.py migrate
+            
+            echo "Backend Deployment and Migrations completed successfully!"
+            kubectl get pods | grep backend
