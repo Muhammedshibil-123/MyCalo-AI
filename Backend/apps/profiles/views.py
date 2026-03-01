@@ -132,3 +132,6 @@ class RoleBasedProfileView(APIView):
             serializer.save()
             return Response(serializer.data)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+# Test CI/CD trigger.
