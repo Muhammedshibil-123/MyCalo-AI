@@ -56,7 +56,21 @@ jobs:
             kubectl rollout restart deployment/realtime-service
             kubectl rollout restart deployment/realtime-worker
             
+            # Wait for the new pods to fully start before running migrations
+            echo "Waiting for Backend to start..."
+            kubectl rollout status deployment/backend
+            echo "Waiting for Real-Time Service to start..."
+            kubectl rollout status deployment/realtime-service
+            
+            # AUTOMATICALLY RUN MIGRATIONS FOR DJANGO BACKEND!
+            echo "Running Main Backend Migrations..."
+            kubectl exec deploy/backend -- python manage.py migrate
+            
+            # AUTOMATICALLY RUN MIGRATIONS FOR REAL-TIME CHAT SERVICE!
+            echo "Running Real-Time Service Migrations..."
+            kubectl exec deploy/realtime-service -- python manage.py migrate
+            
             # Final verification of pod status
-            echo "Waiting for pods to stabilize..."
+            echo "Deployment and Migrations completed successfully!"
             sleep 5
             kubectl get pods

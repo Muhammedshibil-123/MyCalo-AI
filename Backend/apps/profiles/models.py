@@ -78,10 +78,10 @@ class DoctorProfile(models.Model):
     user = models.OneToOneField(
         settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="doctor_profile"
     )
-    name = models.CharField(max_length=120)
+    name = models.CharField(max_length=120, null=True, blank=True) # <-- FIX
     photo = CloudinaryField("image", blank=True, null=True)
-    specialization = models.CharField(max_length=255)
-    qualification = models.CharField(max_length=255)  
+    specialization = models.CharField(max_length=255, null=True, blank=True) # <-- FIX
+    qualification = models.CharField(max_length=255, null=True, blank=True)  # <-- FIX
     experience_years = models.PositiveIntegerField(default=0)
     bio = models.TextField(blank=True, null=True)
     contact_email = models.EmailField(blank=True, null=True)
@@ -90,22 +90,14 @@ class DoctorProfile(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
-    def __str__(self):
-        return f"Dr. {self.name} ({self.specialization})"
-
 class EmployeeProfile(models.Model):
     user = models.OneToOneField(
         settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="employee_profile"
     )
-    name = models.CharField(max_length=120)
+    name = models.CharField(max_length=120, null=True, blank=True) # <-- FIX
     photo = CloudinaryField("image", blank=True, null=True)
-    department = models.CharField(max_length=100)
-    designation = models.CharField(max_length=100) 
-    employee_id = models.CharField(max_length=50, unique=True)
-    education = models.CharField(max_length=255)
+    department = models.CharField(max_length=100, null=True, blank=True) # <-- FIX
+    designation = models.CharField(max_length=100, null=True, blank=True) # <-- FIX
+    employee_id = models.CharField(max_length=50, unique=True, null=True, blank=True) # <-- FIX
+    education = models.CharField(max_length=255, null=True, blank=True) # <-- FIX
     joining_date = models.DateField(null=True, blank=True)
-    
-    updated_at = models.DateTimeField(auto_now=True)
-
-    def __str__(self):
-        return f"{self.name} - {self.designation}"
