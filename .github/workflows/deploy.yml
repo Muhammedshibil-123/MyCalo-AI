@@ -2,7 +2,7 @@ name: MyCalo AI Production Deployment
 
 on:
   push:
-    branches: [ main ] # Triggers only when you push to main
+    branches: [ main ]
 
 jobs:
   build-and-deploy:
@@ -11,26 +11,31 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v3
 
-      # 1. Login to Docker Hub
       - name: Login to Docker Hub
         uses: docker/login-action@v2
         with:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
 
-      # 2. Build and Push Backend
+      # 1. Build and Push Backend
       - name: Build and Push Backend
         run: |
           docker build -t ${{ secrets.DOCKER_USERNAME }}/mycalo-backend:latest ./Backend
           docker push ${{ secrets.DOCKER_USERNAME }}/mycalo-backend:latest
 
-      # 3. Build and Push AI Service
+      # 2. Build and Push AI Service
       - name: Build and Push AI Service
         run: |
-          docker build -t ${{ secrets.DOCKER_USERNAME }}/mycalo-ai:latest ./AI_Services
+          docker build -t ${{ secrets.DOCKER_USERNAME }}/mycalo-ai:latest ./ai-services
           docker push ${{ secrets.DOCKER_USERNAME }}/mycalo-ai:latest
 
-      # 4. SSH into EC2 and Restart K3s Pods
+      # 3. Build and Push Realtime Service
+      - name: Build and Push Realtime Service
+        run: |
+          docker build -t ${{ secrets.DOCKER_USERNAME }}/mycalo-realtime:latest ./RealTime_Service
+          docker push ${{ secrets.DOCKER_USERNAME }}/mycalo-realtime:latest
+
+      # 4. SSH into EC2 and Restart All Deployments
       - name: Deploy to AWS K3s
         uses: appleboy/ssh-action@master
         with:
@@ -38,11 +43,16 @@ jobs:
           username: ${{ secrets.EC2_USER }}
           key: ${{ secrets.EC2_SSH_KEY }}
           script: |
-            # Pull latest images and restart deployments
+            # Restart core services
             kubectl rollout restart deployment/backend
-            kubectl rollout restart deployment/ai-service
             kubectl rollout restart deployment/backend-worker
             kubectl rollout restart deployment/backend-beat
             
-            # Verify status
+            # Restart AI service
+            kubectl rollout restart deployment/ai-service
+            
+            # Restart Realtime services
+            kubectl rollout restart deployment/realtime-service
+            kubectl rollout restart deployment/realtime-worker
+            
             kubectl get pods
