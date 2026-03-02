@@ -31,7 +31,7 @@ export default function AdminLayout() {
     { name: 'User Management', path: '/admin/usermanagement', icon: FiUsers, adminOnly: true },
     { name: 'Broadcast', path: '/admin/broadcast', icon: FiRadio, adminOnly: true },
     { name: 'Chat Monitor', path: '/admin/chatmoniter', icon: FiMessageSquare, adminOnly: false },
-    { name: 'Flagged Content', path: '/admin/flagged', icon: FiAlertTriangle, adminOnly: false },
+    // { name: 'Flagged Content', path: '/admin/flagged', icon: FiAlertTriangle, adminOnly: false },
   ];
 
   const filteredNav = navItems.filter(item => !item.adminOnly || isAdmin);

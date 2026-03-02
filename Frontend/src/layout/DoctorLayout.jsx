@@ -28,7 +28,7 @@ export default function DoctorLayout() {
 
   // Base navigation items similar to AdminLayout
   const mainNavItems = [
-    { name: 'Dashboard', path: '/doctor/dashboard', icon: FiHome },
+    // { name: 'Dashboard', path: '/doctor/dashboard', icon: FiHome },
     { name: 'Profile', path: '/doctor/profile', icon: FiUser },
     { name: 'Consultations', path: '/doctor/consult', icon: FiMessageSquare },
     { name: 'Food Items', path: '/doctor/foods', icon: FiDatabase },
