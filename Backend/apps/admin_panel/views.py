@@ -4,6 +4,8 @@ from django.db.models import Count
 from django.db.models.functions import TruncDate
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
+from drf_yasg import openapi
+from drf_yasg.utils import swagger_auto_schema
 from rest_framework import status
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.permissions import BasePermission, IsAuthenticated
@@ -13,12 +15,8 @@ from rest_framework.views import APIView
 from apps.accounts.models import CustomUser
 from apps.exercises.models import Exercise
 from apps.foods.models import FoodItem
-from apps.tracking.models import DailyLog
-
-from drf_yasg import openapi
-from drf_yasg.utils import swagger_auto_schema
-
 from apps.notifications.tasks import send_broadcast_notification
+from apps.tracking.models import DailyLog
 
 
 class IsAdminOrEmployee(BasePermission):
@@ -59,12 +57,11 @@ class UsersCountView(APIView):
                         "total": openapi.Schema(type=openapi.TYPE_INTEGER),
                         "doctors": openapi.Schema(type=openapi.TYPE_INTEGER),
                         "employees": openapi.Schema(type=openapi.TYPE_INTEGER),
-                    }
-                )
+                    },
+                ),
             )
-        }
+        },
     )
-
     def get(self, request):
         total_users = CustomUser.objects.filter(is_active=True).count()
         doctors = CustomUser.objects.filter(role="doctor", is_active=True).count()
@@ -81,9 +78,13 @@ class FoodsCountView(APIView):
     @swagger_auto_schema(
         operation_description="Get the total count of food items in the database.",
         tags=["Admin Dashboard"],
-        responses={200: openapi.Schema(type=openapi.TYPE_OBJECT, properties={"count": openapi.Schema(type=openapi.TYPE_INTEGER)})}
+        responses={
+            200: openapi.Schema(
+                type=openapi.TYPE_OBJECT,
+                properties={"count": openapi.Schema(type=openapi.TYPE_INTEGER)},
+            )
+        },
     )
-
     def get(self, request):
         count = FoodItem.objects.count()
         return Response({"count": count})
@@ -95,9 +96,13 @@ class ExercisesCountView(APIView):
     @swagger_auto_schema(
         operation_description="Get the total count of exercise items in the database.",
         tags=["Admin Dashboard"],
-        responses={200: openapi.Schema(type=openapi.TYPE_OBJECT, properties={"count": openapi.Schema(type=openapi.TYPE_INTEGER)})}
+        responses={
+            200: openapi.Schema(
+                type=openapi.TYPE_OBJECT,
+                properties={"count": openapi.Schema(type=openapi.TYPE_INTEGER)},
+            )
+        },
     )
-
     def get(self, request):
         count = Exercise.objects.count()
         return Response({"count": count})
@@ -109,9 +114,13 @@ class ActiveChatsView(APIView):
     @swagger_auto_schema(
         operation_description="Get the total count of active chats currently ongoing.",
         tags=["Admin Dashboard"],
-        responses={200: openapi.Schema(type=openapi.TYPE_OBJECT, properties={"count": openapi.Schema(type=openapi.TYPE_INTEGER)})}
+        responses={
+            200: openapi.Schema(
+                type=openapi.TYPE_OBJECT,
+                properties={"count": openapi.Schema(type=openapi.TYPE_INTEGER)},
+            )
+        },
     )
-
     def get(self, request):
 
         count = 0
@@ -125,9 +134,8 @@ class FoodSourceDistributionView(APIView):
     @swagger_auto_schema(
         operation_description="Get the distribution of food items based on their data source.",
         tags=["Admin Analytics"],
-        responses={200: "List of food sources and their counts"}
+        responses={200: "List of food sources and their counts"},
     )
-
     def get(self, request):
         distribution = (
             FoodItem.objects.values("source")
@@ -148,9 +156,8 @@ class PlatformGrowthView(APIView):
     @swagger_auto_schema(
         operation_description="Get platform growth statistics (user signups) over the last 30 days grouped by role.",
         tags=["Admin Analytics"],
-        responses={200: "List of daily signup counts per user role"}
+        responses={200: "List of daily signup counts per user role"},
     )
-
     def get(self, request):
 
         end_date = timezone.now().date()
@@ -196,9 +203,8 @@ class TopFoodsView(APIView):
     @swagger_auto_schema(
         operation_description="Get the top 10 most consumed foods logged by users.",
         tags=["Admin Analytics"],
-        responses={200: "List of top 10 consumed foods and their metadata"}
+        responses={200: "List of top 10 consumed foods and their metadata"},
     )
-
     def get(self, request):
 
         top_foods = (
@@ -235,16 +241,15 @@ class UserManagementListView(APIView):
         tags=["Admin User Management"],
         manual_parameters=[
             openapi.Parameter(
-                'role', 
-                openapi.IN_QUERY, 
-                description="Filter by role (e.g., 'user', 'doctor', 'employee') or 'deleted' for inactive users.", 
+                "role",
+                openapi.IN_QUERY,
+                description="Filter by role (e.g., 'user', 'doctor', 'employee') or 'deleted' for inactive users.",
                 type=openapi.TYPE_STRING,
-                default="user"
+                default="user",
             )
         ],
-        responses={200: "Paginated list of users"}
+        responses={200: "Paginated list of users"},
     )
-
     def get(self, request):
         role_param = request.query_params.get("role", "user")
 
@@ -293,23 +298,22 @@ class UserManagementDetailView(APIView):
             type=openapi.TYPE_OBJECT,
             properties={
                 "action": openapi.Schema(
-                    type=openapi.TYPE_STRING, 
-                    description="Action to perform: 'toggle_block' or 'change_role'"
+                    type=openapi.TYPE_STRING,
+                    description="Action to perform: 'toggle_block' or 'change_role'",
                 ),
                 "role": openapi.Schema(
-                    type=openapi.TYPE_STRING, 
-                    description="The new role to assign (Required only if action is 'change_role')"
+                    type=openapi.TYPE_STRING,
+                    description="The new role to assign (Required only if action is 'change_role')",
                 ),
             },
-            required=["action"]
+            required=["action"],
         ),
         responses={
             200: "Action successful",
             400: "Invalid action or role provided",
-            404: "User not found"
-        }
+            404: "User not found",
+        },
     )
-
     def patch(self, request, pk):
         user = get_object_or_404(CustomUser, pk=pk)
         action = request.data.get("action")
@@ -343,17 +347,16 @@ class UserManagementDetailView(APIView):
             )
 
         return Response({"error": "Invalid action"}, status=status.HTTP_400_BAD_REQUEST)
-    
+
     @swagger_auto_schema(
         operation_description="Soft-delete a user by marking them as inactive.",
         tags=["Admin User Management"],
         responses={
             200: "User soft-deleted successfully",
             403: "You cannot delete your own account",
-            404: "User not found"
-        }
+            404: "User not found",
+        },
     )
-
     def delete(self, request, pk):
         user = get_object_or_404(CustomUser, pk=pk)
 
@@ -381,31 +384,35 @@ class BroadcastNotificationView(APIView):
         request_body=openapi.Schema(
             type=openapi.TYPE_OBJECT,
             properties={
-                "title": openapi.Schema(type=openapi.TYPE_STRING, description="Notification Title"),
-                "message": openapi.Schema(type=openapi.TYPE_STRING, description="Notification Message Body"),
+                "title": openapi.Schema(
+                    type=openapi.TYPE_STRING, description="Notification Title"
+                ),
+                "message": openapi.Schema(
+                    type=openapi.TYPE_STRING, description="Notification Message Body"
+                ),
             },
-            required=["title", "message"]
+            required=["title", "message"],
         ),
         responses={
             200: "Broadcast notification has been queued",
-            400: "Missing title or message"
-        }
+            400: "Missing title or message",
+        },
     )
-
     def post(self, request):
         title = request.data.get("title")
         message = request.data.get("message")
 
         if not title or not message:
             return Response(
-                {"error": "Both 'title' and 'message' are required."}, 
-                status=status.HTTP_400_BAD_REQUEST
+                {"error": "Both 'title' and 'message' are required."},
+                status=status.HTTP_400_BAD_REQUEST,
             )
 
-        
         send_broadcast_notification.delay(title, message)
 
         return Response(
-            {"message": "Broadcast notification has been queued and is sending to users."}, 
-            status=status.HTTP_200_OK
+            {
+                "message": "Broadcast notification has been queued and is sending to users."
+            },
+            status=status.HTTP_200_OK,
         )

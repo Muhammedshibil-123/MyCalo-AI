@@ -1,6 +1,6 @@
 from rest_framework import serializers
 
-from .models import Profile, WeightHistory,DoctorProfile, EmployeeProfile
+from .models import DoctorProfile, EmployeeProfile, Profile, WeightHistory
 
 
 class ProfileUpdateSerializer(serializers.ModelSerializer):
@@ -51,16 +51,22 @@ class WeightHistorySerializer(serializers.ModelSerializer):
 
 
 class DoctorProfileSerializer(serializers.ModelSerializer):
-    
+
     photo = serializers.ImageField(required=False, allow_null=True)
     photo_url = serializers.SerializerMethodField(read_only=True)
 
     class Meta:
         model = DoctorProfile
         fields = [
-            "name", "photo", "photo_url", "specialization", 
-            "qualification", "experience_years", "bio", 
-            "contact_email", "clinic_address"
+            "name",
+            "photo",
+            "photo_url",
+            "specialization",
+            "qualification",
+            "experience_years",
+            "bio",
+            "contact_email",
+            "clinic_address",
         ]
 
     def get_photo_url(self, obj):
@@ -71,16 +77,23 @@ class DoctorProfileSerializer(serializers.ModelSerializer):
         except Exception:
             return str(obj.photo)
 
+
 class EmployeeProfileSerializer(serializers.ModelSerializer):
-    
+
     photo = serializers.ImageField(required=False, allow_null=True)
     photo_url = serializers.SerializerMethodField(read_only=True)
 
     class Meta:
         model = EmployeeProfile
         fields = [
-            "name", "photo", "photo_url", "department", 
-            "designation", "employee_id", "education", "joining_date"
+            "name",
+            "photo",
+            "photo_url",
+            "department",
+            "designation",
+            "employee_id",
+            "education",
+            "joining_date",
         ]
 
     def get_photo_url(self, obj):

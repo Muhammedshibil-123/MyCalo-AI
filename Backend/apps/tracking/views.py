@@ -1,17 +1,17 @@
+from django.contrib.auth import get_user_model
 from django.db import transaction
 from django.utils import timezone
+from drf_yasg import openapi
+from drf_yasg.utils import swagger_auto_schema
 from rest_framework import permissions, status, views, viewsets
 from rest_framework.parsers import FormParser, MultiPartParser
 from rest_framework.response import Response
-from drf_yasg.utils import swagger_auto_schema
-from drf_yasg import openapi
 
 from apps.foods.models import FoodImage, FoodItem
 
-from .models import DailyLog,ExerciseLog
-from .serializers import DailyLogSerializer,ExerciseLogSerializer
+from .models import DailyLog, ExerciseLog
+from .serializers import DailyLogSerializer, ExerciseLogSerializer
 
-from django.contrib.auth import get_user_model
 User = get_user_model()
 
 
@@ -33,9 +33,6 @@ class DailyLogViewSet(viewsets.ModelViewSet):
             400: "Bad Request",
         },
     )
-
-    
-
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -45,7 +42,7 @@ class DailyLogViewSet(viewsets.ModelViewSet):
             {"message": "Food logged successfully", "success": True},
             status=status.HTTP_201_CREATED,
         )
-    
+
     @swagger_auto_schema(
         operation_description="Retrieve a summarized list of daily food logs grouped by meal type.",
         tags=["Daily Logs"],
@@ -59,7 +56,6 @@ class DailyLogViewSet(viewsets.ModelViewSet):
         ],
         responses={200: "Daily logs grouped by meal"},
     )
-
     def list(self, request, *args, **kwargs):
         date_str = request.query_params.get("date", str(timezone.now().date()))
 
@@ -110,11 +106,18 @@ class LogAIMealView(views.APIView):
         request_body=openapi.Schema(
             type=openapi.TYPE_OBJECT,
             properties={
-                "meal_type": openapi.Schema(type=openapi.TYPE_STRING, description="e.g., SNACK, BREAKFAST"),
-                "date": openapi.Schema(type=openapi.TYPE_STRING, description="YYYY-MM-DD"),
+                "meal_type": openapi.Schema(
+                    type=openapi.TYPE_STRING, description="e.g., SNACK, BREAKFAST"
+                ),
+                "date": openapi.Schema(
+                    type=openapi.TYPE_STRING, description="YYYY-MM-DD"
+                ),
                 "items": openapi.Schema(
                     type=openapi.TYPE_ARRAY,
-                    items=openapi.Schema(type=openapi.TYPE_OBJECT, description="AI generated food item data")
+                    items=openapi.Schema(
+                        type=openapi.TYPE_OBJECT,
+                        description="AI generated food item data",
+                    ),
                 ),
             },
             required=["items"],
@@ -125,7 +128,6 @@ class LogAIMealView(views.APIView):
             500: "Internal Server Error",
         },
     )
-
     def post(self, request):
 
         data = request.data
@@ -208,12 +210,24 @@ class LogManualFoodView(views.APIView):
         tags=["Manual Food"],
         consumes=["multipart/form-data"],
         manual_parameters=[
-            openapi.Parameter("name", openapi.IN_FORM, type=openapi.TYPE_STRING, required=True),
-            openapi.Parameter("user_serving_grams", openapi.IN_FORM, type=openapi.TYPE_NUMBER, required=True),
+            openapi.Parameter(
+                "name", openapi.IN_FORM, type=openapi.TYPE_STRING, required=True
+            ),
+            openapi.Parameter(
+                "user_serving_grams",
+                openapi.IN_FORM,
+                type=openapi.TYPE_NUMBER,
+                required=True,
+            ),
             openapi.Parameter("meal_type", openapi.IN_FORM, type=openapi.TYPE_STRING),
             openapi.Parameter("date", openapi.IN_FORM, type=openapi.TYPE_STRING),
             openapi.Parameter("calories", openapi.IN_FORM, type=openapi.TYPE_NUMBER),
-            openapi.Parameter("images", openapi.IN_FORM, type=openapi.TYPE_ARRAY, items=openapi.Schema(type=openapi.TYPE_FILE)),
+            openapi.Parameter(
+                "images",
+                openapi.IN_FORM,
+                type=openapi.TYPE_ARRAY,
+                items=openapi.Schema(type=openapi.TYPE_FILE),
+            ),
         ],
         responses={
             201: "Food logged with multiple images successfully",
@@ -221,7 +235,6 @@ class LogManualFoodView(views.APIView):
             500: "Internal Server Error",
         },
     )
-
     def post(self, request):
         data = request.data
         user = request.user
@@ -303,7 +316,7 @@ class LogManualFoodView(views.APIView):
                 {"error": str(e), "success": False},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
-        
+
 
 class LogExerciseView(views.APIView):
     permission_classes = [permissions.IsAuthenticated]
@@ -314,9 +327,16 @@ class LogExerciseView(views.APIView):
         request_body=openapi.Schema(
             type=openapi.TYPE_OBJECT,
             properties={
-                "exercise": openapi.Schema(type=openapi.TYPE_INTEGER, description="ID of the Exercise"),
-                "duration_minutes": openapi.Schema(type=openapi.TYPE_INTEGER, description="Duration in minutes (e.g., 30)"),
-                "date": openapi.Schema(type=openapi.TYPE_STRING, description="Date in YYYY-MM-DD format"),
+                "exercise": openapi.Schema(
+                    type=openapi.TYPE_INTEGER, description="ID of the Exercise"
+                ),
+                "duration_minutes": openapi.Schema(
+                    type=openapi.TYPE_INTEGER,
+                    description="Duration in minutes (e.g., 30)",
+                ),
+                "date": openapi.Schema(
+                    type=openapi.TYPE_STRING, description="Date in YYYY-MM-DD format"
+                ),
             },
             required=["exercise", "duration_minutes"],
         ),
@@ -336,7 +356,7 @@ class LogExerciseView(views.APIView):
                 {
                     "message": "Exercise logged successfully",
                     "success": True,
-                    "data": serializer.data
+                    "data": serializer.data,
                 },
                 status=status.HTTP_201_CREATED,
             )
@@ -365,19 +385,21 @@ class ExerciseLogListView(views.APIView):
                     properties={
                         "user_id": openapi.Schema(type=openapi.TYPE_INTEGER),
                         "date": openapi.Schema(type=openapi.TYPE_STRING),
-                        "total_burned_calories": openapi.Schema(type=openapi.TYPE_INTEGER),
+                        "total_burned_calories": openapi.Schema(
+                            type=openapi.TYPE_INTEGER
+                        ),
                         "exercises": openapi.Schema(
                             type=openapi.TYPE_ARRAY,
-                            items=openapi.Schema(type=openapi.TYPE_OBJECT)
+                            items=openapi.Schema(type=openapi.TYPE_OBJECT),
                         ),
-                    }
-                )
+                    },
+                ),
             )
         },
     )
     def get(self, request):
         date_str = request.query_params.get("date", str(timezone.now().date()))
-        
+
         exercise_logs = ExerciseLog.objects.filter(
             user=request.user, date=date_str
         ).select_related("exercise", "user__profile")
@@ -397,7 +419,7 @@ class ExerciseLogListView(views.APIView):
                 response_data["total_burned_calories"] += ex_details["burned_calories"]
 
         return Response(response_data, status=status.HTTP_200_OK)
-    
+
 
 class ExerciseLogDetailView(views.APIView):
     permission_classes = [permissions.IsAuthenticated]
@@ -410,51 +432,50 @@ class ExerciseLogDetailView(views.APIView):
             properties={
                 "duration_minutes": openapi.Schema(type=openapi.TYPE_INTEGER),
                 "date": openapi.Schema(type=openapi.TYPE_STRING, format="date"),
-            }
+            },
         ),
-        responses={200: "Updated successfully", 404: "Not found"}
+        responses={200: "Updated successfully", 404: "Not found"},
     )
     def patch(self, request, pk):
         try:
-            
+
             log = ExerciseLog.objects.get(pk=pk, user=request.user)
         except ExerciseLog.DoesNotExist:
             return Response(
-                {"error": "Exercise log not found"}, 
-                status=status.HTTP_404_NOT_FOUND
+                {"error": "Exercise log not found"}, status=status.HTTP_404_NOT_FOUND
             )
 
-        
         serializer = ExerciseLogSerializer(log, data=request.data, partial=True)
         if serializer.is_valid():
             serializer.save()
             return Response(
-                {"message": "Exercise log updated successfully", "data": serializer.data}, 
-                status=status.HTTP_200_OK
+                {
+                    "message": "Exercise log updated successfully",
+                    "data": serializer.data,
+                },
+                status=status.HTTP_200_OK,
             )
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
     @swagger_auto_schema(
         operation_description="Delete an exercise log.",
         tags=["Exercise Logs"],
-        responses={204: "Deleted successfully", 404: "Not found"}
+        responses={204: "Deleted successfully", 404: "Not found"},
     )
     def delete(self, request, pk):
         try:
-            
+
             log = ExerciseLog.objects.get(pk=pk, user=request.user)
         except ExerciseLog.DoesNotExist:
             return Response(
-                {"error": "Exercise log not found"}, 
-                status=status.HTTP_404_NOT_FOUND
+                {"error": "Exercise log not found"}, status=status.HTTP_404_NOT_FOUND
             )
-        
+
         log.delete()
         return Response(
-            {"message": "Exercise log deleted successfully", "success": True}, 
-            status=status.HTTP_204_NO_CONTENT
+            {"message": "Exercise log deleted successfully", "success": True},
+            status=status.HTTP_204_NO_CONTENT,
         )
-    
 
 
 class PatientDailyLogView(views.APIView):
@@ -476,7 +497,6 @@ class PatientDailyLogView(views.APIView):
     def get(self, request, user_id, *args, **kwargs):
         date_str = request.query_params.get("date", str(timezone.now().date()))
 
-        
         logs = DailyLog.objects.filter(user_id=user_id, date=date_str).select_related(
             "food_item"
         )
@@ -489,7 +509,11 @@ class PatientDailyLogView(views.APIView):
         }
 
         meal_groups = {
-            "BREAKFAST": {"meal_type": "breakfast", "total_meal_calories": 0, "items": []},
+            "BREAKFAST": {
+                "meal_type": "breakfast",
+                "total_meal_calories": 0,
+                "items": [],
+            },
             "LUNCH": {"meal_type": "lunch", "total_meal_calories": 0, "items": []},
             "DINNER": {"meal_type": "dinner", "total_meal_calories": 0, "items": []},
             "SNACK": {"meal_type": "snack", "total_meal_calories": 0, "items": []},
@@ -529,8 +553,7 @@ class PatientExerciseLogView(views.APIView):
     )
     def get(self, request, user_id):
         date_str = request.query_params.get("date", str(timezone.now().date()))
-        
-        
+
         exercise_logs = ExerciseLog.objects.filter(
             user_id=user_id, date=date_str
         ).select_related("exercise", "user__profile")

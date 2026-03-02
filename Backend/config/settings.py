@@ -29,9 +29,16 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = os.getenv("SECRET_KEY")
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = os.environ.get('DEBUG', 'True') == 'True'
+DEBUG = os.environ.get("DEBUG", "True") == "True"
 
-ALLOWED_HOSTS = ["*", "43.205.137.139",".ngrok-free.app", ".ngrok-free.dev", "localhost", "127.0.0.1"]
+ALLOWED_HOSTS = [
+    "*",
+    "43.205.137.139",
+    ".ngrok-free.app",
+    ".ngrok-free.dev",
+    "localhost",
+    "127.0.0.1",
+]
 
 
 # Application definition
@@ -101,7 +108,7 @@ DATABASES = {
         "ENGINE": "django.db.backends.postgresql",
         "NAME": os.getenv("DB_NAME", "mycalo_ai_db"),
         "USER": os.getenv("DB_USER", "postgres"),
-        "PASSWORD": os.getenv("DB_PASSWORD"), 
+        "PASSWORD": os.getenv("DB_PASSWORD"),
         "HOST": os.getenv("DB_HOST", "db"),
         "PORT": os.getenv("DB_PORT", "5432"),
     }
@@ -221,8 +228,7 @@ CLOUDINARY_STORAGE = {
 }
 
 if not DEBUG:
-    STATICFILES_STORAGE = 'cloudinary_storage.storage.StaticCloudinaryStorage'
-    
+    STATICFILES_STORAGE = "cloudinary_storage.storage.StaticCloudinaryStorage"
 
     STORAGES = {
         "default": {
@@ -233,8 +239,8 @@ if not DEBUG:
         },
     }
 else:
-    STATICFILES_STORAGE = 'django.contrib.staticfiles.storage.StaticFilesStorage'
-    
+    STATICFILES_STORAGE = "django.contrib.staticfiles.storage.StaticFilesStorage"
+
     STORAGES = {
         "default": {
             "BACKEND": "django.core.files.storage.FileSystemStorage",
@@ -263,5 +269,5 @@ AWS_MEAL_REMINDER_QUEUE_URL = os.getenv("SQS_QUEUE_URL")
 AWS_EMAIL_QUEUE_URL = os.getenv("AWS_SQS_EMAIL_QUEUE_URL")
 
 # Add this to help Django trust the Traefik proxy
-SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 USE_X_FORWARDED_HOST = True

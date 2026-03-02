@@ -5,7 +5,7 @@ from .views import (
     AdminExerciseListView,
     AdminExerciseVerifyView,
     CreateExerciseView,
-    ExerciseDetailView
+    ExerciseDetailView,
 )
 
 urlpatterns = [

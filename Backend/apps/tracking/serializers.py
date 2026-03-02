@@ -1,7 +1,6 @@
 from rest_framework import serializers
 
-from .models import DailyLog,ExerciseLog
-
+from .models import DailyLog, ExerciseLog
 
 
 class DailyLogSerializer(serializers.ModelSerializer):
@@ -67,14 +66,14 @@ class ExerciseLogSerializer(serializers.ModelSerializer):
     def get_exercise_details(self, obj):
         exercise = obj.exercise
         duration = obj.duration_minutes
-        
-        
-        user_weight = 70.0 
-        if hasattr(obj.user, 'profile') and obj.user.profile.weight:
+
+        user_weight = 70.0
+        if hasattr(obj.user, "profile") and obj.user.profile.weight:
             user_weight = float(obj.user.profile.weight)
 
-        
-        burned_calories = round(float(exercise.met_value) * user_weight * (duration / 60))
+        burned_calories = round(
+            float(exercise.met_value) * user_weight * (duration / 60)
+        )
 
         return {
             "log_id": obj.id,

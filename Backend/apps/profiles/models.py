@@ -21,10 +21,9 @@ class Profile(models.Model):
     user = models.OneToOneField(
         settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="profile"
     )
-    
+
     fcm_token = models.TextField(null=True, blank=True)
 
-    
     name = models.CharField(max_length=120, blank=True, default="")
     photo = CloudinaryField("image", blank=True, null=True)
     age = models.IntegerField(null=True, blank=True)
@@ -72,32 +71,37 @@ class WeightHistory(models.Model):
         return f"{self.user.username} - {self.weight}kg on {self.date}"
 
 
-
-
 class DoctorProfile(models.Model):
     user = models.OneToOneField(
-        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="doctor_profile"
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="doctor_profile",
     )
-    name = models.CharField(max_length=120, null=True, blank=True) # <-- FIX
+    name = models.CharField(max_length=120, null=True, blank=True)  # <-- FIX
     photo = CloudinaryField("image", blank=True, null=True)
-    specialization = models.CharField(max_length=255, null=True, blank=True) # <-- FIX
+    specialization = models.CharField(max_length=255, null=True, blank=True)  # <-- FIX
     qualification = models.CharField(max_length=255, null=True, blank=True)  # <-- FIX
     experience_years = models.PositiveIntegerField(default=0)
     bio = models.TextField(blank=True, null=True)
     contact_email = models.EmailField(blank=True, null=True)
     clinic_address = models.TextField(blank=True, null=True)
-    
+
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
+
 class EmployeeProfile(models.Model):
     user = models.OneToOneField(
-        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="employee_profile"
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="employee_profile",
     )
-    name = models.CharField(max_length=120, null=True, blank=True) # <-- FIX
+    name = models.CharField(max_length=120, null=True, blank=True)  # <-- FIX
     photo = CloudinaryField("image", blank=True, null=True)
-    department = models.CharField(max_length=100, null=True, blank=True) # <-- FIX
-    designation = models.CharField(max_length=100, null=True, blank=True) # <-- FIX
-    employee_id = models.CharField(max_length=50, unique=True, null=True, blank=True) # <-- FIX
-    education = models.CharField(max_length=255, null=True, blank=True) # <-- FIX
+    department = models.CharField(max_length=100, null=True, blank=True)  # <-- FIX
+    designation = models.CharField(max_length=100, null=True, blank=True)  # <-- FIX
+    employee_id = models.CharField(
+        max_length=50, unique=True, null=True, blank=True
+    )  # <-- FIX
+    education = models.CharField(max_length=255, null=True, blank=True)  # <-- FIX
     joining_date = models.DateField(null=True, blank=True)

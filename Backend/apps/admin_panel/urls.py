@@ -2,6 +2,7 @@ from django.urls import path
 
 from .views import (
     ActiveChatsView,
+    BroadcastNotificationView,
     ExercisesCountView,
     FoodsCountView,
     FoodSourceDistributionView,
@@ -10,7 +11,6 @@ from .views import (
     UserManagementDetailView,
     UserManagementListView,
     UsersCountView,
-    BroadcastNotificationView,
 )
 
 urlpatterns = [
@@ -37,9 +37,5 @@ urlpatterns = [
         UserManagementDetailView.as_view(),
         name="admin-users-detail",
     ),
-    path(
-        "broadcast/", 
-        BroadcastNotificationView.as_view(), 
-        name="admin-broadcast"
-    ),
+    path("broadcast/", BroadcastNotificationView.as_view(), name="admin-broadcast"),
 ]

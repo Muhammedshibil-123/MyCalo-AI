@@ -3,9 +3,9 @@ from django.urls import path
 from .views import (
     MyProfileView,
     PatientProfileView,
+    RoleBasedProfileView,
     UpdateProfileView,
     WeightHistoryView,
-    RoleBasedProfileView
 )
 
 urlpatterns = [

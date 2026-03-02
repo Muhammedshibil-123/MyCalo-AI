@@ -1,5 +1,6 @@
 from rest_framework import serializers
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
+
 from apps.profiles.serializers import DoctorProfileSerializer
 
 from .models import CustomUser
@@ -74,7 +75,16 @@ class UserSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = CustomUser
-        fields = ["id", "username", "email", "mobile", "status", "role", "is_active","doctor_profile"]
+        fields = [
+            "id",
+            "username",
+            "email",
+            "mobile",
+            "status",
+            "role",
+            "is_active",
+            "doctor_profile",
+        ]
 
 
 class ForgotPasswordSerializer(serializers.Serializer):

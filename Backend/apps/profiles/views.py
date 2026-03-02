@@ -1,17 +1,18 @@
+from drf_yasg import openapi
+from drf_yasg.utils import swagger_auto_schema
 from rest_framework import permissions, status
 from rest_framework.parsers import FormParser, JSONParser, MultiPartParser
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
-from drf_yasg.utils import swagger_auto_schema
-from drf_yasg import openapi
-from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 
-from drf_yasg.utils import swagger_auto_schema
-from drf_yasg import openapi
-
-from .models import Profile, WeightHistory,DoctorProfile, EmployeeProfile
-from .serializers import ProfileUpdateSerializer, WeightHistorySerializer,DoctorProfileSerializer,EmployeeProfileSerializer
+from .models import DoctorProfile, EmployeeProfile, Profile, WeightHistory
+from .serializers import (
+    DoctorProfileSerializer,
+    EmployeeProfileSerializer,
+    ProfileUpdateSerializer,
+    WeightHistorySerializer,
+)
 
 
 class UpdateProfileView(APIView):
@@ -22,12 +23,8 @@ class UpdateProfileView(APIView):
         operation_description="Partially update the standard user profile. Supports multipart/form-data for photo uploads.",
         tags=["Profiles"],
         request_body=ProfileUpdateSerializer,
-        responses={
-            200: ProfileUpdateSerializer,
-            400: "Bad Request"
-        }
+        responses={200: ProfileUpdateSerializer, 400: "Bad Request"},
     )
-
     def patch(self, request, *args, **kwargs):
         profile, _ = Profile.objects.get_or_create(user=request.user)
 
@@ -44,11 +41,8 @@ class MyProfileView(APIView):
     @swagger_auto_schema(
         operation_description="Retrieve the standard profile of the currently authenticated user.",
         tags=["Profiles"],
-        responses={
-            200: ProfileUpdateSerializer
-        }
+        responses={200: ProfileUpdateSerializer},
     )
-
     def get(self, request):
         profile, _ = Profile.objects.get_or_create(user=request.user)
         serializer = ProfileUpdateSerializer(profile)
@@ -61,32 +55,32 @@ class WeightHistoryView(APIView):
     @swagger_auto_schema(
         operation_description="Retrieve the authenticated user's weight history.",
         tags=["Weight History"],
-        responses={
-            200: WeightHistorySerializer(many=True)
-        }
+        responses={200: WeightHistorySerializer(many=True)},
     )
-
     def get(self, request):
         history = WeightHistory.objects.filter(user=request.user)
         serializer = WeightHistorySerializer(history, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
-    
+
     @swagger_auto_schema(
         operation_description="Log a new weight entry for the user and update their current profile weight.",
         tags=["Weight History"],
         request_body=openapi.Schema(
             type=openapi.TYPE_OBJECT,
             properties={
-                "weight": openapi.Schema(type=openapi.TYPE_NUMBER, format=openapi.FORMAT_FLOAT, description="The user's new weight")
+                "weight": openapi.Schema(
+                    type=openapi.TYPE_NUMBER,
+                    format=openapi.FORMAT_FLOAT,
+                    description="The user's new weight",
+                )
             },
-            required=["weight"]
+            required=["weight"],
         ),
         responses={
             201: "Weight updated successfully",
-            400: "Weight is required or invalid format"
-        }
+            400: "Weight is required or invalid format",
+        },
     )
-
     def post(self, request):
         weight = request.data.get("weight")
         if not weight:
@@ -119,12 +113,8 @@ class PatientProfileView(APIView):
     @swagger_auto_schema(
         operation_description="Retrieve a specific patient's profile by their User ID.",
         tags=["Patient Profiles"],
-        responses={
-            200: ProfileUpdateSerializer,
-            404: "Patient profile not found"
-        }
+        responses={200: ProfileUpdateSerializer, 404: "Patient profile not found"},
     )
-
     def get(self, request, patient_id):
         try:
             profile = Profile.objects.get(user__id=patient_id)
@@ -153,7 +143,7 @@ class RoleBasedProfileView(APIView):
 
     @swagger_auto_schema(
         operation_description="Get the profile details for the currently logged-in user.",
-        responses={200: DoctorProfileSerializer}
+        responses={200: DoctorProfileSerializer},
     )
     def get(self, request):
         instance, serializer_class = self.get_object(request.user)
@@ -163,11 +153,11 @@ class RoleBasedProfileView(APIView):
     @swagger_auto_schema(
         operation_description="Create or fully update the profile. Use multipart/form-data if uploading a photo.",
         request_body=DoctorProfileSerializer,
-        responses={201: "Created", 400: "Bad Request"}
+        responses={201: "Created", 400: "Bad Request"},
     )
     def post(self, request):
         instance, serializer_class = self.get_object(request.user)
-        
+
         serializer = serializer_class(instance, data=request.data, partial=True)
         if serializer.is_valid():
             serializer.save()
@@ -177,7 +167,7 @@ class RoleBasedProfileView(APIView):
     @swagger_auto_schema(
         operation_description="Partially update profile details.",
         request_body=DoctorProfileSerializer,
-        responses={200: "Updated", 400: "Bad Request"}
+        responses={200: "Updated", 400: "Bad Request"},
     )
     def patch(self, request):
         instance, serializer_class = self.get_object(request.user)
@@ -186,6 +176,3 @@ class RoleBasedProfileView(APIView):
             serializer.save()
             return Response(serializer.data)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-
-

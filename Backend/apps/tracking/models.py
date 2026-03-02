@@ -2,8 +2,8 @@ from django.conf import settings
 from django.db import models
 from django.utils import timezone
 
-from apps.foods.models import FoodItem
 from apps.exercises.models import Exercise
+from apps.foods.models import FoodItem
 
 
 class DailyLog(models.Model):
@@ -35,6 +35,7 @@ class DailyLog(models.Model):
         return (
             f"{self.user.username} - {self.food_item.name} - {self.user_serving_grams}g"
         )
+
 
 class ExerciseLog(models.Model):
     user = models.ForeignKey(

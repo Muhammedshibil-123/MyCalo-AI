@@ -93,7 +93,7 @@ class CustomTokenRefreshView(TokenRefreshView):
                     response.set_cookie(
                         key=settings.SIMPLE_JWT["AUTH_COOKIE"],
                         value=new_refresh_token,
-                        max_age=settings.SIMPLE_JWT["REFRESH_TOKEN_LIFETIME"], 
+                        max_age=settings.SIMPLE_JWT["REFRESH_TOKEN_LIFETIME"],
                         secure=settings.SIMPLE_JWT["AUTH_COOKIE_SECURE"],
                         httponly=settings.SIMPLE_JWT["AUTH_COOKIE_HTTP_ONLY"],
                         samesite=settings.SIMPLE_JWT["AUTH_COOKIE_SAMESITE"],
@@ -379,7 +379,7 @@ class DoctorListView(ListAPIView):
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        return CustomUser.objects.filter(role="doctor").select_related('doctor_profile')
+        return CustomUser.objects.filter(role="doctor").select_related("doctor_profile")
 
 
 class UserDetailView(generics.RetrieveUpdateDestroyAPIView):
