@@ -39,6 +39,16 @@ const VideoCall = ({ socket, user, roomId, onClose, isInitiator, signalData }) =
           initiator: isInitiator,
           trickle: false,
           stream: currentStream,
+          config: {
+            iceServers: [
+              { urls: 'stun:stun.l.google.com:19302' },
+              { urls: 'stun:stun1.l.google.com:19302' },
+              { urls: 'stun:stun2.l.google.com:19302' },
+              { urls: 'stun:stun3.l.google.com:19302' },
+              { urls: 'stun:stun4.l.google.com:19302' }
+              // Note: If you register for Metered TURN, add those credentials right here later
+            ]
+          }
         });
 
         peer.on('signal', (data) => {
