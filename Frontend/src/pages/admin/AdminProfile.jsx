@@ -60,19 +60,29 @@ const AdminProfile = () => {
     const handleSave = async () => {
         try {
             const data = new FormData();
-            Object.keys(formData).forEach(key => data.append(key, formData[key]));
-            if (selectedFile) data.append('photo', selectedFile);
+            
+            // SAFETY CHECK: Only append fields that actually have data
+            // This prevents sending empty strings ("") to Django DateFields
+            Object.keys(formData).forEach(key => {
+                if (formData[key] !== null && formData[key] !== undefined && formData[key] !== '') {
+                    data.append(key, formData[key]);
+                }
+            });
+            
+            // ONLY append photo if a NEW file was actually selected
+            if (selectedFile) {
+                data.append('photo', selectedFile);
+            }
 
             await api.patch('/api/profiles/manage/', data, {
                 headers: { 'Content-Type': 'multipart/form-data' }
             });
             
-     
             setIsEditing(false);
             fetchProfile();
         } catch (err) {
-    
             console.error(err);
+            setError("Failed to save changes.");
         }
     };
 

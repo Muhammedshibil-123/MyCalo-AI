@@ -132,10 +132,10 @@ const AdminChatMonitor = () => {
                                             </div>
                                         </div>
                                     </div>
-                                    <div className={`px-2 py-1 rounded text-[10px] uppercase tracking-wider font-semibold flex items-center gap-1 ${chat.Status === 'active' ? 'bg-green-500/10 text-green-400 border border-green-500/20' : 'bg-zinc-800 text-zinc-400 border border-zinc-700'}`}>
+                                    {/* <div className={`px-2 py-1 rounded text-[10px] uppercase tracking-wider font-semibold flex items-center gap-1 ${chat.Status === 'active' ? 'bg-green-500/10 text-green-400 border border-green-500/20' : 'bg-zinc-800 text-zinc-400 border border-zinc-700'}`}>
                                         {chat.Status === 'active' ? <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse"></span> : <FiCheckCircle size={10} />}
                                         {chat.Status}
-                                    </div>
+                                    </div> */}
                                 </div>
 
                                 <div className="mt-auto bg-zinc-950/50 rounded-lg p-3 border border-zinc-800/50">
@@ -233,9 +233,7 @@ const AdminChatMonitor = () => {
                                         </p>
                                     </div>
                                 </div>
-                                <div className={`px-2 py-1 rounded text-[10px] uppercase tracking-wider font-semibold ${doc.is_active ? 'bg-green-500/10 text-green-400 border border-green-500/20' : 'bg-zinc-800 text-zinc-400 border border-zinc-700'}`}>
-                                    {doc.is_active ? 'Online' : 'Offline'}
-                                </div>
+                                
                             </div>
 
                             <div className="mt-auto pt-4 border-t border-zinc-800/50 flex items-center justify-between text-sm">
