@@ -97,6 +97,10 @@ const DoctorChatPage = () => {
               removeUpload(roomId, pending[0].tempId);
             }
           }
+          
+        // ✅ ADDED THIS MISSING BLOCK:
+        } else if (data.type === 'new_message') {
+            
           const normalizedMsg = {
             Timestamp: data.timestamp,
             SenderID: data.sender_id,
