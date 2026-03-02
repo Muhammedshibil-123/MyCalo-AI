@@ -10,7 +10,16 @@ gemini_service = GeminiService()
 
 
 @router.post(
-    "/analyze", response_model=NutritionResponse, dependencies=[Depends(verify_token)]
+    "/analyze", response_model=NutritionResponse, 
+    dependencies=[Depends(verify_token)],
+    summary="Analyze food from text",
+    response_description="Returns a detailed nutritional breakdown and health suggestions for the food.",
+    responses={
+        200: {"description": "Successfully analyzed the food item."},
+        400: {"description": "Bad Request - The query string was empty."},
+        401: {"description": "Unauthorized - Missing or invalid authentication token."},
+        500: {"description": "Internal Server Error or AI Service Unavailable."},
+    }
 )
 async def analyze_food_with_ai(request: FoodCreateRequest):
     if not request.query or not request.query.strip():

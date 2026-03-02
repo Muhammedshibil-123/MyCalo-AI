@@ -13,6 +13,14 @@ gemini_vision_service = GeminiVisionService()
     "/analyze-image",
     response_model=VisionNutritionResponse,
     dependencies=[Depends(verify_token)],
+    summary="Analyze food from an image upload",
+    response_description="Returns a detailed nutritional breakdown and health suggestions based on the uploaded image.",
+    responses={
+        200: {"description": "Successfully analyzed the image."},
+        400: {"description": "Bad Request - Invalid image format. Supported formats: JPEG, PNG, WEBP, HEIC."},
+        401: {"description": "Unauthorized - Missing or invalid authentication token."},
+        500: {"description": "Internal Server Error or AI Vision Service Unavailable."},
+    }
 )
 async def analyze_food_image_with_ai(file: UploadFile = File(...)):
     if file.content_type not in ["image/jpeg", "image/png", "image/webp", "image/heic"]:

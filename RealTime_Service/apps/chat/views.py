@@ -10,11 +10,38 @@ import os
 from django.conf import settings
 from .tasks import process_file_upload
 from boto3.dynamodb.conditions import Key
+from drf_yasg import openapi
+from drf_yasg.utils import swagger_auto_schema
 
 class ChatMediaUploadView(APIView):
     authentication_classes = [StatelessTokenAuthentication]
     permission_classes = [IsAuthenticated]
     parser_classes = [MultiPartParser]
+
+    @swagger_auto_schema(
+        operation_description="Upload media files (images, audio, video) to a specific chat room. The file is processed asynchronously.",
+        tags=["Chat Media"],
+        manual_parameters=[
+            openapi.Parameter(
+                name='file',
+                in_=openapi.IN_FORM,
+                description='The media file to upload',
+                type=openapi.TYPE_FILE,
+                required=True
+            ),
+            openapi.Parameter(
+                name='room_id',
+                in_=openapi.IN_FORM,
+                description='The ID of the chat room',
+                type=openapi.TYPE_STRING,
+                required=True
+            ),
+        ],
+        responses={
+            202: openapi.Response(description="Upload started in background"),
+            400: "File and room_id required"
+        }
+    )
 
     def post(self, request):
         file_obj = request.data.get('file')
@@ -23,7 +50,7 @@ class ChatMediaUploadView(APIView):
         if not file_obj or not room_id:
             return Response({"error": "File and room_id required"}, status=400)
 
-        # FIX: Ensure audio blobs get an extension so Cloudinary knows what they are
+        
         ext = os.path.splitext(file_obj.name)[1]
         if not ext:
             if 'audio' in file_obj.content_type:
@@ -43,7 +70,7 @@ class ChatMediaUploadView(APIView):
             for chunk in file_obj.chunks():
                 destination.write(chunk)
 
-        # ALWAYS use Celery so the frontend synchronization works correctly
+        
         process_file_upload.delay(
             file_path=file_path,
             room_name=room_id,
@@ -59,6 +86,25 @@ class ChatMediaUploadView(APIView):
 class DoctorConsultationListView(APIView):
     authentication_classes = [StatelessTokenAuthentication]
     permission_classes = [IsAuthenticated]
+
+    @swagger_auto_schema(
+        operation_description="Fetch a list of consultations for the currently authenticated doctor from DynamoDB.",
+        tags=["Doctor Consultations"],
+        manual_parameters=[
+            openapi.Parameter(
+                'status', 
+                openapi.IN_QUERY, 
+                description="Filter by consultation status (e.g., 'active', 'resolved')", 
+                type=openapi.TYPE_STRING,
+                default="active"
+            )
+        ],
+        responses={
+            200: "List of doctor consultations",
+            400: "Invalid user ID format",
+            500: "Internal server error connecting to DynamoDB"
+        }
+    )
 
     def get(self, request):
         
@@ -112,6 +158,17 @@ class DoctorConsultationListView(APIView):
 class ResolveConsultationView(APIView):
     authentication_classes = [StatelessTokenAuthentication]
     permission_classes = [IsAuthenticated]
+
+    @swagger_auto_schema(
+        operation_description="Mark a specific consultation as resolved.",
+        tags=["Doctor Consultations"],
+        responses={
+            200: "Consultation resolved successfully",
+            403: "Unauthorized (Not the assigned doctor)",
+            404: "Consultation not found",
+            500: "Internal server error"
+        }
+    )
 
     def post(self, request, room_id):
         doctor_id = request.user.id
@@ -191,27 +248,43 @@ def post(self, request):
 
 
 class AdminDoctorConsultationListView(APIView):
-    """
-    Admin endpoint to fetch all consultations for a SPECIFIC doctor.
-    """
     authentication_classes = [StatelessTokenAuthentication]
-    permission_classes = [IsAuthenticated] # You can add an IsAdmin permission class later if you have one
+    permission_classes = [IsAuthenticated] 
+
+    @swagger_auto_schema(
+        operation_description="Admin view to fetch a list of consultations for a specific doctor.",
+        tags=["Admin Consultations"],
+        manual_parameters=[
+            openapi.Parameter(
+                'status', 
+                openapi.IN_QUERY, 
+                description="Filter by consultation status (e.g., 'active', 'resolved')", 
+                type=openapi.TYPE_STRING,
+                default="active"
+            )
+        ],
+        responses={
+            200: "List of doctor consultations",
+            400: "Invalid doctor ID format",
+            500: "Internal server error"
+        }
+    )
 
     def get(self, request, doctor_id):
         try:
-            # Ensure doctor_id is an integer as DynamoDB expects a Number type for this index
+            
             doc_id = int(doctor_id)
         except (ValueError, TypeError):
             return Response({"error": "Invalid doctor ID format"}, status=400)
 
-        # Allow filtering by status, defaulting to all active
+        
         status_filter = request.query_params.get('status', 'active')  
         
         try:
             dynamodb = get_dynamodb_resource()
             consultations_table = dynamodb.Table('DoctorConsultations')
 
-            # Query the GSI (Global Secondary Index) using the specified doctor_id
+            
             response = consultations_table.query(
                 IndexName='DoctorStatusIndex',
                 KeyConditionExpression='DoctorID = :doc_id AND #status = :status',
@@ -226,13 +299,13 @@ class AdminDoctorConsultationListView(APIView):
             
             consultations = response.get('Items', [])
             
-            # Sort by the latest message time
+            
             consultations.sort(
                 key=lambda x: x.get('LastMessageTime', ''), 
                 reverse=True
             )
             
-            # Add patient meta details
+            
             for consult in consultations:
                 consult['patient_data'] = {
                     'id': int(consult['PatientID']),
@@ -247,25 +320,31 @@ class AdminDoctorConsultationListView(APIView):
 
 
 class AdminConsultationMessagesView(APIView):
-    """
-    Admin endpoint to fetch the actual chat history for a specific consultation ID.
-    """
     authentication_classes = [StatelessTokenAuthentication]
     permission_classes = [IsAuthenticated]
+
+    @swagger_auto_schema(
+        operation_description="Admin view to fetch all chat messages for a specific consultation room.",
+        tags=["Admin Consultations"],
+        responses={
+            200: "List of messages in the consultation room",
+            500: "Internal server error"
+        }
+    )
 
     def get(self, request, room_id):
         try:
             dynamodb = get_dynamodb_resource()
             messages_table = dynamodb.Table('ChatHistory') 
             
-            # FIX: Changed 'RoomName' to 'RoomID' to match your DynamoDB schema
+            
             response = messages_table.query(
                 KeyConditionExpression=Key('RoomID').eq(room_id)
             )
             
             messages = response.get('Items', [])
             
-            # Sort the messages chronologically
+            
             messages.sort(key=lambda x: x.get('Timestamp', x.get('CreatedAt', '')))
             
             return Response(messages)
@@ -273,6 +352,3 @@ class AdminConsultationMessagesView(APIView):
         except Exception as e:
             print(f"Error fetching messages for admin: {e}")
             return Response({"error": str(e)}, status=500)
-        
-
-# Test CI/CD trigger.

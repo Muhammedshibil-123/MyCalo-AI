@@ -4,6 +4,9 @@ from rest_framework.permissions import BasePermission
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from drf_yasg import openapi
+from drf_yasg.utils import swagger_auto_schema
+
 from .models import Exercise
 from .serializers import ExerciseSerializer
 
@@ -12,6 +15,16 @@ class CreateExerciseView(generics.CreateAPIView):
     queryset = Exercise.objects.all()
     serializer_class = ExerciseSerializer
     permission_classes = [permissions.IsAuthenticated]
+
+    @swagger_auto_schema(
+        operation_description="Create a new exercise logged by a user.",
+        tags=["Exercises"],
+        request_body=ExerciseSerializer,
+        responses={
+            201: ExerciseSerializer,
+            400: "Bad Request (Validation errors)"
+        }
+    )
 
     def perform_create(self, serializer):
         serializer.save()
@@ -44,6 +57,27 @@ class AdminExercisePagination(PageNumberPagination):
 class AdminExerciseListView(APIView):
     permission_classes = [IsAdminEmployeeOrDoctor]
 
+    @swagger_auto_schema(
+        operation_description="Get a paginated list of exercises. Supports searching by name and sorting by met_value.",
+        tags=["Admin Exercises"],
+        manual_parameters=[
+            openapi.Parameter(
+                'search', 
+                openapi.IN_QUERY, 
+                description="Search term for exercise name", 
+                type=openapi.TYPE_STRING
+            ),
+            openapi.Parameter(
+                'sort', 
+                openapi.IN_QUERY, 
+                description="Sort order (e.g., 'met_value', '-met_value')", 
+                type=openapi.TYPE_STRING,
+                default="-id"
+            )
+        ],
+        responses={200: "Paginated list of exercises"}
+    )
+
     def get(self, request):
         queryset = Exercise.objects.all()
 
@@ -62,6 +96,16 @@ class AdminExerciseListView(APIView):
 
         serializer = ExerciseSerializer(paginated_queryset, many=True)
         return paginator.get_paginated_response(serializer.data)
+    
+    @swagger_auto_schema(
+        operation_description="Create a new exercise as an admin, employee, or doctor.",
+        tags=["Admin Exercises"],
+        request_body=ExerciseSerializer,
+        responses={
+            201: ExerciseSerializer,
+            400: "Bad Request"
+        }
+    )
 
     def post(self, request):
         serializer = ExerciseSerializer(data=request.data)
@@ -80,6 +124,17 @@ class AdminExerciseDetailView(APIView):
             return Exercise.objects.get(pk=pk)
         except Exercise.DoesNotExist:
             return None
+        
+    @swagger_auto_schema(
+        operation_description="Update an exercise's details.",
+        tags=["Admin Exercises"],
+        request_body=ExerciseSerializer,
+        responses={
+            200: ExerciseSerializer,
+            400: "Bad Request",
+            404: "Exercise not found"
+        }
+    )
 
     def put(self, request, pk):
         exercise = self.get_object(pk)
@@ -93,6 +148,15 @@ class AdminExerciseDetailView(APIView):
             serializer.save()
             return Response(serializer.data)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    
+    @swagger_auto_schema(
+        operation_description="Delete an exercise from the database.",
+        tags=["Admin Exercises"],
+        responses={
+            204: "No Content",
+            404: "Exercise not found"
+        }
+    )
 
     def delete(self, request, pk):
         exercise = self.get_object(pk)
@@ -106,6 +170,15 @@ class AdminExerciseDetailView(APIView):
 
 class AdminExerciseVerifyView(APIView):
     permission_classes = [IsAdminEmployeeOrDoctor]
+
+    @swagger_auto_schema(
+        operation_description="Toggle the verification status of an exercise.",
+        tags=["Admin Exercises"],
+        responses={
+            200: ExerciseSerializer,
+            404: "Exercise not found"
+        }
+    )
 
     def patch(self, request, pk):
         try:
@@ -124,6 +197,15 @@ class AdminExerciseVerifyView(APIView):
 
 class ExerciseDetailView(APIView):
     permission_classes = [permissions.IsAuthenticated]
+
+    @swagger_auto_schema(
+        operation_description="Retrieve details of a specific exercise by its ID.",
+        tags=["Exercises"],
+        responses={
+            200: ExerciseSerializer,
+            404: "Exercise not found"
+        }
+    )
 
     def get_object(self, pk):
         try:

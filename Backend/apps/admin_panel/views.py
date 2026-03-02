@@ -15,6 +15,9 @@ from apps.exercises.models import Exercise
 from apps.foods.models import FoodItem
 from apps.tracking.models import DailyLog
 
+from drf_yasg import openapi
+from drf_yasg.utils import swagger_auto_schema
+
 from apps.notifications.tasks import send_broadcast_notification
 
 
@@ -44,6 +47,24 @@ class StandardResultsSetPagination(PageNumberPagination):
 class UsersCountView(APIView):
     permission_classes = [IsAdminOrEmployee]
 
+    @swagger_auto_schema(
+        operation_description="Get the total count of active users, doctors, and employees.",
+        tags=["Admin Dashboard"],
+        responses={
+            200: openapi.Response(
+                description="User statistics retrieved successfully",
+                schema=openapi.Schema(
+                    type=openapi.TYPE_OBJECT,
+                    properties={
+                        "total": openapi.Schema(type=openapi.TYPE_INTEGER),
+                        "doctors": openapi.Schema(type=openapi.TYPE_INTEGER),
+                        "employees": openapi.Schema(type=openapi.TYPE_INTEGER),
+                    }
+                )
+            )
+        }
+    )
+
     def get(self, request):
         total_users = CustomUser.objects.filter(is_active=True).count()
         doctors = CustomUser.objects.filter(role="doctor", is_active=True).count()
@@ -57,6 +78,12 @@ class UsersCountView(APIView):
 class FoodsCountView(APIView):
     permission_classes = [IsAdminOrEmployee]
 
+    @swagger_auto_schema(
+        operation_description="Get the total count of food items in the database.",
+        tags=["Admin Dashboard"],
+        responses={200: openapi.Schema(type=openapi.TYPE_OBJECT, properties={"count": openapi.Schema(type=openapi.TYPE_INTEGER)})}
+    )
+
     def get(self, request):
         count = FoodItem.objects.count()
         return Response({"count": count})
@@ -65,6 +92,12 @@ class FoodsCountView(APIView):
 class ExercisesCountView(APIView):
     permission_classes = [IsAdminOrEmployee]
 
+    @swagger_auto_schema(
+        operation_description="Get the total count of exercise items in the database.",
+        tags=["Admin Dashboard"],
+        responses={200: openapi.Schema(type=openapi.TYPE_OBJECT, properties={"count": openapi.Schema(type=openapi.TYPE_INTEGER)})}
+    )
+
     def get(self, request):
         count = Exercise.objects.count()
         return Response({"count": count})
@@ -72,6 +105,12 @@ class ExercisesCountView(APIView):
 
 class ActiveChatsView(APIView):
     permission_classes = [IsAdminOrEmployee]
+
+    @swagger_auto_schema(
+        operation_description="Get the total count of active chats currently ongoing.",
+        tags=["Admin Dashboard"],
+        responses={200: openapi.Schema(type=openapi.TYPE_OBJECT, properties={"count": openapi.Schema(type=openapi.TYPE_INTEGER)})}
+    )
 
     def get(self, request):
 
@@ -82,6 +121,12 @@ class ActiveChatsView(APIView):
 
 class FoodSourceDistributionView(APIView):
     permission_classes = [IsAdminOrEmployee]
+
+    @swagger_auto_schema(
+        operation_description="Get the distribution of food items based on their data source.",
+        tags=["Admin Analytics"],
+        responses={200: "List of food sources and their counts"}
+    )
 
     def get(self, request):
         distribution = (
@@ -99,6 +144,12 @@ class FoodSourceDistributionView(APIView):
 
 class PlatformGrowthView(APIView):
     permission_classes = [IsAdminOrEmployee]
+
+    @swagger_auto_schema(
+        operation_description="Get platform growth statistics (user signups) over the last 30 days grouped by role.",
+        tags=["Admin Analytics"],
+        responses={200: "List of daily signup counts per user role"}
+    )
 
     def get(self, request):
 
@@ -142,6 +193,12 @@ class PlatformGrowthView(APIView):
 class TopFoodsView(APIView):
     permission_classes = [IsAdminOrEmployee]
 
+    @swagger_auto_schema(
+        operation_description="Get the top 10 most consumed foods logged by users.",
+        tags=["Admin Analytics"],
+        responses={200: "List of top 10 consumed foods and their metadata"}
+    )
+
     def get(self, request):
 
         top_foods = (
@@ -172,6 +229,21 @@ class TopFoodsView(APIView):
 class UserManagementListView(APIView):
     permission_classes = [IsAdmin]
     pagination_class = StandardResultsSetPagination
+
+    @swagger_auto_schema(
+        operation_description="Get a paginated list of users based on role or deleted status.",
+        tags=["Admin User Management"],
+        manual_parameters=[
+            openapi.Parameter(
+                'role', 
+                openapi.IN_QUERY, 
+                description="Filter by role (e.g., 'user', 'doctor', 'employee') or 'deleted' for inactive users.", 
+                type=openapi.TYPE_STRING,
+                default="user"
+            )
+        ],
+        responses={200: "Paginated list of users"}
+    )
 
     def get(self, request):
         role_param = request.query_params.get("role", "user")
@@ -214,6 +286,30 @@ class UserManagementListView(APIView):
 class UserManagementDetailView(APIView):
     permission_classes = [IsAdmin]
 
+    @swagger_auto_schema(
+        operation_description="Partially update a user's account. Supports toggling the block status or changing the user's role.",
+        tags=["Admin User Management"],
+        request_body=openapi.Schema(
+            type=openapi.TYPE_OBJECT,
+            properties={
+                "action": openapi.Schema(
+                    type=openapi.TYPE_STRING, 
+                    description="Action to perform: 'toggle_block' or 'change_role'"
+                ),
+                "role": openapi.Schema(
+                    type=openapi.TYPE_STRING, 
+                    description="The new role to assign (Required only if action is 'change_role')"
+                ),
+            },
+            required=["action"]
+        ),
+        responses={
+            200: "Action successful",
+            400: "Invalid action or role provided",
+            404: "User not found"
+        }
+    )
+
     def patch(self, request, pk):
         user = get_object_or_404(CustomUser, pk=pk)
         action = request.data.get("action")
@@ -247,6 +343,16 @@ class UserManagementDetailView(APIView):
             )
 
         return Response({"error": "Invalid action"}, status=status.HTTP_400_BAD_REQUEST)
+    
+    @swagger_auto_schema(
+        operation_description="Soft-delete a user by marking them as inactive.",
+        tags=["Admin User Management"],
+        responses={
+            200: "User soft-deleted successfully",
+            403: "You cannot delete your own account",
+            404: "User not found"
+        }
+    )
 
     def delete(self, request, pk):
         user = get_object_or_404(CustomUser, pk=pk)
@@ -268,6 +374,23 @@ class UserManagementDetailView(APIView):
 
 class BroadcastNotificationView(APIView):
     permission_classes = [IsAdmin]
+
+    @swagger_auto_schema(
+        operation_description="Send a broadcast push notification to all users.",
+        tags=["Admin Notifications"],
+        request_body=openapi.Schema(
+            type=openapi.TYPE_OBJECT,
+            properties={
+                "title": openapi.Schema(type=openapi.TYPE_STRING, description="Notification Title"),
+                "message": openapi.Schema(type=openapi.TYPE_STRING, description="Notification Message Body"),
+            },
+            required=["title", "message"]
+        ),
+        responses={
+            200: "Broadcast notification has been queued",
+            400: "Missing title or message"
+        }
+    )
 
     def post(self, request):
         title = request.data.get("title")
