@@ -2,7 +2,7 @@ import os
 from datetime import datetime
 
 import boto3
-from boto3.dynamodb.conditions import Key  # IMPORTANT: Added Key import
+from boto3.dynamodb.conditions import Key 
 
 from config import settings
 
@@ -29,8 +29,8 @@ def ensure_table_exists():
         dynamodb.create_table(
             TableName="AIChatHistory",
             KeySchema=[
-                {"AttributeName": "RoomID", "KeyType": "HASH"},  # Partition Key
-                {"AttributeName": "Timestamp", "KeyType": "RANGE"},  # Sort Key
+                {"AttributeName": "RoomID", "KeyType": "HASH"}, 
+                {"AttributeName": "Timestamp", "KeyType": "RANGE"},  
             ],
             AttributeDefinitions=[
                 {"AttributeName": "RoomID", "AttributeType": "S"},
@@ -43,7 +43,7 @@ def ensure_table_exists():
 
 def save_ai_chat_message(user_id, message, sender_type):
     try:
-        ensure_table_exists()  # Check if table exists before saving
+        ensure_table_exists() 
 
         dynamodb = get_dynamodb_resource()
         table = dynamodb.Table("AIChatHistory")
@@ -60,7 +60,7 @@ def save_ai_chat_message(user_id, message, sender_type):
             }
         )
 
-        # FIXED: Using Key() instead of raw strings
+        
         response = table.query(
             KeyConditionExpression=Key("RoomID").eq(room_id),
             ScanIndexForward=True,
@@ -85,12 +85,12 @@ def save_ai_chat_message(user_id, message, sender_type):
 
 def get_ai_chat_history(user_id):
     try:
-        ensure_table_exists()  # Check if table exists before fetching
+        ensure_table_exists()  
 
         dynamodb = get_dynamodb_resource()
         table = dynamodb.Table("AIChatHistory")
 
-        # FIXED: Using Key() instead of raw strings
+        
         response = table.query(
             KeyConditionExpression=Key("RoomID").eq(f"AI_{user_id}"),
             ScanIndexForward=True,

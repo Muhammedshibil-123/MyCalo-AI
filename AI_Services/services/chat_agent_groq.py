@@ -15,7 +15,7 @@ from pydantic import BaseModel, Field
 from config import settings
 
 
-# --- 1. Define Tool Schemas ---
+
 class NutritionHistoryInput(BaseModel):
     user_query: str = Field(
         description="The exact query about the user's food, meals, calories, macros, or exercises."
@@ -31,7 +31,7 @@ class AppNavigationInput(BaseModel):
     )
 
 
-# --- 2. The Agent Class ---
+
 class GroqHybridAgent:
     def __init__(self):
         self.groq_key = settings.GROQ_API_KEY
@@ -39,7 +39,7 @@ class GroqHybridAgent:
         self.db = None
         self.vectorstore = None
 
-        # Groq Fallback Chain for high availability
+
         self.models_chain = [
             "llama-3.3-70b-versatile",
             "llama-3.1-70b-versatile",
@@ -105,7 +105,7 @@ class GroqHybridAgent:
                 return False
         return True
 
-    # --- 3. Tool Logic ---
+  
     async def _query_database_tool_logic(self, user_query: str, user_id: int) -> str:
         """Generates and executes SQL to find user diet/exercise logs"""
         print(f"[ACTION] User {user_id} SQL Request: '{user_query}'")
@@ -114,7 +114,7 @@ class GroqHybridAgent:
 
         current_date = date.today().strftime("%Y-%m-%d")
 
-        # IMPROVED PROMPT: Added rule for UPPER() case matching
+    
         sql_prompt = f"""Generate a clean PostgreSQL query for User ID {user_id}.
         Current Date: {current_date}
         User Request: {user_query}
@@ -136,7 +136,7 @@ class GroqHybridAgent:
                 res.content.strip().replace("```sql", "").replace("```", "").rstrip(";")
             )
 
-            # Safety check: ensure the AI didn't add markdown
+            
             if sql.startswith("SELECT") is False:
                 sql = sql[sql.find("SELECT") :]
 
@@ -145,7 +145,7 @@ class GroqHybridAgent:
             result = self.db.run(sql)
             print(f"[SQL DATA RETRIEVED]: {result}")
 
-            # IMPROVED STOP SIGNAL: Clearer instruction to the agent to stop looping
+       
             if not result or result == "[]" or result == "[(None,)]":
                 return f"FINAL_ANSWER: The database contains zero records for user {user_id} on {current_date}. Do not call any more tools."
 
@@ -166,7 +166,7 @@ class GroqHybridAgent:
         context = "\n\n".join([d.page_content for d in docs])
         return f"App Manual Context: {context}"
 
-    # --- 4. Agent Setup ---
+
     def _create_agent(self):
         """Builds the reasoning loop with specific Llama-optimized tool names"""
         tools = [
@@ -206,7 +206,7 @@ class GroqHybridAgent:
         agent = create_tool_calling_agent(self.llm, tools, prompt)
         return AgentExecutor(agent=agent, tools=tools, verbose=True)
 
-    # --- 5. Main Entry Point ---
+
     async def process_query(self, user_query: str, user_id: int) -> str:
         """Called by the FastAPI Router"""
         try:
@@ -215,7 +215,6 @@ class GroqHybridAgent:
                 {"input": user_query, "user_id": user_id}
             )
 
-            # Log if it was handled without tools
             if "fetch_user_nutrition_history" not in str(
                 response
             ) and "search_app_knowledge_base" not in str(response):

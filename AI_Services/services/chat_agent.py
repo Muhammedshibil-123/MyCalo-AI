@@ -8,7 +8,7 @@ from langchain.tools import StructuredTool
 from langchain_chroma import Chroma
 from langchain_community.utilities import SQLDatabase
 from langchain_core.prompts import ChatPromptTemplate
-from langchain_google_genai import (  # Updated import
+from langchain_google_genai import (  
     ChatGoogleGenerativeAI,
     GoogleGenerativeAIEmbeddings,
 )
@@ -16,8 +16,6 @@ from pydantic import BaseModel, Field
 
 from config import settings
 
-
-# --- 1. Define Tool Schemas ---
 class NutritionHistoryInput(BaseModel):
     user_query: str = Field(
         description="The exact query about the user's food, meals, calories, macros, or exercises."
@@ -33,14 +31,14 @@ class AppNavigationInput(BaseModel):
     )
 
 
-# --- 2. The Agent Class ---
+
 class HybridAgent:
     def __init__(self):
         self.api_key = settings.BACKUP_GEMINI_KEY or settings.GEMINI_API_KEY
         self.db = None
         self.vectorstore = None
 
-        # User-defined model fallback chain
+  
         self.models_chain = [
             "gemini-2.5-flash",
             "gemini-2.5-flash-lite",
@@ -49,10 +47,8 @@ class HybridAgent:
             "gemini-2.5-pro",
         ]
 
-        # Initialize the LLM with automatic failovers for quota protection
         self.llm = self._initialize_llm_with_fallbacks()
 
-        # Initialize the LangChain Agent
         self.agent_executor = self._create_agent()
 
     def _initialize_llm_with_fallbacks(self):
@@ -100,7 +96,7 @@ class HybridAgent:
         """Initialize ChromaDB with Google Cloud embeddings"""
         if self.vectorstore is None:
             try:
-                # Switched from local HuggingFace to Google Cloud Embeddings
+              
                 embeddings = GoogleGenerativeAIEmbeddings(
                     model="models/gemini-embedding-001", google_api_key=self.api_key
                 )

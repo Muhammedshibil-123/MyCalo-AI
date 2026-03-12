@@ -15,7 +15,7 @@ from pydantic import BaseModel, Field
 from config import settings
 
 
-# --- 1. Define Tool Schemas ---
+
 class PatientNutritionHistoryInput(BaseModel):
     user_query: str = Field(
         description="The exact query about the patient's food, meals, calories, macros, or exercises."
@@ -31,16 +31,15 @@ class AppNavigationInput(BaseModel):
     )
 
 
-# --- 2. The Agent Class ---
+
 class DoctorGroqAgent:
     def __init__(self):
-        # Using the specific Doctor Groq API Key
+
         self.groq_key = settings.DOC_GROQ_API_KEY
         self.gemini_key = settings.GEMINI_API_KEY
         self.db = None
         self.vectorstore = None
 
-        # Groq Fallback Chain for high availability
         self.models_chain = [
             "llama-3.3-70b-versatile",
             "llama-3.1-70b-versatile",
@@ -109,7 +108,7 @@ class DoctorGroqAgent:
                 return False
         return True
 
-    # --- 3. Tool Logic ---
+
     async def _query_database_tool_logic(self, user_query: str, user_id: int) -> str:
         """Generates and executes SQL to find patient diet/exercise logs"""
         print(f"[ACTION] Doctor requesting Patient {user_id} SQL: '{user_query}'")
@@ -118,7 +117,7 @@ class DoctorGroqAgent:
 
         current_date = date.today().strftime("%Y-%m-%d")
 
-        # EXACT SAME PROMPT RULES as user chat, but labeled for "Patient" and "Doctor Request"
+       
         sql_prompt = f"""Generate a clean PostgreSQL query for Patient ID {user_id}.
         Current Date: {current_date}
         Doctor Request: {user_query}
@@ -140,7 +139,7 @@ class DoctorGroqAgent:
                 res.content.strip().replace("```sql", "").replace("```", "").rstrip(";")
             )
 
-            # Safety check: ensure the AI didn't add markdown
+           
             if sql.startswith("SELECT") is False:
                 sql = sql[sql.find("SELECT") :]
 
@@ -149,7 +148,7 @@ class DoctorGroqAgent:
             result = self.db.run(sql)
             print(f"[SQL DATA RETRIEVED]: {result}")
 
-            # IMPROVED STOP SIGNAL: Clearer instruction to the agent to stop looping
+            
             if not result or result == "[]" or result == "[(None,)]":
                 return f"FINAL_ANSWER: The database contains zero records for patient {user_id} on {current_date}. Do not call any more tools."
 
@@ -170,7 +169,7 @@ class DoctorGroqAgent:
         context = "\n\n".join([d.page_content for d in docs])
         return f"App/Clinical Context: {context}"
 
-    # --- 4. Agent Setup ---
+
     def _create_agent(self):
         """Builds the reasoning loop using the working configurations from the User chat"""
         tools = [
@@ -212,7 +211,7 @@ class DoctorGroqAgent:
         agent = create_tool_calling_agent(self.llm, tools, prompt)
         return AgentExecutor(agent=agent, tools=tools, verbose=True)
 
-    # --- 5. Main Entry Point ---
+
     async def process_query(self, user_query: str, user_id: int) -> str:
         """Called by the FastAPI Router"""
         try:
@@ -223,7 +222,7 @@ class DoctorGroqAgent:
                 {"input": user_query, "user_id": user_id}
             )
 
-            # Log if it was handled without tools
+
             if "fetch_patient_nutrition_history" not in str(
                 response
             ) and "search_platform_guidelines" not in str(response):

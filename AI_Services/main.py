@@ -16,10 +16,10 @@ app = FastAPI(
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
-        "http://localhost:5173",  # Your local React server
-        "http://localhost:8080",  # Your local Docker setup
-        "https://my-calo-ai.vercel.app",  # EXACT Vercel URL (No trailing slash)
-    ],  # In production, change this to your Django URL
+        "http://localhost:5173",  
+        "http://localhost:8080",  
+        "https://my-calo-ai.vercel.app",  
+    ],  
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -39,4 +39,3 @@ def health_check():
     return {"status": "ok", "service": "AI_Services"}
 
 
-# Test CI/CD trigger.
