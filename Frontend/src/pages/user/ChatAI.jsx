@@ -110,7 +110,7 @@ const ChatAI = () => {
     };
 
     return (
-        <div className="flex flex-col h-[100dvh] w-full md:h-[85vh] bg-gray-50 md:rounded-xl md:shadow-lg max-w-3xl mx-auto overflow-hidden">
+        <div className="flex flex-col h-[100dvh] w-full bg-gray-50 md:shadow-lg mx-auto overflow-hidden">
             
             {/* Header with Back Button */}
             <div className="bg-white border-b border-gray-200 p-4 flex items-center shadow-sm shrink-0 z-10">

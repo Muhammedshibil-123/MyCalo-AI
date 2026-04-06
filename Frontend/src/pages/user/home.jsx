@@ -333,13 +333,18 @@ const Home = () => {
   const strokeDashoffset = circumference - (stats.calories.percent / 100) * circumference;
 
   return (
-    <div className="min-h-screen bg-gray-50 pb-28 font-sans">
+    <div className="min-h-screen bg-gray-50 pb-28 lg:pb-8 font-sans">
       <style>{`
         @keyframes fade-in-up {
           from { opacity: 0; transform: translateY(15px); }
           to { opacity: 1; transform: translateY(0); }
         }
         .animate-fade-in-up { animation: fade-in-up 0.5s ease-out forwards; }
+        @keyframes fade-in {
+          from { opacity: 0; }
+          to { opacity: 1; }
+        }
+        .animate-fade-in { animation: fade-in 0.3s ease-out forwards; }
       `}</style>
 
       <input type="file" ref={fileInputRef} accept="image/*" onChange={handleFileUpload} className="hidden" />
@@ -378,25 +383,276 @@ const Home = () => {
         </div>
       )}
 
-      {/* Top Header */}
-      <div className="bg-white rounded-b-[2.5rem] shadow-sm px-6 pt-6 pb-8 z-10 relative mb-6">
-        <div className="flex items-center justify-between mb-6">
+      {/* ===== MOBILE LAYOUT (unchanged) ===== */}
+      <div className="lg:hidden">
+        {/* Top Header */}
+        <div className="bg-white rounded-b-[2.5rem] shadow-sm px-6 pt-6 pb-8 z-10 relative mb-6">
+          <div className="flex items-center justify-between mb-6">
+            <div>
+              <h1 className="text-xl font-bold text-gray-900">Hi, {displayName} 👋</h1>
+              <p className="text-xs text-gray-500 font-medium mt-0.5">Let's hit your goals today!</p>
+            </div>
+            <div className="flex items-center gap-3">
+              <button onClick={handleMainButtonClick} className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center text-gray-700 hover:bg-gray-200 transition-colors shadow-sm">
+                <RiCameraAiFill className="text-xl" />
+              </button>
+              <button 
+                onClick={() => navigate('/profile/edit')} 
+                className="w-12 h-12 rounded-full overflow-hidden border-2 border-gray-100 bg-blue-50 shadow-sm active:scale-95 transition-transform"
+              >
+                {profile?.photo ? (
+                  <img src={profile.photo} alt="Profile" className="w-full h-full object-cover" />
+                ) : (
+                  <div className="w-full h-full text-blue-600 flex items-center justify-center font-bold text-lg">
+                    {displayName.charAt(0).toUpperCase()}
+                  </div>
+                )}
+              </button>
+            </div>
+          </div>
+
+          <div className="bg-gray-50 border border-gray-100 rounded-2xl p-3.5 flex items-center gap-3 mb-6 focus-within:ring-2 focus-within:ring-blue-100 transition-all">
+            <RiSearchLine className="text-gray-400 text-xl shrink-0" />
+            <input type="text" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} onKeyDown={handleSearch} placeholder="Search for food or exercises..." className="bg-transparent border-none outline-none w-full text-sm font-medium text-gray-700" />
+          </div>
+
+          {/* Date Selector */}
+          <div className="flex items-center justify-between bg-gray-50 p-1 rounded-xl mb-8">
+            <button onClick={() => handleDateChange("prev")} className="p-2 text-gray-400 hover:text-gray-600 active:scale-90 transition-transform"><RiArrowLeftSLine className="text-xl" /></button>
+            <span className="text-sm font-bold text-gray-800">{isSameDay(currentDate, new Date()) ? "Today" : format(currentDate, "MMMM d")}</span>
+            <button onClick={() => handleDateChange("next")} className="p-2 text-gray-400 hover:text-gray-600 active:scale-90 transition-transform"><RiArrowRightSLine className="text-xl" /></button>
+          </div>
+
+          {/* Stats */}
+          <div className="flex items-center gap-6">
+            <div className="relative w-32 h-32 flex-shrink-0">
+              <svg className="w-full h-full transform -rotate-90">
+                <circle cx="64" cy="64" r={radius} stroke="#f3f4f6" strokeWidth="8" fill="none" />
+                <circle cx="64" cy="64" r={radius} stroke={stats.calories.left < 0 ? "#ef4444" : "url(#gradient-mobile)"} strokeWidth="8" fill="none" strokeDasharray={circumference} strokeDashoffset={strokeDashoffset} strokeLinecap="round" className="transition-all duration-1000 ease-out" />
+                <defs>
+                  <linearGradient id="gradient-mobile" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" stopColor="#3b82f6" />
+                    <stop offset="100%" stopColor="#8b5cf6" />
+                  </linearGradient>
+                </defs>
+              </svg>
+              <div className="absolute inset-0 flex flex-col items-center justify-center">
+                <span className={`text-2xl font-bold ${stats.calories.left < 0 ? 'text-red-500' : 'text-gray-800'}`}>{stats.calories.left}</span>
+                <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Left</span>
+              </div>
+            </div>
+            <div className="flex-1 space-y-4">
+              <div className="grid grid-cols-2 gap-3 mb-2">
+                <div className="bg-green-50 rounded-xl p-2.5">
+                  <div className="flex items-center gap-1 mb-1">
+                    <RiFireFill className="text-green-500 text-xs" />
+                    <span className="text-[10px] font-bold text-green-700 uppercase">Eaten</span>
+                  </div>
+                  <span className="text-lg font-bold text-gray-800">{stats.calories.eaten}</span>
+                </div>
+                <div className="bg-orange-50 rounded-xl p-2.5">
+                  <div className="flex items-center gap-1 mb-1">
+                    <MdLocalFireDepartment className="text-orange-500 text-xs" />
+                    <span className="text-[10px] font-bold text-orange-700 uppercase">Burnt</span>
+                  </div>
+                  <span className="text-lg font-bold text-gray-800">{stats.calories.burnt}</span>
+                </div>
+              </div>
+              <div className="space-y-2.5">
+                <MacroProgress label="Protein" current={stats.macros.protein} total={GOAL_PROTEIN} colorClass="bg-blue-500" delay={100} />
+                <MacroProgress label="Carbs" current={stats.macros.carbs} total={GOAL_CARBS} colorClass="bg-purple-500" delay={200} />
+                <MacroProgress label="Fat" current={stats.macros.fat} total={GOAL_FAT} colorClass="bg-yellow-500" delay={300} />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Mobile Food/Exercise List */}
+        <div className="px-4 space-y-4">
+          {loading ? (
+            [1, 2, 3, 4].map(i => <div key={i} className="h-28 bg-gray-200 rounded-2xl animate-pulse" />)
+          ) : (
+            <>
+              {mealSections.map((meal, index) => {
+                const data = getMealData(meal.id);
+                const MealIcon = meal.icon;
+                return (
+                  <div key={meal.id} className="bg-white rounded-2xl shadow-sm overflow-hidden border border-gray-100 transition-all duration-300 hover:shadow-md animate-fade-in-up" style={{ animationDelay: `${300 + index * 100}ms` }}>
+                    <div className={`px-4 py-3 bg-gradient-to-r ${meal.gradient} border-b border-gray-100`}>
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <div className={`w-11 h-11 rounded-xl bg-gradient-to-br ${meal.iconBg} flex items-center justify-center shadow-sm`}>
+                            <MealIcon className="text-xl text-gray-700" />
+                          </div>
+                          <div>
+                            <div className="text-sm font-bold text-gray-900">{meal.label}</div>
+                            <div className="text-xs text-gray-600 font-medium">{data.total_meal_calories > 0 ? `${data.total_meal_calories} kcal` : meal.time}</div>
+                          </div>
+                        </div>
+                        <button onClick={() => handleAddFood(meal.id)} className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center text-white hover:from-blue-600 hover:to-blue-700 shadow-md active:scale-95 transition-all">
+                          <IoMdAdd className="text-xl" />
+                        </button>
+                      </div>
+                    </div>
+                    {data.items.length > 0 ? (
+                      <div className="divide-y divide-gray-100">
+                        {data.items.map((item) => {
+                          const isExpanded = expandedId === item.id;
+                          const isEditing = editingId === item.id;
+                          return (
+                            <div key={item.id} className="transition-colors hover:bg-gray-50">
+                              <div onClick={() => toggleExpand(item.id)} className="px-4 py-3 flex items-start justify-between cursor-pointer">
+                                <div className="flex-1 pr-2">
+                                  <div className="text-sm font-bold text-gray-900">{item.food_details.name}</div>
+                                  <div className="text-xs text-gray-500 mt-1 flex items-center gap-1.5 font-medium">
+                                    <span className="text-blue-600">{item.food_details.protein}g P</span>
+                                    <span className="text-gray-300">•</span>
+                                    <span className="text-purple-600">{item.food_details.carbohydrates}g C</span>
+                                    <span className="text-gray-300">•</span>
+                                    <span className="text-orange-600">{item.food_details.fat}g F</span>
+                                  </div>
+                                </div>
+                                <div className="flex flex-col items-end gap-2" onClick={(e) => e.stopPropagation()}>
+                                  <div className="flex items-baseline gap-1">
+                                    <span className="text-base font-black text-gray-900">{item.food_details.calories}</span>
+                                    <span className="text-[10px] font-bold text-gray-400">KCAL</span>
+                                  </div>
+                                  {isEditing ? (
+                                    <div className="flex items-center gap-1 bg-white border border-gray-200 rounded-lg p-0.5 shadow-sm">
+                                      <input type="number" value={editGrams} onChange={(e) => setEditGrams(e.target.value)} className="w-12 text-center text-xs font-bold border-none outline-none" autoFocus />
+                                      <button onClick={() => handleUpdateLog(item.id)} className="p-1 text-green-600 hover:bg-green-50 rounded"><IoMdCheckmark /></button>
+                                      <button onClick={() => setEditingId(null)} className="p-1 text-gray-400 hover:bg-gray-100 rounded"><IoMdClose /></button>
+                                    </div>
+                                  ) : (
+                                    <div className="flex items-center gap-1 bg-white border border-gray-100 rounded-lg p-1">
+                                      <div className="text-[10px] font-bold text-gray-600 px-1.5">{item.user_serving_grams}g</div>
+                                      <div className="w-px h-3 bg-gray-200"></div>
+                                      <button onClick={() => startEditing(item.id, item.user_serving_grams)} className="p-1 text-gray-400 hover:text-indigo-600 transition-colors"><IoMdCreate /></button>
+                                      <button onClick={() => handleDeleteLog(item.id)} className="p-1 text-gray-400 hover:text-red-500 transition-colors"><IoMdTrash /></button>
+                                      <button onClick={() => toggleExpand(item.id)} className={`p-1 text-gray-400 hover:text-indigo-600 transition-transform ${isExpanded ? 'rotate-180' : ''}`}><IoIosArrowDown /></button>
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                              {isExpanded && !isEditing && (
+                                <div className="px-4 pb-4 pt-0 animate-fade-in">
+                                  <div className="pt-3 border-t border-gray-100 grid grid-cols-4 gap-2">
+                                    <MacroPill label="Fiber" value={item.food_details.fiber || 0} theme="green" />
+                                    <MacroPill label="Sugar" value={item.food_details.sugar || 0} theme="orange" />
+                                    <MacroPill label="Sodium" value={item.food_details.sodium || 0} unit="mg" theme="blue" />
+                                    <MacroPill label="Sat. Fat" value={item.food_details.saturated_fat || 0} theme="purple" />
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    ) : (
+                      <div className="px-4 py-6 text-center">
+                        <p className="text-xs text-gray-400 font-medium">No food logged yet</p>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+
+              {/* Exercise Section Mobile */}
+              <div className="bg-white rounded-2xl shadow-sm overflow-hidden border border-gray-100 transition-all duration-300 hover:shadow-md animate-fade-in-up" style={{ animationDelay: `700ms` }}>
+                <div className="px-4 py-3 bg-gradient-to-r from-teal-50 to-teal-100/50 border-b border-gray-100">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-teal-100 to-teal-50 flex items-center justify-center shadow-sm">
+                        <MdOutlineFitnessCenter className="text-xl text-gray-700" />
+                      </div>
+                      <div>
+                        <div className="text-sm font-bold text-gray-900">Exercise</div>
+                        <div className="text-xs text-gray-600 font-medium">{exerciseData?.total_burned_calories > 0 ? `${exerciseData.total_burned_calories} kcal burnt` : "Log your workout"}</div>
+                      </div>
+                    </div>
+                    <button onClick={() => navigate('/search')} className="w-10 h-10 rounded-full bg-gradient-to-br from-teal-500 to-teal-600 flex items-center justify-center text-white hover:from-teal-600 hover:to-teal-700 shadow-md active:scale-95 transition-all">
+                      <IoMdAdd className="text-xl" />
+                    </button>
+                  </div>
+                </div>
+                {exerciseData?.exercises?.length > 0 ? (
+                  <div className="divide-y divide-gray-100">
+                    {exerciseData.exercises.map((ex) => {
+                      const isEditingExercise = editingExerciseId === ex.log_id;
+                      return (
+                        <div key={ex.log_id} className="px-4 py-3 flex items-center justify-between hover:bg-gray-50 transition-colors">
+                          <div className="flex-1 pr-2">
+                            <div className="text-sm font-bold text-gray-900">{ex.name}</div>
+                            <div className="text-xs text-gray-500 mt-1 font-medium flex items-center gap-1.5">
+                              <span className="text-teal-600">MET: {ex.met_value}</span>
+                            </div>
+                          </div>
+                          <div className="flex flex-col items-end gap-2">
+                            <div className="flex items-baseline gap-1">
+                              <span className="text-base font-black text-orange-600">{ex.burned_calories}</span>
+                              <span className="text-[10px] font-bold text-orange-400">KCAL</span>
+                            </div>
+                            {isEditingExercise ? (
+                              <div className="flex items-center gap-1 bg-white border border-gray-200 rounded-lg p-0.5 shadow-sm">
+                                <input type="number" value={editDuration} onChange={(e) => setEditDuration(e.target.value)} className="w-12 text-center text-xs font-bold border-none outline-none text-teal-700" autoFocus />
+                                <button onClick={() => handleUpdateExerciseLog(ex.log_id)} className="p-1 text-green-600 hover:bg-green-50 rounded"><IoMdCheckmark /></button>
+                                <button onClick={() => setEditingExerciseId(null)} className="p-1 text-gray-400 hover:bg-gray-100 rounded"><IoMdClose /></button>
+                              </div>
+                            ) : (
+                              <div className="flex items-center gap-1 bg-white border border-gray-100 rounded-lg p-1">
+                                <div className="text-[10px] font-bold text-teal-700 px-1.5">{ex.duration_minutes}m</div>
+                                <div className="w-px h-3 bg-gray-200"></div>
+                                <button onClick={() => startEditingExercise(ex.log_id, ex.duration_minutes)} className="p-1 text-gray-400 hover:text-indigo-600 transition-colors"><IoMdCreate /></button>
+                                <button onClick={() => handleDeleteExerciseLog(ex.log_id)} className="p-1 text-gray-400 hover:text-red-500 transition-colors"><IoMdTrash /></button>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <div className="px-4 py-6 text-center">
+                    <p className="text-xs text-gray-400 font-medium">No exercises logged yet</p>
+                  </div>
+                )}
+              </div>
+            </>
+          )}
+        </div>
+      </div>
+
+      {/* ===== DESKTOP LAYOUT ===== */}
+      <div className="hidden lg:flex lg:flex-col min-h-screen">
+        {/* Desktop Top Bar */}
+        <div className="bg-white border-b border-gray-100 shadow-sm px-8 py-4 flex items-center justify-between sticky top-0 z-20">
           <div>
             <h1 className="text-xl font-bold text-gray-900">Hi, {displayName} 👋</h1>
-            <p className="text-xs text-gray-500 font-medium mt-0.5">Let's hit your goals today!</p>
+            <p className="text-xs text-gray-500 font-medium">Let's hit your goals today!</p>
           </div>
+
+          <div className="flex items-center gap-4 flex-1 max-w-lg mx-8">
+            <div className="bg-gray-50 border border-gray-200 rounded-xl p-3 flex items-center gap-3 w-full focus-within:ring-2 focus-within:ring-blue-100 transition-all">
+              <RiSearchLine className="text-gray-400 text-lg shrink-0" />
+              <input type="text" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} onKeyDown={handleSearch} placeholder="Search for food or exercises..." className="bg-transparent border-none outline-none w-full text-sm font-medium text-gray-700" />
+            </div>
+          </div>
+
           <div className="flex items-center gap-3">
+            {/* Date Navigator */}
+            <div className="flex items-center gap-1 bg-gray-50 border border-gray-200 rounded-xl px-3 py-2">
+              <button onClick={() => handleDateChange("prev")} className="p-1 text-gray-400 hover:text-gray-600 active:scale-90 transition-transform"><RiArrowLeftSLine className="text-lg" /></button>
+              <span className="text-sm font-bold text-gray-800 min-w-[80px] text-center">{isSameDay(currentDate, new Date()) ? "Today" : format(currentDate, "MMM d")}</span>
+              <button onClick={() => handleDateChange("next")} className="p-1 text-gray-400 hover:text-gray-600 active:scale-90 transition-transform"><RiArrowRightSLine className="text-lg" /></button>
+            </div>
             <button onClick={handleMainButtonClick} className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center text-gray-700 hover:bg-gray-200 transition-colors shadow-sm">
               <RiCameraAiFill className="text-xl" />
             </button>
-            <button 
-              onClick={() => navigate('/profile/edit')} 
-              className="w-12 h-12 rounded-full overflow-hidden border-2 border-gray-100 bg-blue-50 shadow-sm active:scale-95 transition-transform"
-            >
+            <button onClick={() => navigate('/profile/edit')} className="w-10 h-10 rounded-full overflow-hidden border-2 border-gray-100 bg-blue-50 shadow-sm active:scale-95 transition-transform">
               {profile?.photo ? (
                 <img src={profile.photo} alt="Profile" className="w-full h-full object-cover" />
               ) : (
-                <div className="w-full h-full text-blue-600 flex items-center justify-center font-bold text-lg">
+                <div className="w-full h-full text-blue-600 flex items-center justify-center font-bold text-base">
                   {displayName.charAt(0).toUpperCase()}
                 </div>
               )}
@@ -404,275 +660,264 @@ const Home = () => {
           </div>
         </div>
 
-        <div className="bg-gray-50 border border-gray-100 rounded-2xl p-3.5 flex items-center gap-3 mb-6 focus-within:ring-2 focus-within:ring-blue-100 transition-all">
-          <RiSearchLine className="text-gray-400 text-xl shrink-0" />
-          <input type="text" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} onKeyDown={handleSearch} placeholder="Search for food or exercises..." className="bg-transparent border-none outline-none w-full text-sm font-medium text-gray-700" />
-        </div>
+        {/* Desktop Main Content */}
+        <div className="flex flex-1 gap-6 p-6 max-w-[1400px] mx-auto w-full">
+          
+          {/* LEFT SIDEBAR — Stats Panel */}
+          <div className="w-72 xl:w-80 flex-shrink-0 space-y-4">
+            
+            {/* Calorie Ring Card */}
+            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 animate-fade-in-up">
+              <h3 className="text-sm font-bold text-gray-700 mb-4">Daily Calories</h3>
+              <div className="flex items-center justify-center mb-4">
+                <div className="relative w-36 h-36">
+                  <svg className="w-full h-full transform -rotate-90">
+                    <circle cx="72" cy="72" r="60" stroke="#f3f4f6" strokeWidth="10" fill="none" />
+                    <circle
+                      cx="72" cy="72" r="60"
+                      stroke={stats.calories.left < 0 ? "#ef4444" : "url(#gradient-desktop)"}
+                      strokeWidth="10" fill="none"
+                      strokeDasharray={2 * Math.PI * 60}
+                      strokeDashoffset={2 * Math.PI * 60 - (stats.calories.percent / 100) * 2 * Math.PI * 60}
+                      strokeLinecap="round"
+                      className="transition-all duration-1000 ease-out"
+                    />
+                    <defs>
+                      <linearGradient id="gradient-desktop" x1="0%" y1="0%" x2="100%" y2="100%">
+                        <stop offset="0%" stopColor="#3b82f6" />
+                        <stop offset="100%" stopColor="#8b5cf6" />
+                      </linearGradient>
+                    </defs>
+                  </svg>
+                  <div className="absolute inset-0 flex flex-col items-center justify-center">
+                    <span className={`text-3xl font-bold ${stats.calories.left < 0 ? 'text-red-500' : 'text-gray-800'}`}>{stats.calories.left}</span>
+                    <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">kcal left</span>
+                  </div>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="bg-green-50 rounded-xl p-3">
+                  <div className="flex items-center gap-1 mb-1">
+                    <RiFireFill className="text-green-500 text-xs" />
+                    <span className="text-[10px] font-bold text-green-700 uppercase">Eaten</span>
+                  </div>
+                  <span className="text-xl font-bold text-gray-800">{stats.calories.eaten}</span>
+                  <p className="text-[10px] text-gray-400">of {GOAL_CALORIES} kcal</p>
+                </div>
+                <div className="bg-orange-50 rounded-xl p-3">
+                  <div className="flex items-center gap-1 mb-1">
+                    <MdLocalFireDepartment className="text-orange-500 text-xs" />
+                    <span className="text-[10px] font-bold text-orange-700 uppercase">Burnt</span>
+                  </div>
+                  <span className="text-xl font-bold text-gray-800">{stats.calories.burnt}</span>
+                  <p className="text-[10px] text-gray-400">from exercise</p>
+                </div>
+              </div>
+            </div>
 
-        {/* Date Selector */}
-        <div className="flex items-center justify-between bg-gray-50 p-1 rounded-xl mb-8">
-          <button onClick={() => handleDateChange("prev")} className="p-2 text-gray-400 hover:text-gray-600 active:scale-90 transition-transform"><RiArrowLeftSLine className="text-xl" /></button>
-          <span className="text-sm font-bold text-gray-800">{isSameDay(currentDate, new Date()) ? "Today" : format(currentDate, "MMMM d")}</span>
-          <button onClick={() => handleDateChange("next")} className="p-2 text-gray-400 hover:text-gray-600 active:scale-90 transition-transform"><RiArrowRightSLine className="text-xl" /></button>
-        </div>
+            {/* Macros Card */}
+            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 animate-fade-in-up" style={{ animationDelay: '100ms' }}>
+              <h3 className="text-sm font-bold text-gray-700 mb-4">Macronutrients</h3>
+              <div className="space-y-3.5">
+                <MacroProgress label="Protein" current={stats.macros.protein} total={GOAL_PROTEIN} colorClass="bg-blue-500" delay={100} />
+                <MacroProgress label="Carbs" current={stats.macros.carbs} total={GOAL_CARBS} colorClass="bg-purple-500" delay={200} />
+                <MacroProgress label="Fat" current={stats.macros.fat} total={GOAL_FAT} colorClass="bg-yellow-500" delay={300} />
+              </div>
+            </div>
 
-        {/* --- STATS SECTION --- */}
-        <div className="flex items-center gap-6">
-          <div className="relative w-32 h-32 flex-shrink-0">
-            <svg className="w-full h-full transform -rotate-90">
-              <circle cx="64" cy="64" r={radius} stroke="#f3f4f6" strokeWidth="8" fill="none" />
-              <circle
-                cx="64" cy="64" r={radius}
-                stroke={stats.calories.left < 0 ? "#ef4444" : "url(#gradient)"} 
-                strokeWidth="8" fill="none"
-                strokeDasharray={circumference}
-                strokeDashoffset={strokeDashoffset}
-                strokeLinecap="round"
-                className="transition-all duration-1000 ease-out"
-              />
-              <defs>
-                <linearGradient id="gradient" x1="0%" y1="0%" x2="100%" y2="100%">
-                  <stop offset="0%" stopColor="#3b82f6" />
-                  <stop offset="100%" stopColor="#8b5cf6" />
-                </linearGradient>
-              </defs>
-            </svg>
-            <div className="absolute inset-0 flex flex-col items-center justify-center">
-              <span className={`text-2xl font-bold ${stats.calories.left < 0 ? 'text-red-500' : 'text-gray-800'}`}>
-                {stats.calories.left}
-              </span>
-              <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Left</span>
+            {/* Quick Summary Card */}
+            <div className="bg-gradient-to-br from-blue-500 to-purple-600 rounded-2xl p-5 text-white shadow-md animate-fade-in-up" style={{ animationDelay: '200ms' }}>
+              <h3 className="text-sm font-bold opacity-90 mb-3">Today's Summary</h3>
+              <div className="space-y-2">
+                <div className="flex justify-between items-center">
+                  <span className="text-xs opacity-75">Calorie Goal</span>
+                  <span className="text-sm font-bold">{GOAL_CALORIES} kcal</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-xs opacity-75">Net Calories</span>
+                  <span className="text-sm font-bold">{stats.calories.eaten - stats.calories.burnt} kcal</span>
+                </div>
+                <div className="w-full h-px bg-white/20 my-2" />
+                <div className="flex justify-between items-center">
+                  <span className="text-xs opacity-75">Remaining</span>
+                  <span className={`text-sm font-bold ${stats.calories.left < 0 ? 'text-red-300' : 'text-white'}`}>{stats.calories.left} kcal</span>
+                </div>
+              </div>
             </div>
           </div>
 
-          <div className="flex-1 space-y-4">
-            <div className="grid grid-cols-2 gap-3 mb-2">
-               <div className="bg-green-50 rounded-xl p-2.5">
-                 <div className="flex items-center gap-1 mb-1">
-                   <RiFireFill className="text-green-500 text-xs" />
-                   <span className="text-[10px] font-bold text-green-700 uppercase">Eaten</span>
-                 </div>
-                 <span className="text-lg font-bold text-gray-800">{stats.calories.eaten}</span>
-               </div>
-               
-               {/* Updated Burned Section */}
-               <div className="bg-orange-50 rounded-xl p-2.5">
-                 <div className="flex items-center gap-1 mb-1">
-                   <MdLocalFireDepartment className="text-orange-500 text-xs" />
-                   <span className="text-[10px] font-bold text-orange-700 uppercase">Burnt</span>
-                 </div>
-                 <span className="text-lg font-bold text-gray-800">{stats.calories.burnt}</span>
-               </div>
-            </div>
+          {/* RIGHT MAIN CONTENT — Meals & Exercise */}
+          <div className="flex-1 min-w-0">
+            {loading ? (
+              <div className="grid grid-cols-2 gap-4">
+                {[1, 2, 3, 4, 5].map(i => <div key={i} className="h-40 bg-gray-200 rounded-2xl animate-pulse" />)}
+              </div>
+            ) : (
+              <>
+                {/* Meals Grid */}
+                <div className="grid grid-cols-2 gap-4 mb-4">
+                  {mealSections.map((meal, index) => {
+                    const data = getMealData(meal.id);
+                    const MealIcon = meal.icon;
+                    return (
+                      <div
+                        key={meal.id}
+                        className="bg-white rounded-2xl shadow-sm overflow-hidden border border-gray-100 transition-all duration-300 hover:shadow-md animate-fade-in-up"
+                        style={{ animationDelay: `${index * 80}ms` }}
+                      >
+                        {/* Meal Header */}
+                        <div className={`px-4 py-3 bg-gradient-to-r ${meal.gradient} border-b border-gray-100`}>
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                              <div className={`w-10 h-10 rounded-xl bg-gradient-to-br ${meal.iconBg} flex items-center justify-center shadow-sm`}>
+                                <MealIcon className="text-lg text-gray-700" />
+                              </div>
+                              <div>
+                                <div className="text-sm font-bold text-gray-900">{meal.label}</div>
+                                <div className="text-xs text-gray-600 font-medium">
+                                  {data.total_meal_calories > 0 ? `${data.total_meal_calories} kcal` : meal.time}
+                                </div>
+                              </div>
+                            </div>
+                            <button onClick={() => handleAddFood(meal.id)} className="w-9 h-9 rounded-full bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center text-white hover:from-blue-600 hover:to-blue-700 shadow-md active:scale-95 transition-all">
+                              <IoMdAdd className="text-lg" />
+                            </button>
+                          </div>
+                        </div>
 
-            <div className="space-y-2.5">
-              <MacroProgress label="Protein" current={stats.macros.protein} total={GOAL_PROTEIN} colorClass="bg-blue-500" delay={100} />
-              <MacroProgress label="Carbs" current={stats.macros.carbs} total={GOAL_CARBS} colorClass="bg-purple-500" delay={200} />
-              <MacroProgress label="Fat" current={stats.macros.fat} total={GOAL_FAT} colorClass="bg-yellow-500" delay={300} />
-            </div>
-          </div>
-        </div>
-      </div>
+                        {/* Meal Items */}
+                        {data.items.length > 0 ? (
+                          <div className="divide-y divide-gray-100 max-h-64 overflow-y-auto">
+                            {data.items.map((item) => {
+                              const isExpanded = expandedId === item.id;
+                              const isEditing = editingId === item.id;
+                              return (
+                                <div key={item.id} className="transition-colors hover:bg-gray-50">
+                                  <div onClick={() => toggleExpand(item.id)} className="px-4 py-2.5 flex items-start justify-between cursor-pointer">
+                                    <div className="flex-1 pr-2 min-w-0">
+                                      <div className="text-sm font-bold text-gray-900 truncate">{item.food_details.name}</div>
+                                      <div className="text-xs text-gray-500 mt-0.5 flex items-center gap-1 font-medium flex-wrap">
+                                        <span className="text-blue-600">{item.food_details.protein}g P</span>
+                                        <span className="text-gray-300">•</span>
+                                        <span className="text-purple-600">{item.food_details.carbohydrates}g C</span>
+                                        <span className="text-gray-300">•</span>
+                                        <span className="text-orange-600">{item.food_details.fat}g F</span>
+                                      </div>
+                                    </div>
+                                    <div className="flex flex-col items-end gap-1.5 flex-shrink-0" onClick={(e) => e.stopPropagation()}>
+                                      <div className="flex items-baseline gap-1">
+                                        <span className="text-sm font-black text-gray-900">{item.food_details.calories}</span>
+                                        <span className="text-[10px] font-bold text-gray-400">KCAL</span>
+                                      </div>
+                                      {isEditing ? (
+                                        <div className="flex items-center gap-1 bg-white border border-gray-200 rounded-lg p-0.5 shadow-sm">
+                                          <input type="number" value={editGrams} onChange={(e) => setEditGrams(e.target.value)} className="w-10 text-center text-xs font-bold border-none outline-none" autoFocus />
+                                          <button onClick={() => handleUpdateLog(item.id)} className="p-1 text-green-600 hover:bg-green-50 rounded"><IoMdCheckmark /></button>
+                                          <button onClick={() => setEditingId(null)} className="p-1 text-gray-400 hover:bg-gray-100 rounded"><IoMdClose /></button>
+                                        </div>
+                                      ) : (
+                                        <div className="flex items-center gap-1 bg-white border border-gray-100 rounded-lg p-0.5">
+                                          <div className="text-[10px] font-bold text-gray-600 px-1">{item.user_serving_grams}g</div>
+                                          <div className="w-px h-3 bg-gray-200"></div>
+                                          <button onClick={() => startEditing(item.id, item.user_serving_grams)} className="p-1 text-gray-400 hover:text-indigo-600 transition-colors"><IoMdCreate className="text-xs" /></button>
+                                          <button onClick={() => handleDeleteLog(item.id)} className="p-1 text-gray-400 hover:text-red-500 transition-colors"><IoMdTrash className="text-xs" /></button>
+                                          <button onClick={() => toggleExpand(item.id)} className={`p-1 text-gray-400 hover:text-indigo-600 transition-transform ${isExpanded ? 'rotate-180' : ''}`}><IoIosArrowDown className="text-xs" /></button>
+                                        </div>
+                                      )}
+                                    </div>
+                                  </div>
+                                  {isExpanded && !isEditing && (
+                                    <div className="px-4 pb-3 pt-0 animate-fade-in">
+                                      <div className="pt-2 border-t border-gray-100 grid grid-cols-4 gap-1.5">
+                                        <MacroPill label="Fiber" value={item.food_details.fiber || 0} theme="green" />
+                                        <MacroPill label="Sugar" value={item.food_details.sugar || 0} theme="orange" />
+                                        <MacroPill label="Sodium" value={item.food_details.sodium || 0} unit="mg" theme="blue" />
+                                        <MacroPill label="Sat. Fat" value={item.food_details.saturated_fat || 0} theme="purple" />
+                                      </div>
+                                    </div>
+                                  )}
+                                </div>
+                              );
+                            })}
+                          </div>
+                        ) : (
+                          <div className="px-4 py-8 text-center">
+                            <p className="text-xs text-gray-400 font-medium">No food logged yet</p>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
 
-      {/* --- INTERACTIVE LIST --- */}
-      <div className="px-4 space-y-4">
-        {loading ? (
-          [1, 2, 3, 4].map(i => <div key={i} className="h-28 bg-gray-200 rounded-2xl animate-pulse" />)
-        ) : (
-          <>
-            {/* Meal Sections */}
-            {mealSections.map((meal, index) => {
-              const data = getMealData(meal.id);
-              const MealIcon = meal.icon;
-              
-              return (
-                <div 
-                  key={meal.id} 
-                  className="bg-white rounded-2xl shadow-sm overflow-hidden border border-gray-100 transition-all duration-300 hover:shadow-md animate-fade-in-up"
-                  style={{ animationDelay: `${300 + index * 100}ms` }}
-                >
-                  <div className={`px-4 py-3 bg-gradient-to-r ${meal.gradient} border-b border-gray-100`}>
+                {/* Exercise Section — Full Width */}
+                <div className="bg-white rounded-2xl shadow-sm overflow-hidden border border-gray-100 transition-all duration-300 hover:shadow-md animate-fade-in-up" style={{ animationDelay: '350ms' }}>
+                  <div className="px-5 py-3.5 bg-gradient-to-r from-teal-50 to-teal-100/50 border-b border-gray-100">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-3">
-                        <div className={`w-11 h-11 rounded-xl bg-gradient-to-br ${meal.iconBg} flex items-center justify-center shadow-sm`}>
-                          <MealIcon className="text-xl text-gray-700" />
+                        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-teal-100 to-teal-50 flex items-center justify-center shadow-sm">
+                          <MdOutlineFitnessCenter className="text-lg text-gray-700" />
                         </div>
                         <div>
-                          <div className="text-sm font-bold text-gray-900">{meal.label}</div>
+                          <div className="text-sm font-bold text-gray-900">Exercise</div>
                           <div className="text-xs text-gray-600 font-medium">
-                            {data.total_meal_calories > 0 ? `${data.total_meal_calories} kcal` : meal.time}
+                            {exerciseData?.total_burned_calories > 0 ? `${exerciseData.total_burned_calories} kcal burnt today` : "Log your workout"}
                           </div>
                         </div>
                       </div>
-                      <button onClick={() => handleAddFood(meal.id)} className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center text-white hover:from-blue-600 hover:to-blue-700 shadow-md active:scale-95 transition-all">
-                        <IoMdAdd className="text-xl" />
+                      <button onClick={() => navigate('/search')} className="flex items-center gap-2 px-4 py-2 bg-gradient-to-br from-teal-500 to-teal-600 rounded-xl text-white text-sm font-semibold hover:from-teal-600 hover:to-teal-700 shadow-md active:scale-95 transition-all">
+                        <IoMdAdd className="text-base" />
+                        Add Exercise
                       </button>
                     </div>
                   </div>
 
-                  {data.items.length > 0 ? (
-                    <div className="divide-y divide-gray-100">
-                      {data.items.map((item) => {
-                        const isExpanded = expandedId === item.id;
-                        const isEditing = editingId === item.id;
-                        
+                  {exerciseData?.exercises?.length > 0 ? (
+                    <div className="grid grid-cols-2 xl:grid-cols-3 divide-x divide-y divide-gray-100">
+                      {exerciseData.exercises.map((ex) => {
+                        const isEditingExercise = editingExerciseId === ex.log_id;
                         return (
-                          <div key={item.id} className="transition-colors hover:bg-gray-50">
-                            {/* Main Row */}
-                            <div 
-                              onClick={() => toggleExpand(item.id)}
-                              className="px-4 py-3 flex items-start justify-between cursor-pointer"
-                            >
-                              <div className="flex-1 pr-2">
-                                <div className="text-sm font-bold text-gray-900">{item.food_details.name}</div>
-                                <div className="text-xs text-gray-500 mt-1 flex items-center gap-1.5 font-medium">
-                                  <span className="text-blue-600">{item.food_details.protein}g P</span>
-                                  <span className="text-gray-300">•</span>
-                                  <span className="text-purple-600">{item.food_details.carbohydrates}g C</span>
-                                  <span className="text-gray-300">•</span>
-                                  <span className="text-orange-600">{item.food_details.fat}g F</span>
-                                </div>
-                              </div>
-
-                              <div className="flex flex-col items-end gap-2" onClick={(e) => e.stopPropagation()}>
-                                <div className="flex items-baseline gap-1">
-                                  <span className="text-base font-black text-gray-900">{item.food_details.calories}</span>
-                                  <span className="text-[10px] font-bold text-gray-400">KCAL</span>
-                                </div>
-
-                                {isEditing ? (
-                                  <div className="flex items-center gap-1 bg-white border border-gray-200 rounded-lg p-0.5 shadow-sm">
-                                    <input 
-                                      type="number" 
-                                      value={editGrams} 
-                                      onChange={(e) => setEditGrams(e.target.value)}
-                                      className="w-12 text-center text-xs font-bold border-none outline-none"
-                                      autoFocus
-                                    />
-                                    <button onClick={() => handleUpdateLog(item.id)} className="p-1 text-green-600 hover:bg-green-50 rounded"><IoMdCheckmark /></button>
-                                    <button onClick={() => setEditingId(null)} className="p-1 text-gray-400 hover:bg-gray-100 rounded"><IoMdClose /></button>
-                                  </div>
-                                ) : (
-                                  <div className="flex items-center gap-1 bg-white border border-gray-100 rounded-lg p-1">
-                                    <div className="text-[10px] font-bold text-gray-600 px-1.5">{item.user_serving_grams}g</div>
-                                    <div className="w-px h-3 bg-gray-200"></div>
-                                    <button onClick={() => startEditing(item.id, item.user_serving_grams)} className="p-1 text-gray-400 hover:text-indigo-600 transition-colors"><IoMdCreate /></button>
-                                    <button onClick={() => handleDeleteLog(item.id)} className="p-1 text-gray-400 hover:text-red-500 transition-colors"><IoMdTrash /></button>
-                                    <button 
-                                      onClick={() => toggleExpand(item.id)} 
-                                      className={`p-1 text-gray-400 hover:text-indigo-600 transition-transform ${isExpanded ? 'rotate-180' : ''}`}
-                                    >
-                                      <IoIosArrowDown />
-                                    </button>
-                                  </div>
-                                )}
-                              </div>
+                          <div key={ex.log_id} className="px-4 py-3 flex items-center justify-between hover:bg-gray-50 transition-colors">
+                            <div className="flex-1 pr-2 min-w-0">
+                              <div className="text-sm font-bold text-gray-900 truncate">{ex.name}</div>
+                              <div className="text-xs text-teal-600 font-medium mt-0.5">MET: {ex.met_value}</div>
                             </div>
-
-                            {/* Expanded Details Section */}
-                            {isExpanded && !isEditing && (
-                              <div className="px-4 pb-4 pt-0 animate-fade-in">
-                                <div className="pt-3 border-t border-gray-100 grid grid-cols-4 gap-2">
-                                  <MacroPill label="Fiber" value={item.food_details.fiber || 0} theme="green" />
-                                  <MacroPill label="Sugar" value={item.food_details.sugar || 0} theme="orange" />
-                                  <MacroPill label="Sodium" value={item.food_details.sodium || 0} unit="mg" theme="blue" />
-                                  <MacroPill label="Sat. Fat" value={item.food_details.saturated_fat || 0} theme="purple" />
-                                </div>
+                            <div className="flex flex-col items-end gap-1.5 flex-shrink-0">
+                              <div className="flex items-baseline gap-1">
+                                <span className="text-base font-black text-orange-600">{ex.burned_calories}</span>
+                                <span className="text-[10px] font-bold text-orange-400">KCAL</span>
                               </div>
-                            )}
+                              {isEditingExercise ? (
+                                <div className="flex items-center gap-1 bg-white border border-gray-200 rounded-lg p-0.5 shadow-sm">
+                                  <input type="number" value={editDuration} onChange={(e) => setEditDuration(e.target.value)} className="w-10 text-center text-xs font-bold border-none outline-none text-teal-700" autoFocus />
+                                  <button onClick={() => handleUpdateExerciseLog(ex.log_id)} className="p-1 text-green-600 hover:bg-green-50 rounded"><IoMdCheckmark /></button>
+                                  <button onClick={() => setEditingExerciseId(null)} className="p-1 text-gray-400 hover:bg-gray-100 rounded"><IoMdClose /></button>
+                                </div>
+                              ) : (
+                                <div className="flex items-center gap-1 bg-white border border-gray-100 rounded-lg p-0.5">
+                                  <div className="text-[10px] font-bold text-teal-700 px-1">{ex.duration_minutes}m</div>
+                                  <div className="w-px h-3 bg-gray-200"></div>
+                                  <button onClick={() => startEditingExercise(ex.log_id, ex.duration_minutes)} className="p-1 text-gray-400 hover:text-indigo-600 transition-colors"><IoMdCreate className="text-xs" /></button>
+                                  <button onClick={() => handleDeleteExerciseLog(ex.log_id)} className="p-1 text-gray-400 hover:text-red-500 transition-colors"><IoMdTrash className="text-xs" /></button>
+                                </div>
+                              )}
+                            </div>
                           </div>
                         );
                       })}
                     </div>
                   ) : (
-                    <div className="px-4 py-6 text-center">
-                      <p className="text-xs text-gray-400 font-medium">No food logged yet</p>
+                    <div className="px-4 py-10 text-center">
+                      <MdOutlineFitnessCenter className="text-3xl text-gray-200 mx-auto mb-2" />
+                      <p className="text-sm text-gray-400 font-medium">No exercises logged yet</p>
+                      <p className="text-xs text-gray-300 mt-1">Click "Add Exercise" to log your workout</p>
                     </div>
                   )}
                 </div>
-              );
-            })}
-
-            {/* Exercise Section */}
-            <div 
-              className="bg-white rounded-2xl shadow-sm overflow-hidden border border-gray-100 transition-all duration-300 hover:shadow-md animate-fade-in-up"
-              style={{ animationDelay: `700ms` }}
-            >
-              <div className={`px-4 py-3 bg-gradient-to-r from-teal-50 to-teal-100/50 border-b border-gray-100`}>
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className={`w-11 h-11 rounded-xl bg-gradient-to-br from-teal-100 to-teal-50 flex items-center justify-center shadow-sm`}>
-                      <MdOutlineFitnessCenter className="text-xl text-gray-700" />
-                    </div>
-                    <div>
-                      <div className="text-sm font-bold text-gray-900">Exercise</div>
-                      <div className="text-xs text-gray-600 font-medium">
-                        {exerciseData?.total_burned_calories > 0 
-                          ? `${exerciseData.total_burned_calories} kcal burnt` 
-                          : "Log your workout"}
-                      </div>
-                    </div>
-                  </div>
-                  <button onClick={() => navigate('/search')} className="w-10 h-10 rounded-full bg-gradient-to-br from-teal-500 to-teal-600 flex items-center justify-center text-white hover:from-teal-600 hover:to-teal-700 shadow-md active:scale-95 transition-all">
-                    <IoMdAdd className="text-xl" />
-                  </button>
-                </div>
-              </div>
-
-              {/* Display Logged Exercises */}
-              {exerciseData?.exercises?.length > 0 ? (
-                <div className="divide-y divide-gray-100">
-                  {exerciseData.exercises.map((ex) => {
-                    const isEditingExercise = editingExerciseId === ex.log_id;
-
-                    return (
-                      <div key={ex.log_id} className="px-4 py-3 flex items-center justify-between hover:bg-gray-50 transition-colors">
-                        <div className="flex-1 pr-2">
-                          <div className="text-sm font-bold text-gray-900">{ex.name}</div>
-                          <div className="text-xs text-gray-500 mt-1 font-medium flex items-center gap-1.5">
-                            <span className="text-teal-600">MET: {ex.met_value}</span>
-                          </div>
-                        </div>
-                        
-                        <div className="flex flex-col items-end gap-2">
-                          <div className="flex items-baseline gap-1">
-                            <span className="text-base font-black text-orange-600">{ex.burned_calories}</span>
-                            <span className="text-[10px] font-bold text-orange-400">KCAL</span>
-                          </div>
-
-                          {isEditingExercise ? (
-                            <div className="flex items-center gap-1 bg-white border border-gray-200 rounded-lg p-0.5 shadow-sm">
-                              <input 
-                                type="number" 
-                                value={editDuration} 
-                                onChange={(e) => setEditDuration(e.target.value)}
-                                className="w-12 text-center text-xs font-bold border-none outline-none text-teal-700"
-                                autoFocus
-                              />
-                              <button onClick={() => handleUpdateExerciseLog(ex.log_id)} className="p-1 text-green-600 hover:bg-green-50 rounded"><IoMdCheckmark /></button>
-                              <button onClick={() => setEditingExerciseId(null)} className="p-1 text-gray-400 hover:bg-gray-100 rounded"><IoMdClose /></button>
-                            </div>
-                          ) : (
-                            <div className="flex items-center gap-1 bg-white border border-gray-100 rounded-lg p-1">
-                              <div className="text-[10px] font-bold text-teal-700 px-1.5">{ex.duration_minutes}m</div>
-                              <div className="w-px h-3 bg-gray-200"></div>
-                              <button onClick={() => startEditingExercise(ex.log_id, ex.duration_minutes)} className="p-1 text-gray-400 hover:text-indigo-600 transition-colors"><IoMdCreate /></button>
-                              <button onClick={() => handleDeleteExerciseLog(ex.log_id)} className="p-1 text-gray-400 hover:text-red-500 transition-colors"><IoMdTrash /></button>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              ) : (
-                <div className="px-4 py-6 text-center">
-                  <p className="text-xs text-gray-400 font-medium">No exercises logged yet</p>
-                </div>
-              )}
-            </div>
-          </>
-        )}
+              </>
+            )}
+          </div>
+        </div>
       </div>
     </div>
   );
